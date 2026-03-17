@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Church Games</title>
+    <script>
+      // GitHub Pages SPA routing fix
+      // Converts /path/to/page into /#/path/to/page and redirects to index.html
+      (function () {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        // Strip the base path if deployed under /church-games/
+        var basePath = "/church-games";
+        if (path.indexOf(basePath) === 0) {
+          path = path.slice(basePath.length);
+        }
+        // Build the hash route
+        var hashRoute = "#" + path + search;
+        window.location.replace(
+          window.location.origin + basePath + "/" + hashRoute
+        );
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecting&hellip;</p>
+  </body>
+</html>

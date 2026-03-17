@@ -1,0 +1,395 @@
+{
+  "meta": {
+    "week": "0000-00-00",
+    "title": "Bible Review",
+    "verseReference": "John 3:16",
+    "verseText": "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.",
+    "theme": "Bible Basics",
+    "spotlightGame": "quiz-showdown",
+    "generatedAt": "2026-01-01T00:00:00Z"
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Who built the ark?",
+      "options": ["Moses", "Abraham", "Noah", "David"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "God told him to build a big boat.",
+      "explanation": "God told Noah to build an ark to save his family and the animals from a great flood.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q2",
+      "text": "How many days and nights did it rain during the flood?",
+      "options": ["10", "20", "30", "40"],
+      "correctIndex": 3,
+      "difficulty": "easy",
+      "hint": "It's the same number of years the Israelites wandered in the desert.",
+      "explanation": "It rained for 40 days and 40 nights during the great flood in Noah's time.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q3",
+      "text": "Who was the first man God created?",
+      "options": ["Noah", "Abraham", "Adam", "Moses"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "His name starts with the letter A.",
+      "explanation": "God created Adam as the first man and placed him in the Garden of Eden.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q4",
+      "text": "Who was the first woman God created?",
+      "options": ["Mary", "Eve", "Sarah", "Ruth"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "She was made from Adam's rib.",
+      "explanation": "God created Eve as the first woman to be a companion for Adam.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q5",
+      "text": "What did God create on the first day?",
+      "options": ["Animals", "Light", "Water", "Trees"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "You need it to see!",
+      "explanation": "On the first day of creation, God said 'Let there be light' and there was light.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q6",
+      "text": "David fought a giant named ___.",
+      "options": ["Goliath", "Samson", "Pharaoh", "Herod"],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "His name starts with G.",
+      "explanation": "Young David defeated the giant Goliath with a sling and a stone, trusting in God.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q7",
+      "text": "What weapon did David use to defeat Goliath?",
+      "options": ["A sword", "A spear", "A sling and a stone", "A bow and arrow"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's something you swing around your head.",
+      "explanation": "David used a sling and a smooth stone to defeat the giant Goliath.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q8",
+      "text": "Who led the Israelites out of Egypt?",
+      "options": ["Abraham", "Moses", "Joshua", "David"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "He parted the Red Sea.",
+      "explanation": "God chose Moses to lead the Israelites out of slavery in Egypt.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q9",
+      "text": "What sea did God part for Moses and the Israelites?",
+      "options": ["The Dead Sea", "The Red Sea", "The Sea of Galilee", "The Mediterranean Sea"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Its name is a color.",
+      "explanation": "God parted the Red Sea so the Israelites could walk through on dry ground.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q10",
+      "text": "Jonah was swallowed by a great ___.",
+      "options": ["whale", "fish", "shark", "serpent"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It lives in the water and is very big.",
+      "explanation": "The Bible says Jonah was swallowed by a great fish when he tried to run from God.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q11",
+      "text": "How many days was Jonah inside the great fish?",
+      "options": ["1 day", "2 days", "3 days", "7 days"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "The same number of days Jesus was in the tomb.",
+      "explanation": "Jonah was inside the great fish for three days and three nights.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q12",
+      "text": "Where was baby Jesus born?",
+      "options": ["Jerusalem", "Nazareth", "Bethlehem", "Egypt"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's called the City of David.",
+      "explanation": "Jesus was born in Bethlehem, in a manger because there was no room at the inn.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q13",
+      "text": "Jesus was born in a manger.",
+      "options": ["True", "False", "The Bible doesn't say", "He was born in a palace"],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "A manger is a feeding trough for animals.",
+      "explanation": "Jesus was laid in a manger because there was no room for Mary and Joseph at the inn.",
+      "format": "true-false",
+      "category": "recall"
+    },
+    {
+      "id": "q14",
+      "text": "How many disciples did Jesus have?",
+      "options": ["3", "7", "10", "12"],
+      "correctIndex": 3,
+      "difficulty": "easy",
+      "hint": "It's the same as the number of months in a year.",
+      "explanation": "Jesus chose 12 disciples to follow Him and learn from Him.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q15",
+      "text": "Who was Jesus' mother?",
+      "options": ["Martha", "Mary", "Ruth", "Esther"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Her name starts with M.",
+      "explanation": "Mary was chosen by God to be the mother of Jesus.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q16",
+      "text": "What is the first book of the Bible?",
+      "options": ["Exodus", "Genesis", "Matthew", "Psalms"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It means 'beginning.'",
+      "explanation": "Genesis is the first book of the Bible and tells the story of creation.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q17",
+      "text": "Daniel was thrown into a den of ___.",
+      "options": ["bears", "snakes", "lions", "wolves"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "They are big cats that roar.",
+      "explanation": "Daniel was thrown into a den of lions, but God shut the lions' mouths and kept Daniel safe.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q18",
+      "text": "God protected Daniel in the lions' den.",
+      "options": ["True", "False", "The Bible doesn't say", "Daniel ran away"],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "God sent an angel to help.",
+      "explanation": "God sent an angel to shut the lions' mouths so they could not hurt Daniel.",
+      "format": "true-false",
+      "category": "recall"
+    },
+    {
+      "id": "q19",
+      "text": "What special coat did Jacob give to his son Joseph?",
+      "options": ["A coat of armor", "A coat of many colors", "A fur coat", "A leather coat"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It was very colorful and beautiful.",
+      "explanation": "Jacob gave Joseph a special coat of many colors because Joseph was his favorite son.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q20",
+      "text": "Jesus walked on ___.",
+      "options": ["fire", "clouds", "water", "mountains"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's something you drink and swim in.",
+      "explanation": "Jesus walked on water to reach His disciples' boat during a storm on the Sea of Galilee.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q21",
+      "text": "What did Jesus turn water into at a wedding?",
+      "options": ["Juice", "Milk", "Wine", "Honey"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "This was His first miracle.",
+      "explanation": "Jesus' first miracle was turning water into wine at a wedding in Cana.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q22",
+      "text": "How many of each animal did Noah bring onto the ark?",
+      "options": ["One", "Two", "Three", "Five"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "A pair means this many.",
+      "explanation": "God told Noah to bring two of every kind of animal onto the ark.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q23",
+      "text": "Who did God ask to sacrifice his son Isaac?",
+      "options": ["Noah", "Moses", "Abraham", "Jacob"],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "explanation": "God tested Abraham's faith by asking him to sacrifice his son Isaac, but God provided a ram instead.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q24",
+      "text": "What is the Golden Rule that Jesus taught?",
+      "options": ["Be the best at everything", "Treat others the way you want to be treated", "Always follow the rules", "Gold is the most important thing"],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "explanation": "Jesus taught us to treat others the way we would want to be treated.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q25",
+      "text": "The Bible teaches us to love our ___.",
+      "options": ["pets", "toys", "neighbors", "money"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Jesus said this is the second greatest commandment.",
+      "explanation": "Jesus said the second greatest commandment is to love your neighbor as yourself.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q26",
+      "text": "What gift did the wise men NOT bring to baby Jesus?",
+      "options": ["Gold", "Frankincense", "Silver", "Myrrh"],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "explanation": "The wise men brought gold, frankincense, and myrrh to baby Jesus. Silver was not one of the gifts.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q27",
+      "text": "Jesus fed 5,000 people with just five loaves of bread and two ___.",
+      "options": ["chickens", "fish", "eggs", "fruits"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "They swim in the sea.",
+      "explanation": "Jesus miraculously fed 5,000 people with five loaves of bread and two fish.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q28",
+      "text": "What did God place in the sky as a promise to never flood the whole earth again?",
+      "options": ["A star", "A rainbow", "The sun", "The moon"],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "You see it after it rains and it has many colors.",
+      "explanation": "After the flood, God put a rainbow in the sky as a sign of His promise to never flood the whole earth again.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q29",
+      "text": "Jesus rose from the dead after ___ days.",
+      "options": ["1", "2", "3", "7"],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "The same number of days Jonah was in the fish.",
+      "explanation": "Jesus rose from the dead on the third day, which we celebrate on Easter.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q30",
+      "text": "What are the two main parts of the Bible called?",
+      "options": ["Old and New Testament", "First and Second Book", "Beginning and End", "Law and Prophets"],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "explanation": "The Bible is divided into the Old Testament and the New Testament.",
+      "format": "multiple-choice",
+      "category": "recall"
+    }
+  ],
+  "termPairs": [
+    { "term": "Bible", "definition": "God's Holy Word", "difficulty": "easy" },
+    { "term": "Gospel", "definition": "The good news about Jesus", "difficulty": "medium" },
+    { "term": "Disciple", "definition": "A follower and student of Jesus", "difficulty": "easy" },
+    { "term": "Parable", "definition": "A story Jesus told to teach a lesson", "difficulty": "medium" },
+    { "term": "Miracle", "definition": "An amazing event done by God's power", "difficulty": "easy" },
+    { "term": "Prayer", "definition": "Talking to God", "difficulty": "easy" },
+    { "term": "Faith", "definition": "Trusting and believing in God", "difficulty": "easy" },
+    { "term": "Grace", "definition": "A gift from God we don't deserve", "difficulty": "medium" },
+    { "term": "Prophet", "definition": "Someone who shares God's message", "difficulty": "medium" },
+    { "term": "Commandment", "definition": "A rule or instruction from God", "difficulty": "medium" }
+  ],
+  "keyWords": [
+    { "word": "BIBLE", "hint": "The book that contains God's Word", "difficulty": "easy" },
+    { "word": "PRAYER", "hint": "How we talk to God", "difficulty": "easy" },
+    { "word": "FAITH", "hint": "Trusting in God even when you can't see Him", "difficulty": "easy" },
+    { "word": "JESUS", "hint": "God's Son who came to save us", "difficulty": "easy" },
+    { "word": "GRACE", "hint": "A gift from God we don't earn", "difficulty": "medium" },
+    { "word": "DISCIPLE", "hint": "A follower of Jesus", "difficulty": "medium" },
+    { "word": "MIRACLE", "hint": "Something amazing only God can do", "difficulty": "medium" },
+    { "word": "CREATION", "hint": "What God made in the beginning", "difficulty": "medium" },
+    { "word": "GOSPEL", "hint": "The good news about Jesus", "difficulty": "medium" },
+    { "word": "NOAH", "hint": "He built a big boat", "difficulty": "easy" },
+    { "word": "MOSES", "hint": "He led the Israelites out of Egypt", "difficulty": "easy" },
+    { "word": "FORGIVE", "hint": "What God does when we say sorry", "difficulty": "easy" }
+  ],
+  "story": {
+    "summary": "A review of key Bible stories and lessons, from creation to Jesus, reminding us of God's love, faithfulness, and the importance of following Him.",
+    "scenes": [
+      {
+        "title": "In the Beginning",
+        "description": "God created the heavens and the earth in six days and rested on the seventh. He made Adam and Eve and placed them in the Garden of Eden.",
+        "questionIds": ["q3", "q4", "q5"]
+      },
+      {
+        "title": "Heroes of Faith",
+        "description": "God called many people to do great things: Noah built an ark, Abraham trusted God, Moses led the Israelites out of Egypt, and David defeated Goliath.",
+        "questionIds": ["q1", "q2", "q6", "q7", "q8", "q9", "q22", "q23", "q28"]
+      },
+      {
+        "title": "Courage and Trust",
+        "description": "Daniel trusted God in the lions' den. Jonah learned to obey God. Joseph forgave his brothers. These stories teach us that God is always with us.",
+        "questionIds": ["q10", "q11", "q17", "q18", "q19"]
+      },
+      {
+        "title": "Jesus Is Born",
+        "description": "God sent His Son Jesus to be born in Bethlehem. Wise men brought gifts. Jesus grew up and chose 12 disciples to follow Him.",
+        "questionIds": ["q12", "q13", "q14", "q15", "q26"]
+      },
+      {
+        "title": "The Teachings and Miracles of Jesus",
+        "description": "Jesus taught us to love others, performed amazing miracles like walking on water and feeding 5,000 people, and gave His life for us before rising again.",
+        "questionIds": ["q20", "q21", "q24", "q25", "q27", "q29", "q30"]
+      }
+    ]
+  }
+}

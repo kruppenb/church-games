@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.env
+.env.local
+
+# Drafts are reviewed locally, not committed
+drafts/*.json
+!drafts/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+site/e2e/screenshots/
+site/e2e/test-results/
+site/playwright-report/
+coverage/
