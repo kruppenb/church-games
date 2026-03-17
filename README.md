@@ -40,8 +40,11 @@ The dev server starts at `http://localhost:5173`. Games load content from `site/
 
 Lesson content is a JSON file containing questions, term pairs, key words, and story scenes. See `site/public/lessons/fallback.json` for the schema. To update the weekly lesson:
 
-1. Place the new lesson JSON in `site/public/lessons/current.json`
-2. Commit and push to deploy
+1. Copy the new lesson JSON to `site/public/lessons/current.json`
+2. Also copy it to `site/public/lessons/archive/{date}.json` for the permanent archive
+3. Commit and push to deploy
+
+Past lessons are preserved in `site/public/lessons/archive/`.
 
 ## Scripts
 

@@ -43,7 +43,9 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 
 1. Content pipeline (separate repo) generates lesson JSON → `drafts/`
 2. Preview with `npm run preview`
-3. Approve by copying to `site/public/lessons/current.json`
+3. Approve by copying to both:
+   - `site/public/lessons/current.json` (what the games load)
+   - `site/public/lessons/archive/{date}.json` (permanent record)
 4. Commit and push to deploy
 
 ## Key Patterns

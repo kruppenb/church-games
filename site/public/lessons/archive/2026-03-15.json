@@ -1,0 +1,770 @@
+{
+  "meta": {
+    "week": "2026-03-15",
+    "title": "Be Humble / Love Your Enemies",
+    "verseReference": "Philippians 2:3",
+    "verseText": "Don't do anything only to get ahead. Don't do it because you are proud. Instead, be humble. Value others more than yourselves.",
+    "theme": "Upside-Down Love — Loving others like Jesus even when it's hard",
+    "spotlightGame": "quiz-show",
+    "generatedAt": "2026-03-15T00:00:00.000Z"
+  },
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What Bible book is today's story from?",
+      "options": [
+        "Genesis",
+        "Matthew",
+        "Luke",
+        "John"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's the first book of the New Testament.",
+      "explanation": "Today's lesson comes from Matthew 5:38-48, where Jesus teaches about loving your enemies.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q2",
+      "text": "Where was Jesus when He taught the crowd about loving your enemies?",
+      "options": [
+        "In a boat",
+        "At the temple",
+        "On a mountainside",
+        "In someone's house"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Think about going UP to talk to a big group.",
+      "explanation": "Jesus went up on a mountainside and a huge crowd gathered to listen to His teaching.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q3",
+      "text": "What is today's Bottom Line?",
+      "options": [
+        "Be nice to your friends",
+        "Love like Jesus even when it's hard",
+        "Always try to be first",
+        "Only love people who love you"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's about loving like someone special.",
+      "explanation": "The Bottom Line is 'Love like Jesus even when it's hard.' Jesus calls us to love everyone, not just the people who are easy to love.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q4",
+      "text": "What does the word 'humble' mean in today's lesson?",
+      "options": [
+        "Being shy and quiet",
+        "Putting others first",
+        "Thinking you're the best",
+        "Not talking to anyone"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's the opposite of being proud.",
+      "explanation": "Being humble means putting others first, not trying to be the most important person in the room.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q5",
+      "text": "Jesus taught us to love our enemies.",
+      "options": [
+        "True",
+        "True, and it's easy",
+        "False",
+        "False, only love friends"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "explanation": "Jesus clearly taught in Matthew 5 that we should love our enemies, not just the people who are nice to us.",
+      "format": "true-false",
+      "category": "recall"
+    },
+    {
+      "id": "q6",
+      "text": "According to the memory verse, we should value _______ more than ourselves.",
+      "options": [
+        "money",
+        "others",
+        "toys",
+        "ourselves"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Think about the people around you.",
+      "explanation": "Philippians 2:3 says to 'value others more than yourselves,' reminding us to put other people's needs and feelings before our own.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q7",
+      "text": "What is the name of the series this lesson is part of?",
+      "options": [
+        "Right Side Up",
+        "Inside Out",
+        "Upside Down",
+        "Flip Around"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's the opposite of right side up!",
+      "explanation": "The series is called 'Upside Down' because Jesus teaches us to live in ways that are the opposite of what the world expects.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q8",
+      "text": "Why does Jesus' teaching feel 'upside down'?",
+      "options": [
+        "Because He stood on His head",
+        "Because it's the opposite of what the world usually does",
+        "Because the Bible is confusing",
+        "Because He only talked to kids"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Think about how the world usually acts versus how Jesus says to act.",
+      "explanation": "Jesus' teaching feels upside down because He asks us to do the opposite of what feels natural — like loving people who are mean to us instead of being mean back.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q9",
+      "text": "We only need to be kind to people who are kind to us first.",
+      "options": [
+        "True",
+        "True, the Bible says so",
+        "False",
+        "False, but only sometimes"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "explanation": "This is false. Jesus taught that real love means choosing kindness even when someone isn't kind to us first. That's what makes it upside-down love!",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q10",
+      "text": "The memory verse says: 'Don't do anything only to get _______.'",
+      "options": [
+        "behind",
+        "ahead",
+        "home",
+        "along"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's about trying to be in front of everyone else.",
+      "explanation": "Philippians 2:3 starts by telling us not to do things just to get ahead of others — that's a selfish motivation.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q11",
+      "text": "Who helps us love people who are hard to love?",
+      "options": [
+        "Our best friend",
+        "Our teacher",
+        "God / The Holy Spirit",
+        "A superhero"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "We can't do it on our own — we need help from above!",
+      "explanation": "The lesson teaches that we can't love our enemies on our own. God and the Holy Spirit help us choose love and kindness when it's hard.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q12",
+      "text": "What can you do when someone is hard to love?",
+      "options": [
+        "Ignore them forever",
+        "Be mean back to them",
+        "Pause and talk to God about it",
+        "Tell everyone they're mean"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "It involves talking to someone who always listens.",
+      "explanation": "When someone frustrates us, we can pause and pray. We can ask God to give us patience and help us respond with love instead of anger.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q13",
+      "text": "What does it mean to 'value others more than yourselves'?",
+      "options": [
+        "Let other people always win at games",
+        "Treat people like they matter",
+        "Think you're not important at all",
+        "Give away all your stuff"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's about how you treat the people around you.",
+      "explanation": "Valuing others more than yourself means treating people like they matter — showing them respect, kindness, and love, because they DO matter to God.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q14",
+      "text": "When we choose to love someone who is hard to love, people will see that we follow Jesus.",
+      "options": [
+        "True",
+        "True, love is powerful",
+        "False",
+        "False, nobody notices"
+      ],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "explanation": "When people see us choosing love when it's hard, they can tell we're different. They see we're followers of Jesus because that kind of love is powerful and unusual.",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q15",
+      "text": "What is one way you can show upside-down love at school?",
+      "options": [
+        "Only play with your best friends",
+        "Say something kind to someone who was mean to you",
+        "Ignore everyone at recess",
+        "Try to be the most popular kid"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Think about what Jesus would do.",
+      "explanation": "Saying something kind to someone who was mean to you is a perfect example of upside-down love — responding with kindness instead of meanness.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q16",
+      "text": "The memory verse comes from the book of _______.",
+      "options": [
+        "Matthew",
+        "Philippians",
+        "Psalms",
+        "Romans"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It starts with the letter P.",
+      "explanation": "The monthly memory verse is Philippians 2:3, written by the apostle Paul.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q17",
+      "text": "What did Jesus' teaching sound like to the people listening?",
+      "options": [
+        "Boring and ordinary",
+        "Completely different from how they usually lived",
+        "Exactly what they expected",
+        "Just like what their other teachers said"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It was surprising to them!",
+      "explanation": "Jesus' teaching sounded completely different from the way people were used to living. He talked about humility, kindness, and loving difficult people — ideas that shocked the crowd.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q18",
+      "text": "Loving your enemies is something you can easily do all by yourself.",
+      "options": [
+        "True",
+        "True, it's simple",
+        "False",
+        "False, we need God's help"
+      ],
+      "correctIndex": 3,
+      "difficulty": "medium",
+      "explanation": "Loving our enemies is NOT easy and we can't do it alone. We need God's help! The Holy Spirit lives inside believers and gives us the strength to love when it's hard.",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q19",
+      "text": "Instead of being proud, the memory verse says to be _______.",
+      "options": [
+        "humble",
+        "loud",
+        "strong",
+        "fast"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "It's the opposite of being full of yourself.",
+      "explanation": "Philippians 2:3 says 'Instead, be humble.' Humble means putting others first and not thinking you're better than everyone else.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q20",
+      "text": "If someone takes your spot in line, what would 'upside-down love' look like?",
+      "options": [
+        "Push them out of the way",
+        "Yell at them",
+        "Let it go and choose to be kind",
+        "Tell the teacher so they get in trouble"
+      ],
+      "correctIndex": 2,
+      "difficulty": "hard",
+      "hint": "Think about what Jesus would want you to do.",
+      "explanation": "Upside-down love means choosing kindness even when someone does something unfair. Letting it go and being kind is how we respond like Jesus.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q21",
+      "text": "What came to live inside of us when we began following Jesus?",
+      "options": [
+        "An angel",
+        "The Holy Spirit",
+        "A special power",
+        "Extra bravery"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's God's own Spirit.",
+      "explanation": "When we began following Jesus, the Holy Spirit came to live inside of us. The Holy Spirit helps us love others the way Jesus does.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q22",
+      "text": "Which chapter and verses in Matthew does today's lesson come from?",
+      "options": [
+        "Matthew 1:1-10",
+        "Matthew 5:38-48",
+        "Matthew 10:1-5",
+        "Matthew 28:1-10"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "It's in chapter 5.",
+      "explanation": "Today's Bible story comes from Matthew 5:38-48, part of Jesus' famous teaching on the mountainside.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q23",
+      "text": "You should only pray for people who are nice to you.",
+      "options": [
+        "True",
+        "True, mean people don't deserve prayer",
+        "False",
+        "False, pray only for yourself"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "explanation": "This is false! Jesus taught us to pray for people who upset us too. Praying for those who are hard to love is one way we can show upside-down love.",
+      "format": "true-false",
+      "category": "application"
+    },
+    {
+      "id": "q24",
+      "text": "What happens when we practice choosing kindness even when it feels awkward?",
+      "options": [
+        "Nothing changes",
+        "We get weaker",
+        "We grow stronger in our faith",
+        "It gets harder every time"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "Practice makes you better!",
+      "explanation": "Just like practicing anything that feels awkward at first makes you stronger, choosing kindness even when it's hard makes our faith grow stronger over time.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q25",
+      "text": "When someone hurts your feelings, Jesus wants you to pour out _______ in response.",
+      "options": [
+        "anger",
+        "revenge",
+        "love",
+        "sadness"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "It's the most powerful thing you can give.",
+      "explanation": "Jesus wants us to pour out love in response to hurt. That's what upside-down love looks like — choosing love even when we've been hurt.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q26",
+      "text": "Your friend said something mean about you. What should you do?",
+      "options": [
+        "Say something meaner back",
+        "Tell everyone what they did",
+        "Pray for them and choose to respond with kindness",
+        "Stop being their friend forever"
+      ],
+      "correctIndex": 2,
+      "difficulty": "hard",
+      "hint": "What would Jesus do?",
+      "explanation": "Praying for someone who hurts us and choosing kindness is exactly what Jesus taught. It's hard, but with God's help, we can show upside-down love.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q27",
+      "text": "The lesson says choosing to love when it's hard is actually _______ to Jesus.",
+      "options": [
+        "impossible",
+        "disobedience",
+        "obedience",
+        "weakness"
+      ],
+      "correctIndex": 2,
+      "difficulty": "hard",
+      "hint": "It means doing what Jesus asked.",
+      "explanation": "Choosing kindness when someone frustrates you is actually obedience to Jesus. He commands us to love our enemies, and when we do it, we're obeying Him.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q28",
+      "text": "Jesus only taught us to love people who are easy to love.",
+      "options": [
+        "True",
+        "True, that's all He asked",
+        "False",
+        "False, but enemies are optional"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "explanation": "False! Jesus specifically taught us to love our ENEMIES — the people who are hardest to love. That's what makes His teaching so upside down!",
+      "format": "true-false",
+      "category": "recall"
+    },
+    {
+      "id": "q29",
+      "text": "How can showing love to someone who is mean help them?",
+      "options": [
+        "It won't help them at all",
+        "They might see Jesus through your kindness",
+        "It will make them feel guilty",
+        "It's not supposed to help them"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Your love can point them to someone greater.",
+      "explanation": "When people see you choosing love when it's hard, they can see that you're different — a follower of Jesus. Your kindness might help them want to know Jesus too.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q30",
+      "text": "What three things did Jesus talk about in His mountainside teaching?",
+      "options": [
+        "Power, wealth, and fame",
+        "Humility, kindness, and loving others",
+        "Sports, music, and art",
+        "Rules, punishments, and rewards"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "They're all about how to treat people.",
+      "explanation": "On the mountainside, Jesus talked about humility, kindness, and loving others — even people who were difficult to love.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q31",
+      "text": "According to the lesson, what can you ask God for when someone makes you mad?",
+      "options": [
+        "Revenge",
+        "Patience instead of anger",
+        "A new friend",
+        "To move to a new school"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's the opposite of anger.",
+      "explanation": "When someone makes us mad, we can ask God to give us patience instead of anger. God is always ready to help us respond with love.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q32",
+      "text": "The verse says don't do anything because you are _______.",
+      "options": [
+        "tired",
+        "hungry",
+        "proud",
+        "scared"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's a feeling of thinking you're better than others.",
+      "explanation": "Philippians 2:3 warns us not to do things because we are proud. Pride makes us think we're better than others, but God wants us to be humble.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q33",
+      "text": "Why is loving your enemies one of the most powerful ways to live like Jesus?",
+      "options": [
+        "Because it makes you famous",
+        "Because it's easy and everyone does it",
+        "Because it shows the world something totally different and points people to Jesus",
+        "Because enemies will always become your best friends"
+      ],
+      "correctIndex": 2,
+      "difficulty": "hard",
+      "hint": "It shows the world something they don't usually see.",
+      "explanation": "Loving your enemies is powerful because it's so unusual — it shows the world that you're living differently, and it points people to Jesus and His love.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q34",
+      "text": "A kid at recess won't let you play. What is an upside-down love response?",
+      "options": [
+        "Go tell on them right away",
+        "Say 'That's okay' and ask someone else to play, then invite them again tomorrow",
+        "Call them a name",
+        "Never go to recess again"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Respond with kindness, not anger.",
+      "explanation": "Showing grace and trying again later is upside-down love in action. You're choosing kindness instead of revenge, just like Jesus taught.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q35",
+      "text": "God's love for us never gives up.",
+      "options": [
+        "True",
+        "True, His love is forever",
+        "False",
+        "False, only when we're good"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "explanation": "The prayer in today's lesson thanks God for loving us with a love that never gives up. No matter what, God keeps loving us!",
+      "format": "true-false",
+      "category": "understanding"
+    }
+  ],
+  "termPairs": [
+    {
+      "term": "Humble",
+      "definition": "Putting others first instead of yourself",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Upside Down",
+      "definition": "Living the opposite way the world expects — the way Jesus teaches",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Enemies",
+      "definition": "People who are not kind to us or who we don't get along with",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Holy Spirit",
+      "definition": "God's Spirit who lives inside believers and helps them love others",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Philippians 2:3",
+      "definition": "The memory verse about being humble and valuing others",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Matthew 5:38-48",
+      "definition": "The Bible passage where Jesus teaches about loving your enemies",
+      "difficulty": "hard"
+    },
+    {
+      "term": "Proud",
+      "definition": "Thinking you are better than everyone else",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Value Others",
+      "definition": "Treating people like they matter",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Patience",
+      "definition": "What we can ask God for instead of anger",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Obedience",
+      "definition": "Choosing to do what Jesus asks even when it's hard",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Mountainside",
+      "definition": "The place where Jesus taught a huge crowd about upside-down love",
+      "difficulty": "hard"
+    },
+    {
+      "term": "Bottom Line",
+      "definition": "Love like Jesus even when it's hard",
+      "difficulty": "easy"
+    }
+  ],
+  "keyWords": [
+    {
+      "word": "HUMBLE",
+      "hint": "Putting others first; the opposite of proud",
+      "difficulty": "easy"
+    },
+    {
+      "word": "ENEMIES",
+      "hint": "People who are not kind to us",
+      "difficulty": "easy"
+    },
+    {
+      "word": "LOVE",
+      "hint": "What Jesus tells us to show even to difficult people",
+      "difficulty": "easy"
+    },
+    {
+      "word": "JESUS",
+      "hint": "He taught on a mountainside about a new way to live",
+      "difficulty": "easy"
+    },
+    {
+      "word": "KINDNESS",
+      "hint": "Choosing to be nice even when someone is mean",
+      "difficulty": "easy"
+    },
+    {
+      "word": "PROUD",
+      "hint": "Thinking you are better than others; the memory verse warns against this",
+      "difficulty": "medium"
+    },
+    {
+      "word": "PATIENCE",
+      "hint": "What to ask God for instead of anger",
+      "difficulty": "medium"
+    },
+    {
+      "word": "MATTHEW",
+      "hint": "The Bible book where today's story is found",
+      "difficulty": "medium"
+    },
+    {
+      "word": "PHILIPPIANS",
+      "hint": "The Bible book where the memory verse is found",
+      "difficulty": "hard"
+    },
+    {
+      "word": "OBEDIENCE",
+      "hint": "Doing what Jesus asks, even when it's not easy",
+      "difficulty": "hard"
+    },
+    {
+      "word": "MOUNTAIN",
+      "hint": "Jesus went up on one of these to teach the crowd",
+      "difficulty": "medium"
+    },
+    {
+      "word": "HOLY SPIRIT",
+      "hint": "God's Spirit who came to live inside believers",
+      "difficulty": "hard"
+    },
+    {
+      "word": "FORGIVE",
+      "hint": "Letting go of anger toward someone who hurt you",
+      "difficulty": "medium"
+    },
+    {
+      "word": "WORSHIP",
+      "hint": "Singing and praising God together",
+      "difficulty": "easy"
+    }
+  ],
+  "story": {
+    "summary": "Jesus went up on a mountainside and taught a huge crowd of people a completely new way of living. Instead of getting revenge or only being kind to friends, Jesus said to love your enemies, choose kindness when people are mean, and be humble by putting others first. This 'upside-down' teaching shocked everyone because it was so different from how the world usually works. But Jesus promised that God's Holy Spirit would help us live this way — and when we do, people can see we are followers of Jesus.",
+    "scenes": [
+      {
+        "title": "Jesus Teaches on the Mountain",
+        "description": "One day, Jesus went up on a mountainside and a huge crowd of people came to listen. What He said sounded completely different from the way people were used to living. He talked about humility, kindness, and loving others — even people who were difficult to love.",
+        "questionIds": [
+          "q1",
+          "q2",
+          "q22",
+          "q30",
+          "q17"
+        ]
+      },
+      {
+        "title": "The Upside-Down Way to Live",
+        "description": "Jesus taught that instead of getting even with people who are mean, we should choose love. Instead of only being kind to our friends, we should love our enemies too. This teaching flipped everything upside down! It was the total opposite of what people expected.",
+        "questionIds": [
+          "q5",
+          "q8",
+          "q28",
+          "q33",
+          "q7"
+        ]
+      },
+      {
+        "title": "Be Humble and Value Others",
+        "description": "The memory verse from Philippians 2:3 teaches the same upside-down idea: don't try to get ahead, don't be proud, be humble, and value others more than yourself. Being humble means putting others first and treating everyone like they matter.",
+        "questionIds": [
+          "q4",
+          "q6",
+          "q10",
+          "q13",
+          "q16",
+          "q19",
+          "q32"
+        ]
+      },
+      {
+        "title": "We Need God's Help",
+        "description": "Loving people who are hard to love isn't something we can do by ourselves. We need God's help! The Holy Spirit lives inside every believer and gives us the strength to be patient, kind, and loving. When we pause and pray, God gives us what we need to show upside-down love.",
+        "questionIds": [
+          "q11",
+          "q18",
+          "q21",
+          "q24",
+          "q31"
+        ]
+      },
+      {
+        "title": "Living Upside-Down Love Every Day",
+        "description": "When people see us choosing love even when it's hard, they know we're different — they can see we follow Jesus. We can say kind words instead of mean ones, pray for people who upset us, and forgive those who hurt our feelings. Every act of upside-down love makes us look more like Jesus.",
+        "questionIds": [
+          "q3",
+          "q9",
+          "q12",
+          "q14",
+          "q15",
+          "q20",
+          "q23",
+          "q25",
+          "q26",
+          "q27",
+          "q29",
+          "q34",
+          "q35"
+        ]
+      }
+    ]
+  }
+}
