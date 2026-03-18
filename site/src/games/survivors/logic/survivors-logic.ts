@@ -66,21 +66,21 @@ export function createInitialState(): SurvivorsState {
 
 /**
  * Processes an answer to a question.
- * Base scaling every wave: enemySpeedMultiplier *= 1.06, enemySpawnMultiplier *= 1.1.
+ * Base scaling every wave: enemySpeedMultiplier *= 1.025, enemySpawnMultiplier *= 1.04.
  * - Correct: questionsCorrect++, score += 200.
- * - Wrong: additional enemySpeedMultiplier *= 1.15, enemySpawnMultiplier *= 1.5.
+ * - Wrong: no additional penalty.
  * Always increments questionsTotal.
  */
 export function answerQuestion(
   state: SurvivorsState,
   correct: boolean,
 ): SurvivorsState {
-  // Base scaling applied every wave regardless of answer
+  // Base scaling applied every wave regardless of answer — no wrong-answer penalty
   const next = {
     ...state,
     questionsTotal: state.questionsTotal + 1,
-    enemySpeedMultiplier: state.enemySpeedMultiplier * 1.06,
-    enemySpawnMultiplier: state.enemySpawnMultiplier * 1.1,
+    enemySpeedMultiplier: state.enemySpeedMultiplier * 1.025,
+    enemySpawnMultiplier: state.enemySpawnMultiplier * 1.04,
   };
 
   if (correct) {
@@ -91,12 +91,7 @@ export function answerQuestion(
     };
   }
 
-  // Additional penalty for wrong answer
-  return {
-    ...next,
-    enemySpeedMultiplier: next.enemySpeedMultiplier * 1.15,
-    enemySpawnMultiplier: next.enemySpawnMultiplier * 1.5,
-  };
+  return next;
 }
 
 /**
@@ -188,20 +183,14 @@ export function boostMaxHp(state: SurvivorsState): SurvivorsState {
 }
 
 /**
- * Calculates star rating.
- * - 3 stars: questionsCorrect >= 80% of questionsTotal AND survived
- * - 2 stars: questionsCorrect >= 50% of questionsTotal AND survived
+ * Calculates star rating based on score.
+ * - 3 stars: score >= 10000
+ * - 2 stars: score >= 5000
  * - 1 star: otherwise
  */
 export function calculateStars(state: SurvivorsState): number {
-  const survived = !state.gameOver || state.victory;
-  const ratio =
-    state.questionsTotal > 0
-      ? state.questionsCorrect / state.questionsTotal
-      : 0;
-
-  if (survived && ratio >= 0.8) return 3;
-  if (survived && ratio >= 0.5) return 2;
+  if (state.score >= 10000) return 3;
+  if (state.score >= 5000) return 2;
   return 1;
 }
 
