@@ -183,20 +183,14 @@ export function boostMaxHp(state: SurvivorsState): SurvivorsState {
 }
 
 /**
- * Calculates star rating.
- * - 3 stars: questionsCorrect >= 60% of questionsTotal AND survived
- * - 2 stars: questionsCorrect >= 30% of questionsTotal AND survived
+ * Calculates star rating based on score.
+ * - 3 stars: score >= 10000
+ * - 2 stars: score >= 5000
  * - 1 star: otherwise
  */
 export function calculateStars(state: SurvivorsState): number {
-  const survived = !state.gameOver || state.victory;
-  const ratio =
-    state.questionsTotal > 0
-      ? state.questionsCorrect / state.questionsTotal
-      : 0;
-
-  if (survived && ratio >= 0.6) return 3;
-  if (survived && ratio >= 0.3) return 2;
+  if (state.score >= 10000) return 3;
+  if (state.score >= 5000) return 2;
   return 1;
 }
 

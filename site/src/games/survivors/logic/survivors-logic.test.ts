@@ -221,37 +221,18 @@ describe("survivors-logic", () => {
   });
 
   describe("calculateStars", () => {
-    it("returns 3 stars for >= 60% correct and survived", () => {
-      let state = createInitialState();
-      state = answerQuestion(state, true);
-      state = answerQuestion(state, true);
-      state = answerQuestion(state, true);
-      state = answerQuestion(state, false);
-      state = answerQuestion(state, false);
-      state = { ...state, victory: true };
-
-      // 3/5 = 60% — exactly the threshold
+    it("returns 3 stars for score >= 10000", () => {
+      const state = { ...createInitialState(), score: 10000 };
       expect(calculateStars(state)).toBe(3);
     });
 
-    it("returns 2 stars for >= 30% but < 60%", () => {
-      let state = createInitialState();
-      state = answerQuestion(state, true);
-      state = answerQuestion(state, true);
-      state = answerQuestion(state, false);
-      state = answerQuestion(state, false);
-      state = answerQuestion(state, false);
-      state = { ...state, victory: true };
-
-      // 2/5 = 40% — between 30% and 60%
+    it("returns 2 stars for score >= 5000 but < 10000", () => {
+      const state = { ...createInitialState(), score: 7500 };
       expect(calculateStars(state)).toBe(2);
     });
 
-    it("returns 1 star when player died", () => {
-      let state = createInitialState();
-      state = answerQuestion(state, true);
-      state = takeDamage(state, 10);
-
+    it("returns 1 star for score < 5000", () => {
+      const state = { ...createInitialState(), score: 3000 };
       expect(calculateStars(state)).toBe(1);
     });
   });
