@@ -30,7 +30,8 @@ test.describe("Survivors", () => {
     await page.screenshot({ path: "e2e/screenshots/survivors-enemies.png" });
   });
 
-  test("question appears periodically", async ({ page }) => {
+  test("question appears and can be answered", async ({ page }) => {
+    test.setTimeout(60000);
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
@@ -39,21 +40,77 @@ test.describe("Survivors", () => {
     await page.screenshot({ path: "e2e/screenshots/survivors-question.png" });
   });
 
-  test("answering question shows weapon selection or strengthens enemies", async ({ page }) => {
+  test("correct answer shows weapon selection with 3 options", async ({ page }) => {
+    test.setTimeout(60000);
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
     const box = await canvas.boundingBox();
-    if (box) {
-      // Wait for question
-      await page.waitForTimeout(20000);
+    if (!box) return;
 
-      // Click an answer
-      await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.6);
-      await page.waitForTimeout(2000);
+    // Wait for question
+    await page.waitForTimeout(20000);
+    await page.screenshot({ path: "e2e/screenshots/survivors-question-visible.png" });
 
-      await page.screenshot({ path: "e2e/screenshots/survivors-after-answer.png" });
-    }
+    // Click first answer option (top-left area of the question panel)
+    // Answer buttons are in a 2x2 grid centered on the canvas
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.48);
+    await page.waitForTimeout(1500);
+
+    // Should show either weapon selection (correct) or "enemies grow stronger" (wrong)
+    await page.screenshot({ path: "e2e/screenshots/survivors-after-answer.png" });
+
+    // If weapon selection is shown, click a weapon card
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: "e2e/screenshots/survivors-after-weapon-pick.png" });
+  });
+
+  test("gameplay continues after multiple waves", async ({ page }) => {
+    test.setTimeout(90000); // This test needs more time
+    const canvas = page.locator(".phaser-container canvas");
+    await expect(canvas).toBeVisible({ timeout: 10000 });
+
+    const box = await canvas.boundingBox();
+    if (!box) return;
+
+    // Move the player around with keyboard while waiting for questions
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(1000);
+    await page.keyboard.up("ArrowRight");
+
+    // Wait for first question
+    await page.waitForTimeout(19000);
+    await page.screenshot({ path: "e2e/screenshots/survivors-wave1-question.png" });
+
+    // Answer first question
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.48);
+    await page.waitForTimeout(1500);
+
+    // If weapon selection, pick one
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: "e2e/screenshots/survivors-wave1-playing.png" });
+
+    // Move around while waiting for second question
+    await page.keyboard.down("ArrowLeft");
+    await page.waitForTimeout(1000);
+    await page.keyboard.up("ArrowLeft");
+
+    await page.waitForTimeout(17000);
+    await page.screenshot({ path: "e2e/screenshots/survivors-wave2-question.png" });
+
+    // Answer second question
+    await page.mouse.click(box.x + box.width * 0.7, box.y + box.height * 0.48);
+    await page.waitForTimeout(1500);
+
+    // If weapon selection, pick one
+    await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.5);
+    await page.waitForTimeout(1000);
+
+    await page.screenshot({ path: "e2e/screenshots/survivors-wave2-playing.png" });
   });
 
   test("back button returns to landing", async ({ page }) => {

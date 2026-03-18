@@ -10,11 +10,14 @@ import {
   defeatEnemy,
   takeDamage,
   healPlayer,
+  boostMaxHp,
   calculateStars,
   isGameOver,
   WEAPON_OPTIONS,
+  MAX_WEAPON_LEVEL,
   type SurvivorsState,
   type WeaponUpgrade,
+  type WeaponType,
 } from "../logic/survivors-logic";
 
 /** How often the player auto-fires base projectile (ms). */
@@ -33,18 +36,51 @@ const ANSWER_LABELS = ["A", "B", "C", "D"];
 
 /** Fire ring intervals/radius by level */
 const FIRE_RING_INTERVAL = [0, 5000, 4000, 3000]; // level 0-3
-const FIRE_RING_RADIUS = [0, 80, 110, 150];
-/** Lightning intervals/targets by level */
-const LIGHTNING_INTERVAL = [0, 6000, 4500, 3000];
-const LIGHTNING_TARGETS = [0, 2, 3, 5];
-const LIGHTNING_RANGE = 250;
+const FIRE_RING_RADIUS = [0, 120, 180, 280]; // increased for better screen coverage
+/** Lightning intervals/targets by level — much more frequent */
+const LIGHTNING_INTERVAL = [0, 2500, 1800, 1200];
+const LIGHTNING_TARGETS = [0, 3, 5, 8];
+const LIGHTNING_RANGE = 300;
 /** Shield regen interval by level (ms) */
 const SHIELD_REGEN_INTERVAL = [0, 10000, 7000, 4000];
+
+/** Divine Orbit — orbs orbiting the player */
+const ORBIT_COUNT = [0, 2, 3, 4];
+const ORBIT_RADIUS = [0, 60, 80, 100];
+const ORBIT_SPEED = 2.5; // radians per second
+const ORBIT_ORB_SIZE = 8;
+
+/** Holy Water — ground damage pools */
+const HOLY_WATER_INTERVAL = [0, 7000, 5000, 4000];
+const HOLY_WATER_COUNT = [0, 1, 2, 3];
+const HOLY_WATER_RADIUS = [0, 50, 60, 70];
+const HOLY_WATER_DURATION = 3000;
+const HOLY_WATER_TICK = 500;
+
+/** Throwing Axe — piercing projectiles */
+const AXE_INTERVAL = [0, 4000, 2800, 2000];
+const AXE_COUNT = [0, 1, 1, 2];
+const AXE_SPEED = 200;
+const AXE_SIZE = 10;
+
+/** Radiant Beam — line attack */
+const BEAM_INTERVAL = [0, 5000, 3500, 2500];
+const BEAM_WIDTH = [0, 20, 30, 40];
+
+const WEAPON_COLOR_MAP: Record<string, number> = {
+  "fire-ring": 0xef5350, lightning: 0xffee58, shield: 0x42a5f5,
+  orbit: 0xba68c8, "holy-water": 0x4fc3f7, axe: 0xff8a65, beam: 0xffd54f,
+};
+const WEAPON_ICON_MAP: Record<string, string> = {
+  "fire-ring": "\u{1F525}", lightning: "\u{26A1}", shield: "\u{1F6E1}\u{FE0F}",
+  orbit: "\u{1F52E}", "holy-water": "\u{1F4A7}", axe: "\u{1FA93}", beam: "\u{2728}",
+};
 
 export class SurvivorsScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Arc;
   private enemies!: Phaser.GameObjects.Group;
   private projectiles!: Phaser.GameObjects.Group;
+  private axeProjectiles!: Phaser.GameObjects.Group;
 
   private state!: SurvivorsState;
   private questionPool!: QuestionPool;
@@ -61,6 +97,12 @@ export class SurvivorsScene extends Phaser.Scene {
   private fireRingTimer: Phaser.Time.TimerEvent | null = null;
   private lightningTimer: Phaser.Time.TimerEvent | null = null;
   private shieldTimer: Phaser.Time.TimerEvent | null = null;
+  private holyWaterTimer: Phaser.Time.TimerEvent | null = null;
+  private axeTimer: Phaser.Time.TimerEvent | null = null;
+  private beamTimer: Phaser.Time.TimerEvent | null = null;
+
+  // Orbit weapon visuals
+  private orbitOrbs: Phaser.GameObjects.Arc[] = [];
 
   // UI
   private scoreText!: Phaser.GameObjects.Text;
@@ -98,6 +140,10 @@ export class SurvivorsScene extends Phaser.Scene {
     this.fireRingTimer = null;
     this.lightningTimer = null;
     this.shieldTimer = null;
+    this.holyWaterTimer = null;
+    this.axeTimer = null;
+    this.beamTimer = null;
+    this.orbitOrbs = [];
 
     const { width, height } = this.scale;
 
@@ -115,12 +161,22 @@ export class SurvivorsScene extends Phaser.Scene {
     // Groups
     this.enemies = this.add.group();
     this.projectiles = this.add.group();
+    this.axeProjectiles = this.add.group();
 
     // Collision: projectile hits enemy
     this.physics.add.overlap(
       this.projectiles,
       this.enemies,
       this.onProjectileHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    );
+
+    // Collision: axe hits enemy (piercing — axe survives)
+    this.physics.add.overlap(
+      this.axeProjectiles,
+      this.enemies,
+      this.onAxeHitEnemy as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
       this,
     );
@@ -188,6 +244,20 @@ export class SurvivorsScene extends Phaser.Scene {
         go.destroy();
       }
     }
+
+    // Clean up off-screen axe projectiles
+    for (const proj of this.axeProjectiles.getChildren()) {
+      const go = proj as Phaser.GameObjects.Arc;
+      if (
+        go.x < -20 || go.x > this.scale.width + 20 ||
+        go.y < -20 || go.y > this.scale.height + 20
+      ) {
+        go.destroy();
+      }
+    }
+
+    // Update orbit weapon (positions always, collisions only when not overlaying)
+    this.updateOrbitWeapon();
 
     // Move enemies toward player
     if (!this.isShowingOverlay) {
@@ -323,6 +393,7 @@ export class SurvivorsScene extends Phaser.Scene {
     projectile: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ): void {
+    if (!(enemy as Phaser.GameObjects.Arc).active) return;
     projectile.destroy();
     enemy.destroy();
     this.state = defeatEnemy(this.state);
@@ -331,10 +402,23 @@ export class SurvivorsScene extends Phaser.Scene {
     this.spawnDeathParticles(go.x, go.y);
   }
 
+  private onAxeHitEnemy(
+    _axe: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ): void {
+    if (!(enemy as Phaser.GameObjects.Arc).active) return;
+    const go = enemy as Phaser.GameObjects.Arc;
+    this.spawnDeathParticles(go.x, go.y);
+    enemy.destroy();
+    this.state = defeatEnemy(this.state);
+    this.updateHUD();
+  }
+
   private onEnemyReachPlayer(
     _player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ): void {
+    if (!(enemy as Phaser.GameObjects.Arc).active) return;
     enemy.destroy();
     this.state = takeDamage(this.state, 1);
     this.updateHUD();
@@ -468,9 +552,24 @@ export class SurvivorsScene extends Phaser.Scene {
     }
   }
 
-  // ---- Weapon selection (progressive) ----
+  // ---- Weapon selection (progressive, VS-style random 3) ----
 
   private showWeaponSelection(): void {
+    // Filter to non-maxed weapons
+    const available = WEAPON_OPTIONS.filter(
+      (w) => getWeaponLevel(this.state, w.type) < MAX_WEAPON_LEVEL,
+    );
+
+    if (available.length === 0) {
+      // All weapons maxed — show +1 Max HP option
+      this.showMaxHpSelection();
+      return;
+    }
+
+    // Shuffle and pick up to 3 (like Vampire Survivors)
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+    const options = shuffled.slice(0, 3);
+
     const { width, height } = this.scale;
     const container = this.add.container(0, 0).setDepth(200);
 
@@ -485,25 +584,31 @@ export class SurvivorsScene extends Phaser.Scene {
     const cardW = 180;
     const cardH = 180;
     const gap = 20;
-    const totalW = WEAPON_OPTIONS.length * cardW + (WEAPON_OPTIONS.length - 1) * gap;
+    const totalW = options.length * cardW + (options.length - 1) * gap;
     const startX = width / 2 - totalW / 2 + cardW / 2;
 
-    const weaponColors = [0xef5350, 0xffee58, 0x42a5f5];
-    const weaponIcons = ["\u{1F525}", "\u{26A1}", "\u{1F6E1}\u{FE0F}"];
+    const descLines: Record<string, string[]> = {
+      "fire-ring": ["Lv1: AoE burst every 5s", "Lv2: Every 4s, bigger", "Lv3: Every 3s, huge"],
+      "lightning": ["Lv1: Chain 3 enemies/2.5s", "Lv2: Chain 5/1.8s", "Lv3: Chain 8/1.2s"],
+      "shield": ["Lv1: Regen 1 HP/10s", "Lv2: 1 HP/7s", "Lv3: 1 HP/4s"],
+      "orbit": ["Lv1: 2 orbs orbit you", "Lv2: 3 orbs, wider", "Lv3: 4 orbs, widest"],
+      "holy-water": ["Lv1: 1 pool every 7s", "Lv2: 2 pools/5s", "Lv3: 3 pools/4s"],
+      "axe": ["Lv1: Piercing axe/4s", "Lv2: Every 2.8s", "Lv3: 2 axes/2s"],
+      "beam": ["Lv1: Beam every 5s", "Lv2: Every 3.5s, wider", "Lv3: Every 2.5s, widest"],
+    };
 
-    WEAPON_OPTIONS.forEach((weapon, idx) => {
+    options.forEach((weapon, idx) => {
       const cx = startX + idx * (cardW + gap);
       const cy = height * 0.5;
       const currentLevel = getWeaponLevel(this.state, weapon.type);
-      const isMaxed = currentLevel >= 3;
 
       const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
-      card.setStrokeStyle(3, weaponColors[idx]);
-      if (!isMaxed) card.setInteractive({ useHandCursor: true });
+      card.setStrokeStyle(3, WEAPON_COLOR_MAP[weapon.type] ?? 0xffffff);
+      card.setInteractive({ useHandCursor: true });
       container.add(card);
 
       // Icon
-      container.add(this.add.text(cx, cy - 50, weaponIcons[idx], { fontSize: "32px" }).setOrigin(0.5));
+      container.add(this.add.text(cx, cy - 50, WEAPON_ICON_MAP[weapon.type] ?? "\u{2694}", { fontSize: "32px" }).setOrigin(0.5));
 
       // Name
       container.add(this.add.text(cx, cy - 8, weapon.name, {
@@ -511,34 +616,21 @@ export class SurvivorsScene extends Phaser.Scene {
       }).setOrigin(0.5));
 
       // Level indicator
-      const levelStr = currentLevel === 0
-        ? "NEW!"
-        : isMaxed
-          ? "MAX"
-          : `Lv ${currentLevel} → ${currentLevel + 1}`;
-      const levelColor = currentLevel === 0 ? "#00ff88" : isMaxed ? "#ff9800" : "#ffd700";
+      const levelStr = currentLevel === 0 ? "NEW!" : `Lv ${currentLevel} \u2192 ${currentLevel + 1}`;
+      const levelColor = currentLevel === 0 ? "#00ff88" : "#ffd700";
       container.add(this.add.text(cx, cy + 18, levelStr, {
         fontSize: "14px", fontFamily: "sans-serif", color: levelColor, fontStyle: "bold",
       }).setOrigin(0.5));
 
       // Description
-      const descLines: Record<string, string[]> = {
-        "fire-ring": ["Lv1: AoE burst every 5s", "Lv2: Every 4s, bigger", "Lv3: Every 3s, huge"],
-        "lightning": ["Lv1: Chain 2 enemies/6s", "Lv2: Chain 3/4.5s", "Lv3: Chain 5/3s"],
-        "shield": ["Lv1: Regen 1 HP/10s", "Lv2: 1 HP/7s", "Lv3: 1 HP/4s"],
-      };
       const nextLevel = Math.min(currentLevel + 1, 3);
-      const descText = isMaxed ? "Fully upgraded!" : descLines[weapon.type][nextLevel - 1];
+      const descText = descLines[weapon.type]?.[nextLevel - 1] ?? weapon.description;
       container.add(this.add.text(cx, cy + 45, descText, {
         fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
         wordWrap: { width: cardW - 20 }, align: "center",
       }).setOrigin(0.5));
 
-      if (isMaxed) {
-        card.setAlpha(0.5);
-      } else {
-        card.on("pointerdown", () => this.selectWeapon(weapon, container));
-      }
+      card.on("pointerdown", () => this.selectWeapon(weapon, container));
     });
 
     this.weaponPanel = container;
@@ -554,11 +646,59 @@ export class SurvivorsScene extends Phaser.Scene {
     this.weaponPanel = null;
     this.isShowingOverlay = false;
     this.updateHUD();
+    // Scale enemies after correct answer too
+    this.updateSpawnRate();
+  }
+
+  // ---- Max HP selection (when all weapons are maxed) ----
+
+  private showMaxHpSelection(): void {
+    const { width, height } = this.scale;
+    const container = this.add.container(0, 0).setDepth(200);
+
+    const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
+    container.add(backdrop);
+
+    container.add(this.add.text(width / 2, height * 0.18, "All Weapons Maxed!", {
+      fontSize: "28px", fontFamily: "sans-serif", color: "#FFD700", fontStyle: "bold",
+    }).setOrigin(0.5));
+
+    const cardW = 200;
+    const cardH = 180;
+    const cx = width / 2;
+    const cy = height * 0.5;
+
+    const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
+    card.setStrokeStyle(3, 0xe53935);
+    card.setInteractive({ useHandCursor: true });
+    container.add(card);
+
+    container.add(this.add.text(cx, cy - 50, "\u{2764}\u{FE0F}", { fontSize: "32px" }).setOrigin(0.5));
+    container.add(this.add.text(cx, cy - 8, "+1 Max Health", {
+      fontSize: "18px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+    }).setOrigin(0.5));
+    container.add(this.add.text(cx, cy + 18, `HP: ${this.state.maxHp} \u2192 ${this.state.maxHp + 1}`, {
+      fontSize: "14px", fontFamily: "sans-serif", color: "#00ff88", fontStyle: "bold",
+    }).setOrigin(0.5));
+    container.add(this.add.text(cx, cy + 45, "Increases max HP and heals 1", {
+      fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
+    }).setOrigin(0.5));
+
+    card.on("pointerdown", () => {
+      this.state = boostMaxHp(this.state);
+      container.destroy();
+      this.weaponPanel = null;
+      this.isShowingOverlay = false;
+      this.updateHUD();
+      this.updateSpawnRate();
+    });
+
+    this.weaponPanel = container;
   }
 
   // ---- Passive weapon effects ----
 
-  private setupPassiveWeapon(type: "fire-ring" | "lightning" | "shield"): void {
+  private setupPassiveWeapon(type: WeaponType): void {
     const level = getWeaponLevel(this.state, type);
     if (level === 0) return;
 
@@ -593,6 +733,40 @@ export class SurvivorsScene extends Phaser.Scene {
         });
         break;
       }
+      case "orbit": {
+        this.setupOrbitWeapon();
+        break;
+      }
+      case "holy-water": {
+        if (this.holyWaterTimer) this.holyWaterTimer.remove();
+        this.holyWaterTimer = this.time.addEvent({
+          delay: HOLY_WATER_INTERVAL[level],
+          callback: () => this.passiveHolyWater(level),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+      case "axe": {
+        if (this.axeTimer) this.axeTimer.remove();
+        this.axeTimer = this.time.addEvent({
+          delay: AXE_INTERVAL[level],
+          callback: () => this.passiveAxe(level),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+      case "beam": {
+        if (this.beamTimer) this.beamTimer.remove();
+        this.beamTimer = this.time.addEvent({
+          delay: BEAM_INTERVAL[level],
+          callback: () => this.passiveBeam(level),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
     }
   }
 
@@ -607,6 +781,7 @@ export class SurvivorsScene extends Phaser.Scene {
     const toDestroy: Phaser.GameObjects.Arc[] = [];
     for (const enemy of this.enemies.getChildren()) {
       const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, go.x, go.y);
       if (dist <= radius) toDestroy.push(go);
     }
@@ -630,6 +805,7 @@ export class SurvivorsScene extends Phaser.Scene {
     const sorted: Array<{ go: Phaser.GameObjects.Arc; dist: number }> = [];
     for (const enemy of this.enemies.getChildren()) {
       const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, go.x, go.y);
       if (dist <= LIGHTNING_RANGE) sorted.push({ go, dist });
     }
@@ -668,6 +844,249 @@ export class SurvivorsScene extends Phaser.Scene {
     }
   }
 
+  // ---- Divine Orbit ----
+
+  private setupOrbitWeapon(): void {
+    // Destroy existing orbs
+    for (const orb of this.orbitOrbs) {
+      if (orb && orb.active) orb.destroy();
+    }
+    this.orbitOrbs = [];
+
+    const level = getWeaponLevel(this.state, "orbit");
+    if (level === 0) return;
+
+    const count = ORBIT_COUNT[level];
+    for (let i = 0; i < count; i++) {
+      const orb = this.add.circle(this.player.x, this.player.y, ORBIT_ORB_SIZE, 0xba68c8);
+      orb.setStrokeStyle(2, 0x7b1fa2);
+      orb.setDepth(50);
+      this.orbitOrbs.push(orb);
+    }
+  }
+
+  private updateOrbitWeapon(): void {
+    const level = getWeaponLevel(this.state, "orbit");
+    if (level === 0 || this.orbitOrbs.length === 0) return;
+
+    const radius = ORBIT_RADIUS[level];
+    const count = this.orbitOrbs.length;
+    const time = this.time.now / 1000;
+
+    // Always update positions (visual)
+    for (let i = 0; i < count; i++) {
+      const orb = this.orbitOrbs[i];
+      if (!orb || !orb.active) continue;
+      const angle = time * ORBIT_SPEED + (i / count) * Math.PI * 2;
+      orb.x = this.player.x + Math.cos(angle) * radius;
+      orb.y = this.player.y + Math.sin(angle) * radius;
+    }
+
+    // Only check collisions when not in overlay
+    if (this.isShowingOverlay || this.isComplete) return;
+
+    const enemyRadius = 8 + Math.min(this.waveNumber, 6);
+    const hitDist = ORBIT_ORB_SIZE + enemyRadius;
+    const toDestroy: Phaser.GameObjects.Arc[] = [];
+
+    for (const enemy of this.enemies.getChildren()) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
+      for (const orb of this.orbitOrbs) {
+        if (!orb || !orb.active) continue;
+        const dist = Phaser.Math.Distance.Between(orb.x, orb.y, go.x, go.y);
+        if (dist <= hitDist) {
+          toDestroy.push(go);
+          break;
+        }
+      }
+    }
+
+    for (const go of toDestroy) {
+      this.spawnDeathParticles(go.x, go.y);
+      go.destroy();
+      this.state = defeatEnemy(this.state);
+    }
+    if (toDestroy.length > 0) this.updateHUD();
+  }
+
+  // ---- Holy Water ----
+
+  private passiveHolyWater(level: number): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+    const poolCount = HOLY_WATER_COUNT[level];
+    const poolRadius = HOLY_WATER_RADIUS[level];
+
+    for (let p = 0; p < poolCount; p++) {
+      // Drop near a random enemy, or random spot if no enemies
+      let px: number, py: number;
+      const enemies = this.enemies.getChildren();
+      if (enemies.length > 0) {
+        const target = enemies[Phaser.Math.Between(0, enemies.length - 1)] as Phaser.GameObjects.Arc;
+        px = target.x + Phaser.Math.Between(-30, 30);
+        py = target.y + Phaser.Math.Between(-30, 30);
+      } else {
+        px = Phaser.Math.Between(50, this.scale.width - 50);
+        py = Phaser.Math.Between(50, this.scale.height - 50);
+      }
+
+      // Create pool visual
+      const pool = this.add.circle(px, py, poolRadius, 0x4fc3f7, 0.25);
+      pool.setStrokeStyle(2, 0x0288d1);
+      pool.setDepth(5);
+
+      // Damage tick timer
+      const tickTimer = this.time.addEvent({
+        delay: HOLY_WATER_TICK,
+        callback: () => {
+          if (this.isShowingOverlay || this.isComplete) return;
+          const toDestroy: Phaser.GameObjects.Arc[] = [];
+          for (const enemy of this.enemies.getChildren()) {
+            const go = enemy as Phaser.GameObjects.Arc;
+            if (!go.active) continue;
+            const dist = Phaser.Math.Distance.Between(px, py, go.x, go.y);
+            if (dist <= poolRadius) toDestroy.push(go);
+          }
+          for (const go of toDestroy) {
+            this.spawnDeathParticles(go.x, go.y);
+            go.destroy();
+            this.state = defeatEnemy(this.state);
+          }
+          if (toDestroy.length > 0) this.updateHUD();
+        },
+        callbackScope: this,
+        loop: true,
+      });
+
+      // Self-destruct after duration
+      this.time.delayedCall(HOLY_WATER_DURATION, () => {
+        tickTimer.remove();
+        this.tweens.add({
+          targets: pool, alpha: 0, duration: 300,
+          onComplete: () => pool.destroy(),
+        });
+      });
+    }
+  }
+
+  // ---- Throwing Axe ----
+
+  private passiveAxe(level: number): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+    const count = AXE_COUNT[level];
+
+    for (let i = 0; i < count; i++) {
+      // Aim at a random enemy for variety, or random direction
+      let angle: number;
+      const enemies = this.enemies.getChildren();
+      if (enemies.length > 0) {
+        const target = enemies[Phaser.Math.Between(0, enemies.length - 1)] as Phaser.GameObjects.Arc;
+        angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+      } else {
+        angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      }
+
+      // Offset slightly if multiple axes
+      if (count > 1) {
+        angle += (i - (count - 1) / 2) * 0.3;
+      }
+
+      const axe = this.add.circle(this.player.x, this.player.y, AXE_SIZE, 0xff8a65);
+      axe.setStrokeStyle(2, 0xbf360c);
+      this.physics.add.existing(axe);
+      const body = axe.body as Phaser.Physics.Arcade.Body;
+      body.setCircle(AXE_SIZE);
+      body.setVelocity(Math.cos(angle) * AXE_SPEED, Math.sin(angle) * AXE_SPEED);
+      this.axeProjectiles.add(axe);
+    }
+  }
+
+  // ---- Radiant Beam ----
+
+  private passiveBeam(level: number): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+    const beamW = BEAM_WIDTH[level];
+
+    // Aim at nearest enemy, or random direction
+    let angle: number;
+    const enemies = this.enemies.getChildren();
+    if (enemies.length > 0) {
+      let nearest: Phaser.GameObjects.Arc | null = null;
+      let minDist = Infinity;
+      for (const enemy of enemies) {
+        const go = enemy as Phaser.GameObjects.Arc;
+        if (!go.active) continue;
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, go.x, go.y);
+        if (dist < minDist) { minDist = dist; nearest = go; }
+      }
+      if (nearest) {
+        angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, nearest.x, nearest.y);
+      } else {
+        angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      }
+    } else {
+      angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    }
+
+    // Calculate beam end point (extend to screen edge)
+    const maxLen = Math.max(this.scale.width, this.scale.height) * 1.5;
+    const endX = this.player.x + Math.cos(angle) * maxLen;
+    const endY = this.player.y + Math.sin(angle) * maxLen;
+
+    // Draw beam visual
+    const gfx = this.add.graphics();
+    gfx.lineStyle(beamW, 0xffd54f, 0.8);
+    gfx.lineBetween(this.player.x, this.player.y, endX, endY);
+    gfx.setDepth(60);
+
+    // Add glow effect
+    const glowGfx = this.add.graphics();
+    glowGfx.lineStyle(beamW * 2, 0xffd54f, 0.2);
+    glowGfx.lineBetween(this.player.x, this.player.y, endX, endY);
+    glowGfx.setDepth(59);
+
+    // Check all enemies against beam line
+    const toDestroy: Phaser.GameObjects.Arc[] = [];
+    for (const enemy of enemies) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
+      const dist = this.pointToLineDistance(go.x, go.y, this.player.x, this.player.y, endX, endY);
+      // Check forward direction only
+      const dotProduct = (go.x - this.player.x) * Math.cos(angle) + (go.y - this.player.y) * Math.sin(angle);
+      if (dist <= beamW / 2 + 10 && dotProduct > 0) {
+        toDestroy.push(go);
+      }
+    }
+
+    for (const go of toDestroy) {
+      this.spawnDeathParticles(go.x, go.y);
+      go.destroy();
+      this.state = defeatEnemy(this.state);
+    }
+    if (toDestroy.length > 0) this.updateHUD();
+
+    // Fade out beam
+    this.tweens.add({
+      targets: [gfx, glowGfx], alpha: 0, duration: 300,
+      onComplete: () => { gfx.destroy(); glowGfx.destroy(); },
+    });
+  }
+
+  private pointToLineDistance(
+    px: number, py: number, x1: number, y1: number, x2: number, y2: number,
+  ): number {
+    const A = px - x1;
+    const B = py - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    const len2 = C * C + D * D;
+    if (len2 === 0) return Math.sqrt(A * A + B * B);
+    const t = Math.max(0, Math.min(1, (A * C + B * D) / len2));
+    const projX = x1 + t * C;
+    const projY = y1 + t * D;
+    return Math.sqrt((px - projX) ** 2 + (py - projY) ** 2);
+  }
+
   // ---- Spawn rate management ----
 
   private updateSpawnRate(): void {
@@ -699,6 +1118,15 @@ export class SurvivorsScene extends Phaser.Scene {
     if (this.fireRingTimer) this.fireRingTimer.remove();
     if (this.lightningTimer) this.lightningTimer.remove();
     if (this.shieldTimer) this.shieldTimer.remove();
+    if (this.holyWaterTimer) this.holyWaterTimer.remove();
+    if (this.axeTimer) this.axeTimer.remove();
+    if (this.beamTimer) this.beamTimer.remove();
+
+    // Clean up orbit orbs
+    for (const orb of this.orbitOrbs) {
+      if (orb && orb.active) orb.destroy();
+    }
+    this.orbitOrbs = [];
 
     for (const enemy of this.enemies.getChildren()) {
       const body = (enemy as Phaser.GameObjects.Arc).body as Phaser.Physics.Arcade.Body;
@@ -817,8 +1245,7 @@ export class SurvivorsScene extends Phaser.Scene {
     // Weapon HUD
     if (this.state.weapons.length > 0) {
       const weapStr = this.state.weapons.map((w) => {
-        const icons: Record<string, string> = { "fire-ring": "\u{1F525}", lightning: "\u{26A1}", shield: "\u{1F6E1}\u{FE0F}" };
-        return `${icons[w.type] ?? ""}Lv${w.level}`;
+        return `${WEAPON_ICON_MAP[w.type] ?? ""}Lv${w.level}`;
       }).join(" ");
       this.weaponHudText?.setText(weapStr);
     }

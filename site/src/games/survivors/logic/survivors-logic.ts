@@ -3,15 +3,17 @@
  * No Phaser or DOM dependencies — extracted for testability.
  */
 
+export type WeaponType = "fire-ring" | "lightning" | "shield" | "orbit" | "holy-water" | "axe" | "beam";
+
 export interface WeaponUpgrade {
   name: string;
-  type: "fire-ring" | "lightning" | "shield";
+  type: WeaponType;
   description: string;
 }
 
 /** Persistent weapon with level tracking */
 export interface OwnedWeapon {
-  type: "fire-ring" | "lightning" | "shield";
+  type: WeaponType;
   level: number; // 1-3
 }
 
@@ -34,21 +36,13 @@ export interface SurvivorsState {
 export const MAX_WEAPON_LEVEL = 3;
 
 export const WEAPON_OPTIONS: WeaponUpgrade[] = [
-  {
-    name: "Fire Ring",
-    type: "fire-ring",
-    description: "Periodic AoE burst around you",
-  },
-  {
-    name: "Lightning Bolt",
-    type: "lightning",
-    description: "Chain attack zaps nearby enemies",
-  },
-  {
-    name: "Holy Shield",
-    type: "shield",
-    description: "Regenerate HP over time",
-  },
+  { name: "Fire Ring", type: "fire-ring", description: "Periodic AoE burst around you" },
+  { name: "Lightning Bolt", type: "lightning", description: "Chain attack zaps nearby enemies" },
+  { name: "Holy Shield", type: "shield", description: "Regenerate HP over time" },
+  { name: "Divine Orbit", type: "orbit", description: "Orbs orbit you, destroying enemies on contact" },
+  { name: "Holy Water", type: "holy-water", description: "Drop damaging pools on the ground" },
+  { name: "Throwing Axe", type: "axe", description: "Piercing projectile that cuts through enemies" },
+  { name: "Radiant Beam", type: "beam", description: "Beam of light pierces all enemies in a line" },
 ];
 
 /** Creates the initial state for a new survivors game. */
@@ -72,15 +66,22 @@ export function createInitialState(): SurvivorsState {
 
 /**
  * Processes an answer to a question.
+ * Base scaling every wave: enemySpeedMultiplier *= 1.06, enemySpawnMultiplier *= 1.1.
  * - Correct: questionsCorrect++, score += 200.
- * - Wrong: enemySpeedMultiplier *= 1.2, enemySpawnMultiplier *= 2.
+ * - Wrong: additional enemySpeedMultiplier *= 1.15, enemySpawnMultiplier *= 1.5.
  * Always increments questionsTotal.
  */
 export function answerQuestion(
   state: SurvivorsState,
   correct: boolean,
 ): SurvivorsState {
-  const next = { ...state, questionsTotal: state.questionsTotal + 1 };
+  // Base scaling applied every wave regardless of answer
+  const next = {
+    ...state,
+    questionsTotal: state.questionsTotal + 1,
+    enemySpeedMultiplier: state.enemySpeedMultiplier * 1.06,
+    enemySpawnMultiplier: state.enemySpawnMultiplier * 1.1,
+  };
 
   if (correct) {
     return {
@@ -90,10 +91,11 @@ export function answerQuestion(
     };
   }
 
+  // Additional penalty for wrong answer
   return {
     ...next,
-    enemySpeedMultiplier: next.enemySpeedMultiplier * 1.2,
-    enemySpawnMultiplier: next.enemySpawnMultiplier * 2,
+    enemySpeedMultiplier: next.enemySpeedMultiplier * 1.15,
+    enemySpawnMultiplier: next.enemySpawnMultiplier * 1.5,
   };
 }
 
@@ -170,6 +172,18 @@ export function healPlayer(
   return {
     ...state,
     playerHp: Math.min(state.maxHp, state.playerHp + amount),
+  };
+}
+
+/**
+ * Increases max HP by 1 and heals the player by 1.
+ * Used when all weapons are maxed as an infinite upgrade option.
+ */
+export function boostMaxHp(state: SurvivorsState): SurvivorsState {
+  return {
+    ...state,
+    maxHp: state.maxHp + 1,
+    playerHp: state.playerHp + 1,
   };
 }
 

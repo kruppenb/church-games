@@ -7,6 +7,7 @@ import {
   defeatEnemy,
   takeDamage,
   healPlayer,
+  boostMaxHp,
   calculateStars,
   isGameOver,
   WEAPON_OPTIONS,
@@ -35,23 +36,34 @@ describe("survivors-logic", () => {
   });
 
   describe("answerQuestion", () => {
-    it("correct answer adds 200 score and increments questionsCorrect", () => {
+    it("correct answer adds 200 score, increments questionsCorrect, and applies base scaling", () => {
       const state = createInitialState();
       const next = answerQuestion(state, true);
 
       expect(next.questionsCorrect).toBe(1);
       expect(next.questionsTotal).toBe(1);
       expect(next.score).toBe(200);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.06);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.1);
     });
 
-    it("wrong answer doubles spawn rate and increases speed by 20%", () => {
+    it("wrong answer applies base scaling plus additional penalty", () => {
       const state = createInitialState();
       const next = answerQuestion(state, false);
 
       expect(next.questionsCorrect).toBe(0);
       expect(next.questionsTotal).toBe(1);
-      expect(next.enemySpeedMultiplier).toBeCloseTo(1.2);
-      expect(next.enemySpawnMultiplier).toBe(2);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.06 * 1.15);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.1 * 1.5);
+    });
+
+    it("correct answers stack base scaling multiplicatively", () => {
+      let state = createInitialState();
+      state = answerQuestion(state, true);
+      state = answerQuestion(state, true);
+
+      expect(state.enemySpeedMultiplier).toBeCloseTo(1.06 ** 2);
+      expect(state.enemySpawnMultiplier).toBeCloseTo(1.1 ** 2);
     });
 
     it("stacks wrong-answer penalties multiplicatively", () => {
@@ -59,8 +71,8 @@ describe("survivors-logic", () => {
       state = answerQuestion(state, false);
       state = answerQuestion(state, false);
 
-      expect(state.enemySpeedMultiplier).toBeCloseTo(1.44);
-      expect(state.enemySpawnMultiplier).toBe(4);
+      expect(state.enemySpeedMultiplier).toBeCloseTo((1.06 * 1.15) ** 2);
+      expect(state.enemySpawnMultiplier).toBeCloseTo((1.1 * 1.5) ** 2);
     });
   });
 
@@ -187,6 +199,35 @@ describe("survivors-logic", () => {
     });
   });
 
+  describe("boostMaxHp", () => {
+    it("increases maxHp and playerHp by 1", () => {
+      const state = createInitialState();
+      const next = boostMaxHp(state);
+
+      expect(next.maxHp).toBe(11);
+      expect(next.playerHp).toBe(11);
+    });
+
+    it("stacks infinitely", () => {
+      let state = createInitialState();
+      for (let i = 0; i < 5; i++) {
+        state = boostMaxHp(state);
+      }
+
+      expect(state.maxHp).toBe(15);
+      expect(state.playerHp).toBe(15);
+    });
+
+    it("heals 1 even when damaged", () => {
+      let state = createInitialState();
+      state = takeDamage(state, 5); // HP: 5/10
+      state = boostMaxHp(state);    // HP: 6/11
+
+      expect(state.maxHp).toBe(11);
+      expect(state.playerHp).toBe(6);
+    });
+  });
+
   describe("calculateStars", () => {
     it("returns 3 stars for >= 80% correct and survived", () => {
       let state = createInitialState();
@@ -238,12 +279,17 @@ describe("survivors-logic", () => {
   });
 
   describe("WEAPON_OPTIONS", () => {
-    it("has 3 weapon options with unique types", () => {
-      expect(WEAPON_OPTIONS).toHaveLength(3);
+    it("has 7 weapon options with unique types", () => {
+      expect(WEAPON_OPTIONS).toHaveLength(7);
       const types = WEAPON_OPTIONS.map((w) => w.type);
+      expect(new Set(types).size).toBe(7);
       expect(types).toContain("fire-ring");
       expect(types).toContain("lightning");
       expect(types).toContain("shield");
+      expect(types).toContain("orbit");
+      expect(types).toContain("holy-water");
+      expect(types).toContain("axe");
+      expect(types).toContain("beam");
     });
   });
 });
