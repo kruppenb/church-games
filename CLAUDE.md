@@ -62,6 +62,7 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 - **E2E tests**: Playwright with device emulation (Desktop, iPhone 12, iPad)
 - **Visual testing**: Use Playwright MCP browser tools (see `docs/visual-testing.md`)
 - Tests must actually play the games, not just validate schemas
+- **Phaser games (especially Survivors)**: Always verify changes with Playwright e2e tests (`cd site && npx playwright test e2e/survivors.spec.ts --project "Desktop Chrome"`). Build first (`npm run build`) since Phaser scenes don't hot-reload. Check the screenshots in `site/e2e/screenshots/` to visually confirm gameplay.
 
 ## Known Dev Quirks
 
