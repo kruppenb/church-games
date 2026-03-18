@@ -5,10 +5,12 @@ import {
   resolvePlayerAnswer,
   rollLoot,
   applyLoot,
+  HERO_ABILITIES,
   type BattleState,
   type Hero,
   type Enemy,
   type LootItem,
+  type AbilityResult,
 } from "../logic/rpg-logic";
 
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
@@ -49,6 +51,9 @@ export class BattleScene extends Phaser.Scene {
   private questionText: Phaser.GameObjects.Text | null = null;
   private answerButtons: Phaser.GameObjects.Container[] = [];
   private feedbackContainer: Phaser.GameObjects.Container | null = null;
+  private enemyHpLabel: Phaser.GameObjects.Text | null = null;
+  private abilityPips: Phaser.GameObjects.Arc[][] = [];
+  private heroGlowTweens: Phaser.Tweens.Tween[] = [];
 
   constructor() {
     super({ key: "BattleScene" });
@@ -81,6 +86,8 @@ export class BattleScene extends Phaser.Scene {
     this.questionIndex = 0;
     this.wrongCount = 0;
     this.inputLocked = false;
+    this.abilityPips = [];
+    this.heroGlowTweens = [];
 
     // Initialize shared party HP
     this.partyHp =
@@ -242,6 +249,22 @@ export class BattleScene extends Phaser.Scene {
         nameLabel,
       ]);
       this.heroSprites.push(container);
+
+      // Ability charge pips
+      const ability = HERO_ABILITIES[hero.name];
+      const pips: Phaser.GameObjects.Arc[] = [];
+      if (ability) {
+        for (let p = 0; p < ability.maxCharges; p++) {
+          const pipX = -(ability.maxCharges - 1) * 5 + p * 10;
+          const pipY = radius + 22;
+          const pip = this.add
+            .circle(pipX, pipY, 3, 0x333355)
+            .setStrokeStyle(1, 0x555577, 0.3);
+          container.add(pip);
+          pips.push(pip);
+        }
+      }
+      this.abilityPips.push(pips);
     });
 
     this.highlightCurrentHero();
@@ -350,7 +373,7 @@ export class BattleScene extends Phaser.Scene {
       0xe53935,
     );
 
-    const hpLabel = this.add
+    this.enemyHpLabel = this.add
       .text(0, hpBarY + 10, `${enemy.hp}/${enemy.maxHp}`, {
         fontSize: "9px",
         fontFamily: "sans-serif",
@@ -370,7 +393,7 @@ export class BattleScene extends Phaser.Scene {
       nameText,
       hpBg,
       hpFill,
-      hpLabel,
+      this.enemyHpLabel,
     ]);
     this.enemyHpBar = { bg: hpBg, fill: hpFill };
 
@@ -530,17 +553,28 @@ export class BattleScene extends Phaser.Scene {
 
   private handleAnswer(correct: boolean): void {
     const prevState = this.battleState;
-    const result = resolvePlayerAnswer(this.battleState, correct, this.partyHp);
+    const result = resolvePlayerAnswer(
+      this.battleState,
+      correct,
+      this.partyHp,
+      this.maxPartyHp,
+    );
     this.battleState = result;
 
     if (!correct) {
       this.wrongCount++;
     }
 
-    // Apply party HP delta
+    // Apply party HP delta (negative for damage, positive for heal)
     if (result.partyHpDelta) {
-      this.partyHp = Math.max(0, this.partyHp + result.partyHpDelta);
-      this.updatePartyHpBar(!correct);
+      this.partyHp = Math.max(
+        0,
+        Math.min(this.maxPartyHp, this.partyHp + result.partyHpDelta),
+      );
+
+      if (result.partyHpDelta < 0) {
+        this.updatePartyHpBar(true);
+      }
 
       if (this.partyHp <= 0) {
         this.battleState = {
@@ -551,7 +585,9 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    if (correct) {
+    if (result.abilityTriggered) {
+      this.showAbilityAnimation(result.abilityTriggered, prevState);
+    } else if (correct) {
       this.showCorrectAnimation(prevState);
     } else {
       this.showWrongAnimation(prevState);
@@ -621,6 +657,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     this.updateEnemyHpBar();
+    this.updateAbilityPips();
     this.highlightCurrentHero();
 
     this.time.delayedCall(1200, () => {
@@ -1177,22 +1214,31 @@ export class BattleScene extends Phaser.Scene {
       duration: 400,
       ease: "Power2",
     });
+
+    // Update HP text label
+    if (this.enemyHpLabel) {
+      this.enemyHpLabel.setText(`${enemy.hp}/${enemy.maxHp}`);
+    }
   }
 
   // ---------- Hero highlight ----------
 
   private highlightCurrentHero(): void {
+    // Stop existing glow tweens to prevent stacking
+    this.heroGlowTweens.forEach((t) => t.stop());
+    this.heroGlowTweens = [];
+
     this.heroSprites.forEach((container, i) => {
       const isActive = i === this.battleState.currentHeroIndex;
       container.setAlpha(isActive ? 1 : 0.5);
 
-      // Show/hide glow ring (first child)
       const glowRing = container.getAt(0) as Phaser.GameObjects.Arc;
       if (glowRing) {
         glowRing.setVisible(isActive);
+        glowRing.setScale(1);
+        glowRing.setAlpha(0.3);
         if (isActive) {
-          // Pulse the glow ring
-          this.tweens.add({
+          const tween = this.tweens.add({
             targets: glowRing,
             scaleX: 1.3,
             scaleY: 1.3,
@@ -1200,6 +1246,530 @@ export class BattleScene extends Phaser.Scene {
             duration: 600,
             yoyo: true,
             repeat: -1,
+          });
+          this.heroGlowTweens.push(tween);
+        }
+      }
+    });
+  }
+
+  // ---------- Ability animations ----------
+
+  private showAbilityAnimation(
+    result: AbilityResult,
+    prevState: BattleState,
+  ): void {
+    const ability = result.ability;
+    const hero = prevState.heroes[result.heroIndex];
+
+    // Destroy any previous feedback
+    if (this.feedbackContainer) {
+      this.feedbackContainer.destroy();
+      this.feedbackContainer = null;
+    }
+
+    // Ability name banner
+    this.showAbilityNameBanner(ability.name, hero.color);
+
+    // Camera flash in hero's color
+    const c = Phaser.Display.Color.HexStringToColor(hero.color);
+    this.cameras.main.flash(500, c.red, c.green, c.blue, false);
+
+    // Hero charges forward (bigger lunge than normal)
+    const hc = this.heroSprites[result.heroIndex];
+    if (hc) {
+      this.tweens.add({
+        targets: hc,
+        x: hc.x + 120,
+        duration: 250,
+        yoyo: true,
+        ease: "Power3",
+      });
+    }
+
+    // Type-specific effect
+    this.time.delayedCall(300, () => {
+      switch (ability.effectType) {
+        case "damage_mult":
+          this.abilityDamageMultEffect(result, hero);
+          break;
+        case "heal_party":
+          this.abilityHealEffect(result);
+          break;
+        case "multi_hit":
+          this.abilityMultiHitEffect(result, hero);
+          break;
+        case "shield_and_hit":
+          this.abilityShieldEffect(result, hero);
+          break;
+      }
+    });
+
+    // Update UI after effects settle
+    this.time.delayedCall(1000, () => {
+      this.updateEnemyHpBar();
+      this.updatePartyHpBar(false);
+      this.updateAbilityPips();
+      this.highlightCurrentHero();
+    });
+
+    // Advance battle
+    this.time.delayedCall(2200, () => {
+      this.advanceBattle();
+    });
+  }
+
+  private showAbilityNameBanner(name: string, heroColor: string): void {
+    const { width } = this.scale;
+
+    const shadow = this.add
+      .text(2, 2, name.toUpperCase(), {
+        fontSize: "22px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#000000",
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.4);
+
+    const text = this.add
+      .text(0, 0, name.toUpperCase(), {
+        fontSize: "22px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: heroColor,
+        stroke: "#000000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5);
+
+    const banner = this.add
+      .container(width / 2, 200, [shadow, text])
+      .setDepth(25)
+      .setScale(0.3)
+      .setAlpha(0);
+
+    // Bounce in
+    this.tweens.add({
+      targets: banner,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      alpha: 1,
+      duration: 300,
+      ease: "Back.easeOut",
+      onComplete: () => {
+        this.tweens.add({
+          targets: banner,
+          scaleX: 1,
+          scaleY: 1,
+          duration: 150,
+        });
+      },
+    });
+
+    // Fade out
+    this.tweens.add({
+      targets: banner,
+      alpha: 0,
+      y: 190,
+      duration: 400,
+      delay: 1400,
+      onComplete: () => banner.destroy(),
+    });
+  }
+
+  private abilityDamageMultEffect(result: AbilityResult, hero: Hero): void {
+    const { width } = this.scale;
+    const ex = width - 90;
+    const ey = 120;
+    const heroColor = Phaser.Display.Color.HexStringToColor(hero.color).color;
+
+    // Slash lines across enemy
+    for (let i = 0; i < 3; i++) {
+      const slash = this.add.graphics().setDepth(22);
+      const angle = -Math.PI / 3 + (i * Math.PI) / 3;
+      const len = 70;
+      const x1 = ex + Math.cos(angle) * len;
+      const y1 = ey + Math.sin(angle) * len;
+      const x2 = ex - Math.cos(angle) * len;
+      const y2 = ey - Math.sin(angle) * len;
+
+      // Glow line
+      slash.lineStyle(10, heroColor, 0.3);
+      slash.beginPath();
+      slash.moveTo(x1, y1);
+      slash.lineTo(x2, y2);
+      slash.strokePath();
+
+      // Sharp line
+      slash.lineStyle(3, 0xffffff, 0.9);
+      slash.beginPath();
+      slash.moveTo(x1, y1);
+      slash.lineTo(x2, y2);
+      slash.strokePath();
+
+      this.tweens.add({
+        targets: slash,
+        alpha: 0,
+        duration: 500,
+        delay: i * 80,
+        onComplete: () => slash.destroy(),
+      });
+    }
+
+    // Spark particles
+    for (let p = 0; p < 12; p++) {
+      const angle = (p / 12) * Math.PI * 2;
+      const spark = this.add.circle(ex, ey, 3, heroColor).setDepth(22);
+      this.tweens.add({
+        targets: spark,
+        x: ex + Math.cos(angle) * 70,
+        y: ey + Math.sin(angle) * 70,
+        alpha: 0,
+        scaleX: 0.2,
+        scaleY: 0.2,
+        duration: 450,
+        onComplete: () => spark.destroy(),
+      });
+    }
+
+    // Enemy violent shake + flash
+    if (this.enemyContainer) {
+      this.tweens.add({
+        targets: this.enemyContainer,
+        x: this.enemyContainer.x + 12,
+        duration: 35,
+        yoyo: true,
+        repeat: 8,
+      });
+      this.tweens.add({
+        targets: this.enemyContainer,
+        alpha: 0.3,
+        duration: 80,
+        yoyo: true,
+        repeat: 2,
+      });
+    }
+
+    // Big floating damage number
+    const dmgText = this.add
+      .text(ex, ey - 50, `-${result.damageDealt}`, {
+        fontSize: "28px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#ff4444",
+        stroke: "#000000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(25);
+
+    this.tweens.add({
+      targets: dmgText,
+      y: dmgText.y - 50,
+      alpha: 0,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 1000,
+      ease: "Power2",
+      onComplete: () => dmgText.destroy(),
+    });
+  }
+
+  private abilityHealEffect(result: AbilityResult): void {
+    const { width } = this.scale;
+    const ex = width - 90;
+    const ey = 120;
+
+    // Normal damage on enemy
+    if (this.enemyContainer) {
+      this.tweens.add({
+        targets: this.enemyContainer,
+        x: this.enemyContainer.x + 8,
+        duration: 40,
+        yoyo: true,
+        repeat: 4,
+      });
+    }
+
+    // Damage number on enemy
+    const dmgText = this.add
+      .text(ex, ey - 40, `-${result.damageDealt}`, {
+        fontSize: "22px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#ff4444",
+      })
+      .setOrigin(0.5)
+      .setDepth(25);
+
+    this.tweens.add({
+      targets: dmgText,
+      y: dmgText.y - 40,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => dmgText.destroy(),
+    });
+
+    // Rising heal particles
+    for (let i = 0; i < 12; i++) {
+      const px = 20 + Math.random() * (width - 40);
+      const py = 140 + Math.random() * 20;
+      const size = 3 + Math.random() * 4;
+      const clr = Math.random() > 0.5 ? 0x4caf50 : 0x81c784;
+      const circle = this.add.circle(px, py, size, clr, 0.7).setDepth(22);
+
+      this.tweens.add({
+        targets: circle,
+        y: py - 60 - Math.random() * 50,
+        alpha: 0,
+        duration: 700 + Math.random() * 400,
+        delay: Math.random() * 300,
+        ease: "Sine.easeOut",
+        onComplete: () => circle.destroy(),
+      });
+    }
+
+    // Party HP bar bright green flash
+    if (this.partyHpBar) {
+      this.partyHpBar.fill.setFillStyle(0x66ff66);
+      this.time.delayedCall(700, () => {
+        this.partyHpBar?.fill.setFillStyle(0x4caf50);
+      });
+    }
+
+    // Floating heal number
+    const healAmount = result.healAmount ?? 0;
+    if (healAmount > 0) {
+      const healText = this.add
+        .text(width / 2, 34, `+${healAmount} HP`, {
+          fontSize: "20px",
+          fontFamily: "sans-serif",
+          fontStyle: "bold",
+          color: "#66ff66",
+          stroke: "#000000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(25);
+
+      this.tweens.add({
+        targets: healText,
+        y: healText.y - 35,
+        alpha: 0,
+        duration: 1200,
+        ease: "Power2",
+        onComplete: () => healText.destroy(),
+      });
+    }
+  }
+
+  private abilityMultiHitEffect(result: AbilityResult, hero: Hero): void {
+    const { width } = this.scale;
+    const ex = width - 90;
+    const ey = 120;
+    const heroColor = Phaser.Display.Color.HexStringToColor(hero.color).color;
+    const startX = this.heroSprites[result.heroIndex]?.x ?? 60;
+    const startY = 120;
+
+    const hits = Math.floor(result.ability.effectValue);
+    const perHit = Math.floor(result.damageDealt / hits);
+
+    for (let h = 0; h < hits; h++) {
+      this.time.delayedCall(h * 180, () => {
+        // Arrow projectile
+        const arrow = this.add
+          .circle(startX + 30, startY, 4, heroColor)
+          .setDepth(22);
+
+        // Trail
+        const trail = this.add
+          .circle(startX + 30, startY, 3, heroColor, 0.3)
+          .setDepth(21);
+
+        this.tweens.add({
+          targets: arrow,
+          x: ex,
+          y: ey,
+          duration: 180,
+          ease: "Power2",
+          onComplete: () => {
+            arrow.destroy();
+
+            // Impact flash
+            const impact = this.add
+              .circle(ex, ey, 8, 0xffffff, 0.6)
+              .setDepth(22);
+            this.tweens.add({
+              targets: impact,
+              scaleX: 2,
+              scaleY: 2,
+              alpha: 0,
+              duration: 200,
+              onComplete: () => impact.destroy(),
+            });
+
+            // Small enemy shake
+            if (this.enemyContainer) {
+              this.tweens.add({
+                targets: this.enemyContainer,
+                x: this.enemyContainer.x + 6,
+                duration: 30,
+                yoyo: true,
+                repeat: 2,
+              });
+            }
+
+            // Mini damage number
+            const offsetX = (Math.random() - 0.5) * 40;
+            const miniDmg = this.add
+              .text(ex + offsetX, ey - 30, `-${perHit}`, {
+                fontSize: "15px",
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                color: "#ffcc44",
+              })
+              .setOrigin(0.5)
+              .setDepth(25);
+
+            this.tweens.add({
+              targets: miniDmg,
+              y: miniDmg.y - 25,
+              alpha: 0,
+              duration: 500,
+              onComplete: () => miniDmg.destroy(),
+            });
+          },
+        });
+
+        // Trail follows behind
+        this.tweens.add({
+          targets: trail,
+          x: ex,
+          y: ey,
+          alpha: 0,
+          duration: 250,
+          onComplete: () => trail.destroy(),
+        });
+      });
+    }
+  }
+
+  private abilityShieldEffect(result: AbilityResult, hero: Hero): void {
+    const { width } = this.scale;
+    const ex = width - 90;
+    const ey = 120;
+    const heroColor = Phaser.Display.Color.HexStringToColor(hero.color).color;
+
+    // Golden shield ring around heroes
+    const shieldX = width * 0.25;
+    const shieldY = 120;
+
+    const ring = this.add.graphics().setDepth(22);
+    ring.lineStyle(3, heroColor, 0.8);
+    ring.strokeCircle(shieldX, shieldY, 10);
+
+    this.tweens.add({
+      targets: ring,
+      scaleX: 6,
+      scaleY: 6,
+      duration: 400,
+      ease: "Power2",
+    });
+
+    this.tweens.add({
+      targets: ring,
+      alpha: 0,
+      duration: 500,
+      delay: 700,
+      onComplete: () => ring.destroy(),
+    });
+
+    // Inner glow
+    const glow = this.add
+      .circle(shieldX, shieldY, 50, heroColor, 0.15)
+      .setDepth(21);
+
+    this.tweens.add({
+      targets: glow,
+      alpha: 0,
+      scaleX: 1.5,
+      scaleY: 1.5,
+      duration: 800,
+      delay: 400,
+      onComplete: () => glow.destroy(),
+    });
+
+    // Enemy hit
+    this.time.delayedCall(200, () => {
+      if (this.enemyContainer) {
+        this.tweens.add({
+          targets: this.enemyContainer,
+          x: this.enemyContainer.x + 10,
+          duration: 35,
+          yoyo: true,
+          repeat: 6,
+        });
+        this.tweens.add({
+          targets: this.enemyContainer,
+          alpha: 0.4,
+          duration: 100,
+          yoyo: true,
+          repeat: 1,
+        });
+      }
+
+      // Damage number
+      const dmgText = this.add
+        .text(ex, ey - 45, `-${result.damageDealt}`, {
+          fontSize: "26px",
+          fontFamily: "sans-serif",
+          fontStyle: "bold",
+          color: "#ff4444",
+          stroke: "#000000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5)
+        .setDepth(25);
+
+      this.tweens.add({
+        targets: dmgText,
+        y: dmgText.y - 45,
+        alpha: 0,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        duration: 900,
+        ease: "Power2",
+        onComplete: () => dmgText.destroy(),
+      });
+    });
+  }
+
+  private updateAbilityPips(): void {
+    this.battleState.heroes.forEach((hero, i) => {
+      const ability = HERO_ABILITIES[hero.name];
+      if (!ability || !this.abilityPips[i]) return;
+
+      const heroColor = Phaser.Display.Color.HexStringToColor(hero.color).color;
+      for (let p = 0; p < ability.maxCharges; p++) {
+        const pip = this.abilityPips[i]?.[p];
+        if (!pip) continue;
+        const filled = p < hero.abilityCharge;
+        pip.setFillStyle(filled ? heroColor : 0x333355);
+        pip.setStrokeStyle(
+          1,
+          filled ? 0xffffff : 0x555577,
+          filled ? 0.8 : 0.3,
+        );
+
+        // Small pulse when filled
+        if (filled) {
+          this.tweens.add({
+            targets: pip,
+            scaleX: 1.5,
+            scaleY: 1.5,
+            duration: 150,
+            yoyo: true,
           });
         }
       }

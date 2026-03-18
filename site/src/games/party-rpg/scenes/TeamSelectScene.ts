@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { createHero, type Hero } from "../logic/rpg-logic";
+import { createHero, HERO_ABILITIES, type Hero } from "../logic/rpg-logic";
 
 interface HeroOption {
   name: string;
@@ -110,6 +110,17 @@ export class TeamSelectScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
+    // Ability name
+    const ability = HERO_ABILITIES[opt.name];
+    const abilityText = this.add
+      .text(x, y + 38, ability ? ability.name : "", {
+        fontSize: "8px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#9C27B0",
+      })
+      .setOrigin(0.5, 0);
+
     // Selection indicator (check mark circle)
     const check = this.add
       .circle(x + w / 2 - 16, y - h / 2 + 16, 10, 0x4caf50)
@@ -155,6 +166,7 @@ export class TeamSelectScene extends Phaser.Scene {
     void circle;
     void nameText;
     void statsText;
+    void abilityText;
   }
 
   private createStartButton(

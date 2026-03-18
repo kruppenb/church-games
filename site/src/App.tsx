@@ -8,11 +8,12 @@ import { MuteButton } from "./components/shared/MuteButton";
 
 const QuizShowdown = lazy(() => import("./games/quiz-showdown"));
 const WordScramble = lazy(() => import("./games/word-scramble"));
-const BibleBrawler = lazy(() => import("./games/adventure"));
+const FaithFortress = lazy(() => import("./games/tower-defense"));
 const PromisedLand = lazy(() => import("./games/party-rpg"));
-const EscapeRoom = lazy(() => import("./games/maze-runner"));
+const Millionaire = lazy(() => import("./games/millionaire"));
 const Survivors = lazy(() => import("./games/survivors"));
 const Jeopardy = lazy(() => import("./games/jeopardy"));
+const ScriptureCards = lazy(() => import("./games/card-battler"));
 
 export function App() {
   return (
@@ -42,7 +43,7 @@ export function App() {
               path="/games/brawler"
               element={
                 <ErrorBoundary>
-                  <BibleBrawler />
+                  <FaithFortress />
                 </ErrorBoundary>
               }
             />
@@ -58,7 +59,7 @@ export function App() {
               path="/games/escape"
               element={
                 <ErrorBoundary>
-                  <EscapeRoom />
+                  <Millionaire />
                 </ErrorBoundary>
               }
             />
@@ -75,6 +76,14 @@ export function App() {
               element={
                 <ErrorBoundary>
                   <Jeopardy />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/games/cards"
+              element={
+                <ErrorBoundary>
+                  <ScriptureCards />
                 </ErrorBoundary>
               }
             />

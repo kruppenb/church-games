@@ -309,11 +309,13 @@ afterEach(() => {
 });
 
 describe("Jeopardy", () => {
-  it("renders intro screen with Jeopardy title", () => {
+  it("renders intro screen with Jeopardy title and player select", () => {
     render(<Jeopardy />);
 
     expect(screen.getByText("Jeopardy")).toBeDefined();
     expect(screen.getByText("The Good Shepherd")).toBeDefined();
+    expect(screen.getByText("1 Player")).toBeDefined();
+    expect(screen.getByText("2 Players")).toBeDefined();
     expect(screen.getByText("Start")).toBeDefined();
   });
 
@@ -442,5 +444,40 @@ describe("Jeopardy", () => {
     // The answered cell should be disabled
     const disabledCells = document.querySelectorAll(".jeopardy-cell[disabled]");
     expect(disabledCells.length).toBe(1);
+  });
+
+  it("2-player mode shows both scores and alternates turns", () => {
+    render(<Jeopardy />);
+
+    // Select 2 players
+    fireEvent.click(screen.getByText("2 Players"));
+    fireEvent.click(screen.getByText("Start"));
+
+    // Should show P1 and P2 labels
+    expect(screen.getByText("P1")).toBeDefined();
+    expect(screen.getByText("P2")).toBeDefined();
+
+    // P1 should be active initially
+    const p1Score = screen.getByText("P1").closest(".jeopardy-player-score");
+    expect(p1Score?.classList.contains("jeopardy-player-active")).toBe(true);
+
+    // Click a $100 cell and answer
+    const cell = screen.getAllByText("$100")[0];
+    fireEvent.click(cell);
+    const answerBtns = document.querySelectorAll(".quiz-answer-btn");
+    fireEvent.click(answerBtns[0]);
+
+    // Advance timers to feedback, then dismiss
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    // Dismiss feedback
+    const feedbackPanel = document.querySelector(".jeopardy-feedback-panel");
+    fireEvent.click(feedbackPanel!.parentElement!);
+
+    // Now P2 should be active
+    const p2Score = screen.getByText("P2").closest(".jeopardy-player-score");
+    expect(p2Score?.classList.contains("jeopardy-player-active")).toBe(true);
   });
 });

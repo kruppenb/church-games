@@ -2,13 +2,11 @@ import { useEffect, useRef } from "react";
 import Phaser from "phaser";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
-import { CharacterSelectScene } from "./scenes/CharacterSelectScene";
-import { BrawlerScene } from "./scenes/BrawlerScene";
+import { TowerScene } from "./scenes/TowerScene";
 
-export function AdventureGame() {
+export function TowerDefense() {
   const { lesson, loading, error } = useLesson();
   const { difficulty } = useDifficulty();
-
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -26,19 +24,12 @@ export function AdventureGame() {
       parent: containerRef.current,
       width: 800,
       height: 600,
-      backgroundColor: "#1a1a2e",
+      backgroundColor: "#111118",
       scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      physics: {
-        default: "arcade",
-        arcade: {
-          gravity: { x: 0, y: 0 },
-          debug: false,
-        },
-      },
-      scene: [CharacterSelectScene, BrawlerScene],
+      scene: [TowerScene],
     });
 
     // Pass data to Phaser via registry

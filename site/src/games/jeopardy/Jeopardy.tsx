@@ -14,6 +14,7 @@ interface JeopardyCell {
 }
 
 type GameState = "intro" | "board" | "question" | "feedback" | "complete";
+type PlayerCount = 1 | 2;
 
 const VALUES = [100, 200, 300, 400, 500];
 const ANSWER_LABELS = ["A", "B", "C", "D"];
@@ -99,7 +100,9 @@ export function Jeopardy() {
   const { difficulty } = useDifficulty();
 
   const [gameState, setGameState] = useState<GameState>("intro");
-  const [score, setScore] = useState(0);
+  const [playerCount, setPlayerCount] = useState<PlayerCount>(1);
+  const [scores, setScores] = useState<[number, number]>([0, 0]);
+  const [currentPlayer, setCurrentPlayer] = useState<0 | 1>(0);
   const [cells, setCells] = useState<JeopardyCell[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [activeCell, setActiveCell] = useState<number | null>(null);
@@ -130,7 +133,8 @@ export function Jeopardy() {
     );
     setCategories(cats);
     setCells(newCells);
-    setScore(0);
+    setScores([0, 0]);
+    setCurrentPlayer(0);
     setActiveCell(null);
     setSelectedIndex(null);
     setGameState("board");
@@ -154,7 +158,11 @@ export function Jeopardy() {
 
       if (correct) {
         playCorrect();
-        setScore((prev) => prev + points);
+        setScores((prev) => {
+          const updated: [number, number] = [...prev];
+          updated[currentPlayer] += points;
+          return updated;
+        });
         setFeedbackCorrect(true);
         setFeedbackPoints(points);
       } else {
@@ -175,7 +183,7 @@ export function Jeopardy() {
         setGameState("feedback");
       }, 800);
     },
-    [activeCell, selectedIndex, cells],
+    [activeCell, selectedIndex, cells, currentPlayer],
   );
 
   const handleFeedbackDismiss = useCallback(() => {
@@ -186,9 +194,12 @@ export function Jeopardy() {
     } else {
       setActiveCell(null);
       setSelectedIndex(null);
+      if (playerCount === 2) {
+        setCurrentPlayer((prev) => (prev === 0 ? 1 : 0));
+      }
       setGameState("board");
     }
-  }, [cells]);
+  }, [cells, playerCount]);
 
   // --- Loading / Error states ---
   if (loading) {
@@ -227,6 +238,23 @@ export function Jeopardy() {
             reference={lesson.meta.verseReference}
             text={lesson.meta.verseText}
           />
+          <div className="jeopardy-player-select">
+            <span className="jeopardy-player-select-label">Players</span>
+            <div className="jeopardy-player-select-buttons">
+              <button
+                className={`btn ${playerCount === 1 ? "btn-primary" : "btn-secondary"}`}
+                onClick={() => setPlayerCount(1)}
+              >
+                1 Player
+              </button>
+              <button
+                className={`btn ${playerCount === 2 ? "btn-primary" : "btn-secondary"}`}
+                onClick={() => setPlayerCount(2)}
+              >
+                2 Players
+              </button>
+            </div>
+          </div>
           <button className="btn btn-primary btn-large" onClick={handleStart}>
             Start
           </button>
@@ -237,12 +265,23 @@ export function Jeopardy() {
 
   // --- Complete screen ---
   if (gameState === "complete") {
-    const stars = score >= 3000 ? 3 : score >= 2000 ? 2 : 1;
+    const totalScore = scores[0] + scores[1];
+    const stars = totalScore >= 3000 ? 3 : totalScore >= 2000 ? 2 : 1;
+    const winner =
+      playerCount === 2
+        ? scores[0] > scores[1]
+          ? "Player 1 Wins!"
+          : scores[1] > scores[0]
+            ? "Player 2 Wins!"
+            : "It's a Tie!"
+        : null;
 
     return (
       <div className="jeopardy-container">
         <div className="quiz-complete">
-          <h1 className="quiz-complete-title">Great Job!</h1>
+          <h1 className="quiz-complete-title">
+            {winner ?? "Great Job!"}
+          </h1>
           <div className="quiz-complete-stars" aria-label={`${stars} stars`}>
             {[1, 2, 3].map((s) => (
               <span
@@ -253,10 +292,23 @@ export function Jeopardy() {
               </span>
             ))}
           </div>
-          <div className="quiz-complete-score">
-            <span className="quiz-complete-score-label">Final Score</span>
-            <span className="quiz-complete-score-value">${score}</span>
-          </div>
+          {playerCount === 2 ? (
+            <div className="jeopardy-final-scores">
+              <div className={`jeopardy-final-score-card ${scores[0] >= scores[1] ? "jeopardy-final-score-winner" : ""}`}>
+                <span className="jeopardy-final-score-label">Player 1</span>
+                <span className="jeopardy-final-score-value">${scores[0]}</span>
+              </div>
+              <div className={`jeopardy-final-score-card ${scores[1] >= scores[0] ? "jeopardy-final-score-winner" : ""}`}>
+                <span className="jeopardy-final-score-label">Player 2</span>
+                <span className="jeopardy-final-score-value">${scores[1]}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="quiz-complete-score">
+              <span className="quiz-complete-score-label">Final Score</span>
+              <span className="quiz-complete-score-value">${scores[0]}</span>
+            </div>
+          )}
           <VerseDisplay
             reference={lesson.meta.verseReference}
             text={lesson.meta.verseText}
@@ -266,7 +318,7 @@ export function Jeopardy() {
               className="btn btn-primary btn-large"
               onClick={() => {
                 setGameState("intro");
-                setScore(0);
+                setScores([0, 0]);
               }}
             >
               Play Again
@@ -288,10 +340,23 @@ export function Jeopardy() {
       <a href="#/" className="quiz-back-link">
         &larr; Back
       </a>
-      <div className="jeopardy-score">
-        <span>Score:</span>
-        <span className="jeopardy-score-value">${score}</span>
-      </div>
+      {playerCount === 2 ? (
+        <div className="jeopardy-scoreboard">
+          <div className={`jeopardy-player-score ${currentPlayer === 0 ? "jeopardy-player-active" : ""}`}>
+            <span className="jeopardy-player-name">P1</span>
+            <span className="jeopardy-score-value">${scores[0]}</span>
+          </div>
+          <div className={`jeopardy-player-score ${currentPlayer === 1 ? "jeopardy-player-active" : ""}`}>
+            <span className="jeopardy-player-name">P2</span>
+            <span className="jeopardy-score-value">${scores[1]}</span>
+          </div>
+        </div>
+      ) : (
+        <div className="jeopardy-score">
+          <span>Score:</span>
+          <span className="jeopardy-score-value">${scores[0]}</span>
+        </div>
+      )}
 
       <div
         className="jeopardy-board"
@@ -378,13 +443,17 @@ export function Jeopardy() {
             {feedbackCorrect ? (
               <>
                 <div className="jeopardy-feedback-icon jeopardy-feedback-correct">&#10003;</div>
-                <div className="jeopardy-feedback-title jeopardy-feedback-correct">Correct!</div>
+                <div className="jeopardy-feedback-title jeopardy-feedback-correct">
+                  {playerCount === 2 ? `Player ${currentPlayer + 1} — Correct!` : "Correct!"}
+                </div>
                 <div className="jeopardy-feedback-points">+${feedbackPoints}</div>
               </>
             ) : (
               <>
                 <div className="jeopardy-feedback-icon jeopardy-feedback-wrong">&#10007;</div>
-                <div className="jeopardy-feedback-title jeopardy-feedback-wrong">Wrong!</div>
+                <div className="jeopardy-feedback-title jeopardy-feedback-wrong">
+                  {playerCount === 2 ? `Player ${currentPlayer + 1} — Wrong!` : "Wrong!"}
+                </div>
                 <div className="jeopardy-feedback-subtitle">
                   The answer was: {activeCellData?.question.options[activeCellData.question.correctIndex]}
                 </div>

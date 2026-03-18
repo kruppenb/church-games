@@ -1184,6 +1184,89 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: var(--space-lg);
 }
 
+/* Player select on intro */
+.jeopardy-player-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+.jeopardy-player-select-label {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.jeopardy-player-select-buttons {
+  display: flex;
+  gap: var(--space-md);
+}
+
+/* Two-player scoreboard on board */
+.jeopardy-scoreboard {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-lg);
+}
+.jeopardy-player-score {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  opacity: 0.6;
+}
+.jeopardy-player-active {
+  opacity: 1;
+  border-color: var(--color-gold);
+  box-shadow: 0 0 16px var(--color-gold-glow);
+}
+.jeopardy-player-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Final scores on complete screen */
+.jeopardy-final-scores {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-lg);
+}
+.jeopardy-final-score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg) var(--space-2xl);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid transparent;
+}
+.jeopardy-final-score-winner {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 20px var(--color-gold-glow);
+}
+.jeopardy-final-score-label {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+}
+.jeopardy-final-score-value {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  text-shadow: 0 0 12px var(--color-gold-glow);
+}
+
 /* ============================================================
    Phaser Game Wrappers (Adventure, RPG, Maze)
    ============================================================ */

@@ -13,6 +13,7 @@ import {
   applyRandomEvent,
   LOOT_TABLE,
   RANDOM_EVENTS,
+  HERO_ABILITIES,
   type RPGState,
 } from "./rpg-logic";
 
@@ -424,5 +425,120 @@ describe("applyRandomEvent", () => {
     const event = { text: "Damage!", effect: "damage" as const, value: 50 };
     applyRandomEvent(state, event);
     expect(state.partyHp).toBe(200);
+  });
+});
+
+describe("ability system", () => {
+  it("createHero initializes abilityCharge to 0", () => {
+    const hero = createHero("Warrior", "#ff0000");
+    expect(hero.abilityCharge).toBe(0);
+  });
+
+  it("correct answer increments ability charge", () => {
+    const heroes = [createHero("Warrior", "#ff0000")];
+    const enemy = createEnemy("Boss", "little-kids");
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.heroes[0].abilityCharge).toBe(1);
+  });
+
+  it("ability triggers when charge reaches maxCharges", () => {
+    const heroes = [createHero("Warrior", "#ff0000")];
+    heroes[0].abilityCharge = 1;
+    const enemy = createEnemy("Boss", "big-kids"); // hp=150
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.abilityTriggered).toBeDefined();
+    expect(next.abilityTriggered!.ability.name).toBe("Sword of the Spirit");
+    // Warrior does 2x damage: 25 * 2 = 50
+    expect(next.abilityTriggered!.damageDealt).toBe(50);
+    expect(next.enemy.hp).toBe(150 - 50);
+    // Charge resets
+    expect(next.heroes[0].abilityCharge).toBe(0);
+  });
+
+  it("wrong answer does not charge ability", () => {
+    const heroes = [createHero("Warrior", "#ff0000")];
+    const enemy = createEnemy("Boss", "little-kids");
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, false, 300);
+    expect(next.heroes[0].abilityCharge).toBe(0);
+  });
+
+  it("Healer ability heals party and attacks enemy", () => {
+    const heroes = [createHero("Healer", "#00ff00")];
+    heroes[0].abilityCharge = 1;
+    const enemy = createEnemy("Boss", "little-kids"); // hp=80
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true, 200, 300);
+    expect(next.abilityTriggered).toBeDefined();
+    expect(next.abilityTriggered!.ability.name).toBe("Living Water");
+    // Normal attack damage
+    expect(next.abilityTriggered!.damageDealt).toBe(15);
+    expect(next.enemy.hp).toBe(80 - 15);
+    // Heal: 30% of maxPartyHp (300) = 90
+    expect(next.abilityTriggered!.healAmount).toBe(90);
+    expect(next.partyHpDelta).toBe(90);
+  });
+
+  it("Ranger multi-hit ability deals correct total damage", () => {
+    const heroes = [createHero("Ranger", "#795548")];
+    heroes[0].abilityCharge = 1;
+    const enemy = createEnemy("Boss", "big-kids"); // hp=150
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.abilityTriggered).toBeDefined();
+    // 3 hits * floor(30 * 0.6) = 3 * 18 = 54
+    expect(next.abilityTriggered!.damageDealt).toBe(54);
+    expect(next.enemy.hp).toBe(150 - 54);
+  });
+
+  it("Rogue ability deals 3x damage", () => {
+    const heroes = [createHero("Rogue", "#8E24AA")];
+    heroes[0].abilityCharge = 1;
+    const enemy = createEnemy("Boss", "big-kids"); // hp=150
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.abilityTriggered).toBeDefined();
+    // 32 * 3 = 96
+    expect(next.abilityTriggered!.damageDealt).toBe(96);
+    expect(next.enemy.hp).toBe(150 - 96);
+  });
+
+  it("hero without ability entry uses normal attack", () => {
+    const heroes = [createHero("Bard", "#ff00ff")];
+    const enemy = createEnemy("Boss", "little-kids");
+    const state = createBattleState(heroes, enemy);
+
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.abilityTriggered).toBeUndefined();
+    expect(next.enemy.hp).toBe(80 - 20); // default attack
+  });
+
+  it("HERO_ABILITIES has entries for all standard heroes", () => {
+    const names = ["Warrior", "Mage", "Healer", "Ranger", "Paladin", "Rogue"];
+    for (const name of names) {
+      expect(HERO_ABILITIES[name]).toBeDefined();
+      expect(HERO_ABILITIES[name].maxCharges).toBeGreaterThan(0);
+    }
+  });
+
+  it("ability that kills enemy ends battle in victory", () => {
+    const heroes = [createHero("Rogue", "#8E24AA")];
+    heroes[0].abilityCharge = 1;
+    const enemy = createEnemy("Boss", "little-kids"); // hp=80
+    const state = createBattleState(heroes, enemy);
+
+    // Rogue 3x: 32*3 = 96 damage, enemy has 80 HP
+    const next = resolvePlayerAnswer(state, true);
+    expect(next.enemy.hp).toBe(0);
+    expect(next.battleOver).toBe(true);
+    expect(next.victory).toBe(true);
   });
 });

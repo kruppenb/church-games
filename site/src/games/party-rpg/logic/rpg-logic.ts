@@ -8,6 +8,7 @@ export interface Hero {
   hp: number;
   attack: number;
   color: string;
+  abilityCharge: number;
 }
 
 export interface Enemy {
@@ -64,6 +65,70 @@ export interface RPGState {
   loot: LootItem[];
 }
 
+// --- Ability system ---
+
+export interface HeroAbility {
+  name: string;
+  description: string;
+  maxCharges: number;
+  effectType: "damage_mult" | "heal_party" | "multi_hit" | "shield_and_hit";
+  effectValue: number;
+  effectSecondary?: number;
+}
+
+export const HERO_ABILITIES: Record<string, HeroAbility> = {
+  Warrior: {
+    name: "Sword of the Spirit",
+    description: "Spirit-empowered strike",
+    maxCharges: 2,
+    effectType: "damage_mult",
+    effectValue: 2,
+  },
+  Mage: {
+    name: "Pillar of Fire",
+    description: "Calls down holy fire",
+    maxCharges: 2,
+    effectType: "damage_mult",
+    effectValue: 2.5,
+  },
+  Healer: {
+    name: "Living Water",
+    description: "Heals the party",
+    maxCharges: 2,
+    effectType: "heal_party",
+    effectValue: 0.3,
+  },
+  Ranger: {
+    name: "Arrows of Light",
+    description: "Volley of radiant arrows",
+    maxCharges: 2,
+    effectType: "multi_hit",
+    effectValue: 3,
+    effectSecondary: 0.6,
+  },
+  Paladin: {
+    name: "Armor of God",
+    description: "Divine shield and strike",
+    maxCharges: 2,
+    effectType: "shield_and_hit",
+    effectValue: 1.5,
+  },
+  Rogue: {
+    name: "David's Sling",
+    description: "Precise critical strike",
+    maxCharges: 2,
+    effectType: "damage_mult",
+    effectValue: 3,
+  },
+};
+
+export interface AbilityResult {
+  heroIndex: number;
+  ability: HeroAbility;
+  damageDealt: number;
+  healAmount?: number;
+}
+
 const HERO_DEFAULTS: Record<string, { hp: number; attack: number }> = {
   Warrior: { hp: 120, attack: 25 },
   Mage: { hp: 80, attack: 35 },
@@ -82,6 +147,7 @@ export function createHero(name: string, color: string): Hero {
     hp: defaults.hp,
     attack: defaults.attack,
     color,
+    abilityCharge: 0,
   };
 }
 
@@ -192,7 +258,7 @@ export function applyRandomEvent(state: RPGState, event: RandomEvent): RPGState 
 
 /**
  * Resolve a player answer in battle.
- * - Correct: current hero attacks the enemy.
+ * - Correct: current hero attacks (or triggers ability if fully charged).
  * - Wrong: enemy attacks the shared party HP pool.
  * After resolution, advances currentHeroIndex to next living hero.
  * Returns a new BattleState (immutable).
@@ -201,16 +267,39 @@ export function resolvePlayerAnswer(
   state: BattleState,
   correct: boolean,
   partyHp?: number,
-): BattleState & { partyHpDelta?: number } {
+  maxPartyHp?: number,
+): BattleState & { partyHpDelta?: number; abilityTriggered?: AbilityResult } {
   const heroes = state.heroes.map((h) => ({ ...h }));
   const enemy = { ...state.enemy };
   let { currentHeroIndex } = state;
   let partyHpDelta: number | undefined;
+  let abilityTriggered: AbilityResult | undefined;
 
   if (correct) {
-    // Hero attacks enemy
     const hero = heroes[currentHeroIndex];
-    enemy.hp = Math.max(0, enemy.hp - hero.attack);
+    const ability = HERO_ABILITIES[hero.name];
+
+    // Charge ability
+    if (ability) {
+      hero.abilityCharge++;
+    }
+
+    // Check if ability is fully charged
+    if (ability && hero.abilityCharge >= ability.maxCharges) {
+      hero.abilityCharge = 0;
+      const result = applyAbilityEffect(hero, enemy, ability, partyHp, maxPartyHp);
+      enemy.hp = result.enemyHp;
+      partyHpDelta = result.partyHpDelta;
+      abilityTriggered = {
+        heroIndex: currentHeroIndex,
+        ability,
+        damageDealt: result.damageDealt,
+        healAmount: result.healAmount,
+      };
+    } else {
+      // Normal attack
+      enemy.hp = Math.max(0, enemy.hp - hero.attack);
+    }
   } else {
     if (partyHp !== undefined) {
       // Shared party HP mode: enemy attacks the pool
@@ -237,6 +326,7 @@ export function resolvePlayerAnswer(
     battleOver,
     victory,
     partyHpDelta,
+    abilityTriggered,
   };
 }
 
@@ -251,6 +341,47 @@ export function isQuestComplete(state: RPGState): boolean {
 }
 
 // --- Internal helpers ---
+
+function applyAbilityEffect(
+  hero: Hero,
+  enemy: Enemy,
+  ability: HeroAbility,
+  _partyHp?: number,
+  maxPartyHp?: number,
+): { enemyHp: number; damageDealt: number; partyHpDelta?: number; healAmount?: number } {
+  let damageDealt = 0;
+  let partyHpDelta: number | undefined;
+  let healAmount: number | undefined;
+
+  switch (ability.effectType) {
+    case "damage_mult":
+      damageDealt = Math.floor(hero.attack * ability.effectValue);
+      break;
+    case "heal_party":
+      damageDealt = hero.attack;
+      if (maxPartyHp !== undefined) {
+        healAmount = Math.floor(maxPartyHp * ability.effectValue);
+        partyHpDelta = healAmount;
+      }
+      break;
+    case "multi_hit": {
+      const hits = ability.effectValue;
+      const perHit = Math.floor(hero.attack * (ability.effectSecondary ?? 0.5));
+      damageDealt = perHit * hits;
+      break;
+    }
+    case "shield_and_hit":
+      damageDealt = Math.floor(hero.attack * ability.effectValue);
+      break;
+  }
+
+  return {
+    enemyHp: Math.max(0, enemy.hp - damageDealt),
+    damageDealt,
+    partyHpDelta,
+    healAmount,
+  };
+}
 
 function checkBattleOutcome(
   heroes: Hero[],

@@ -1,0 +1,623 @@
+/* ============================================================
+   Bible Millionaire — "Who Wants to Be a Millionaire" style game
+   ============================================================ */
+
+.millionaire-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* --- Intro / Complete shared --- */
+.millionaire-intro,
+.millionaire-complete {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  animation: fadeInUp 0.5s ease;
+}
+
+.millionaire-intro-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: var(--space-sm);
+  color: var(--color-gold);
+  text-shadow: 0 0 30px var(--color-gold-glow);
+}
+
+.millionaire-intro-lesson {
+  font-size: 1.3rem;
+  color: var(--color-primary);
+  margin-bottom: var(--space-sm);
+}
+
+.millionaire-intro-info {
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-xl);
+  font-size: 0.95rem;
+}
+
+.millionaire-error {
+  color: var(--color-error);
+  font-size: 1.1rem;
+  margin-bottom: var(--space-lg);
+}
+
+/* --- Game layout --- */
+.millionaire-game {
+  flex: 1;
+  display: flex;
+  gap: var(--space-lg);
+  animation: fadeIn 0.3s ease;
+}
+
+.millionaire-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.millionaire-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* --- HUD / Lifelines bar --- */
+.millionaire-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-card);
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.millionaire-lifelines {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.millionaire-lifeline-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.millionaire-lifeline-btn:not(:disabled):hover {
+  border-color: var(--color-gold);
+  background: rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 12px var(--color-gold-glow);
+  transform: scale(1.1);
+}
+
+.millionaire-lifeline-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.millionaire-lifeline-tooltip {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-family: var(--font-display);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.millionaire-lifeline-btn:hover .millionaire-lifeline-tooltip {
+  opacity: 1;
+}
+
+.millionaire-level-label {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--color-text-dim);
+}
+
+.millionaire-level-number {
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+/* --- Question area --- */
+.millionaire-question-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeInUp 0.35s ease;
+}
+
+.millionaire-question-text {
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  line-height: 1.5;
+  max-width: 600px;
+}
+
+/* --- Answer grid --- */
+.millionaire-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: var(--space-lg);
+}
+
+.millionaire-answer-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  text-align: left;
+  transition: all 0.2s ease;
+  min-height: 60px;
+  border: 2px solid transparent;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.millionaire-answer-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 60%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.millionaire-answer-btn:not(:disabled):hover {
+  transform: translateY(-3px) scale(1.02);
+  filter: brightness(1.1);
+}
+
+.millionaire-answer-btn:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+.millionaire-answer-btn:nth-child(1) {
+  background: var(--answer-a);
+  box-shadow: 0 4px 16px var(--answer-a-glow);
+}
+.millionaire-answer-btn:nth-child(2) {
+  background: var(--answer-b);
+  box-shadow: 0 4px 16px var(--answer-b-glow);
+}
+.millionaire-answer-btn:nth-child(3) {
+  background: var(--answer-c);
+  box-shadow: 0 4px 16px var(--answer-c-glow);
+}
+.millionaire-answer-btn:nth-child(4) {
+  background: var(--answer-d);
+  box-shadow: 0 4px 16px var(--answer-d-glow);
+}
+
+.millionaire-answer-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.millionaire-answer-text {
+  flex: 1;
+}
+
+/* Answer states */
+.millionaire-answer-selected {
+  border-color: var(--color-gold) !important;
+  box-shadow: 0 0 20px var(--color-gold-glow) !important;
+  animation: millionaire-pulse-border 0.3s ease;
+}
+
+.millionaire-answer-correct {
+  border-color: var(--color-success) !important;
+  box-shadow: 0 0 25px var(--color-success-glow) !important;
+  background: var(--color-success) !important;
+}
+
+.millionaire-answer-wrong {
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 25px var(--color-error-glow) !important;
+  opacity: 0.7;
+}
+
+.millionaire-answer-removed {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+  transition: all 0.5s ease;
+}
+
+@keyframes millionaire-pulse-border {
+  0% {
+    border-width: 2px;
+  }
+  50% {
+    border-width: 4px;
+  }
+  100% {
+    border-width: 2px;
+  }
+}
+
+/* --- Hint bubble (Peek at Scroll) --- */
+.millionaire-hint-bubble {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-gold);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  color: var(--color-gold);
+  font-style: italic;
+  font-weight: 400;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 0 20px var(--color-gold-glow);
+  animation: millionaire-slide-in 0.4s ease;
+  margin-bottom: var(--space-lg);
+}
+
+.millionaire-hint-icon {
+  margin-right: var(--space-sm);
+}
+
+@keyframes millionaire-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* --- Decision overlay (Keep Building / Walk Away) --- */
+.millionaire-decision {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-2xl);
+  animation: fadeInUp 0.4s ease;
+  text-align: center;
+}
+
+.millionaire-decision-title {
+  font-size: 1.5rem;
+  color: var(--color-gold);
+  text-shadow: 0 0 15px var(--color-gold-glow);
+}
+
+.millionaire-decision-piece {
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+}
+
+.millionaire-decision-buttons {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* --- Temple visual --- */
+.millionaire-temple {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+  min-height: 300px;
+  position: relative;
+  overflow: hidden;
+}
+
+.millionaire-temple-title {
+  position: absolute;
+  top: var(--space-sm);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.millionaire-temple-piece {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-align: center;
+  animation: millionaire-piece-appear 0.5s ease forwards;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+  transition: all 0.3s ease;
+}
+
+/* Different piece colors by type */
+.millionaire-piece-foundation {
+  background: linear-gradient(135deg, #5d4037, #795548);
+  min-height: 20px;
+}
+.millionaire-piece-wall {
+  background: linear-gradient(135deg, #8d6e63, #a1887f);
+  min-height: 18px;
+}
+.millionaire-piece-arch {
+  background: linear-gradient(135deg, #6d4c41, #8d6e63);
+  min-height: 18px;
+  border-radius: 6px 6px 3px 3px;
+}
+.millionaire-piece-pillar {
+  background: linear-gradient(135deg, #bcaaa4, #d7ccc8);
+  color: var(--color-bg-deep);
+  min-height: 16px;
+  width: 60%;
+}
+.millionaire-piece-roof {
+  background: linear-gradient(135deg, #c62828, #e53935);
+  min-height: 16px;
+}
+.millionaire-piece-steeple {
+  background: linear-gradient(135deg, #ad1457, #c62828);
+  min-height: 14px;
+  width: 50%;
+}
+.millionaire-piece-detail {
+  background: linear-gradient(135deg, #1565c0, #1976d2);
+  min-height: 16px;
+}
+.millionaire-piece-cross {
+  background: linear-gradient(135deg, var(--color-gold), #ffaa00);
+  color: #1a1a00;
+  min-height: 22px;
+  width: 40%;
+  font-weight: 700;
+  box-shadow: 0 0 12px var(--color-gold-glow);
+}
+.millionaire-piece-ground {
+  background: linear-gradient(135deg, #33691e, #558b2f);
+  min-height: 16px;
+}
+
+.millionaire-piece-milestone {
+  border: 1px solid var(--color-gold);
+  box-shadow: 0 0 8px var(--color-gold-glow);
+}
+
+@keyframes millionaire-piece-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scaleY(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+/* --- Temple glow for walk-away / completion --- */
+.millionaire-temple-glow {
+  box-shadow: 0 0 30px var(--color-gold-glow), inset 0 0 20px rgba(255, 215, 0, 0.05);
+  border-color: var(--color-gold);
+}
+
+/* --- Complete screen --- */
+.millionaire-complete-title {
+  font-size: 2.5rem;
+  color: var(--color-gold);
+  text-shadow: 0 0 30px var(--color-gold-glow);
+  margin-bottom: var(--space-sm);
+}
+
+.millionaire-complete-subtitle {
+  font-size: 1.2rem;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-lg);
+}
+
+.millionaire-complete-temple-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-sm);
+}
+
+.millionaire-complete-temple {
+  width: 200px;
+  margin-bottom: var(--space-lg);
+}
+
+.millionaire-complete-stars {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.millionaire-star {
+  font-size: 3rem;
+  transition: all 0.3s ease;
+}
+
+.millionaire-star-earned {
+  color: var(--color-gold);
+  filter: drop-shadow(0 0 10px var(--color-gold-glow));
+  animation: starPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.millionaire-star-empty {
+  color: rgba(255, 255, 255, 0.1);
+}
+
+.millionaire-complete-actions {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* --- Wrong answer feedback for little-kids (inline, not game-ending) --- */
+.millionaire-wrong-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  animation: fadeInUp 0.3s ease;
+  text-align: center;
+}
+
+.millionaire-wrong-icon {
+  font-size: 2.5rem;
+  color: var(--color-error);
+}
+
+.millionaire-wrong-text {
+  font-size: 1.2rem;
+  color: var(--color-error);
+}
+
+.millionaire-wrong-explanation {
+  font-size: 0.95rem;
+  color: var(--color-text-dim);
+  max-width: 400px;
+}
+
+.millionaire-wrong-dropped {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* --- Timer (big kids only) --- */
+.millionaire-timer-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 768px) {
+  .millionaire-game {
+    flex-direction: column;
+  }
+
+  .millionaire-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .millionaire-temple {
+    flex-direction: row;
+    min-height: auto;
+    height: 80px;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .millionaire-temple-piece {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    min-height: auto;
+    min-width: 14px;
+    width: auto;
+    padding: 4px 2px;
+    font-size: 0.5rem;
+  }
+
+  .millionaire-piece-pillar,
+  .millionaire-piece-steeple,
+  .millionaire-piece-cross {
+    width: auto;
+  }
+
+  .millionaire-temple-title {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .millionaire-answers {
+    grid-template-columns: 1fr;
+  }
+
+  .millionaire-answer-btn {
+    font-size: 0.95rem;
+    padding: 14px 16px;
+  }
+
+  .millionaire-hud {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .millionaire-container {
+    padding: var(--space-md);
+  }
+
+  .millionaire-complete-temple {
+    width: 160px;
+  }
+}
