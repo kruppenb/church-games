@@ -22,8 +22,8 @@ import {
 
 /** How often the player auto-fires base projectile (ms). */
 const AUTO_ATTACK_INTERVAL = 500;
-/** Time between questions (ms). */
-const QUESTION_INTERVAL = 18000;
+/** Time between questions (seconds of gameplay, pauses during overlays). */
+const QUESTION_INTERVAL_SEC = 18;
 /** Enemy base speed (px/s). */
 const ENEMY_BASE_SPEED = 50;
 /** Projectile speed (px/s). */
@@ -90,8 +90,10 @@ export class SurvivorsScene extends Phaser.Scene {
   // Timers
   private spawnTimer!: Phaser.Time.TimerEvent;
   private attackTimer!: Phaser.Time.TimerEvent;
-  private questionTimer!: Phaser.Time.TimerEvent;
   private elapsedTimer!: Phaser.Time.TimerEvent;
+
+  // Question timing — based on game elapsed seconds (pauses during overlays)
+  private nextQuestionAt = QUESTION_INTERVAL_SEC;
 
   // Passive weapon timers
   private fireRingTimer: Phaser.Time.TimerEvent | null = null;
@@ -144,6 +146,7 @@ export class SurvivorsScene extends Phaser.Scene {
     this.axeTimer = null;
     this.beamTimer = null;
     this.orbitOrbs = [];
+    this.nextQuestionAt = QUESTION_INTERVAL_SEC;
 
     const { width, height } = this.scale;
 
@@ -206,14 +209,6 @@ export class SurvivorsScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Question timer
-    this.questionTimer = this.time.addEvent({
-      delay: QUESTION_INTERVAL,
-      callback: this.triggerQuestion,
-      callbackScope: this,
-      loop: true,
-    });
-
     // Elapsed timer
     this.elapsedTimer = this.time.addEvent({
       delay: 1000,
@@ -259,9 +254,14 @@ export class SurvivorsScene extends Phaser.Scene {
     // Update orbit weapon (positions always, collisions only when not overlaying)
     this.updateOrbitWeapon();
 
+    // Check if it's time for a question (based on game elapsed time, not wall clock)
+    if (!this.isShowingOverlay && this.state.elapsedSeconds >= this.nextQuestionAt) {
+      this.triggerQuestion();
+    }
+
     // Move enemies toward player
     if (!this.isShowingOverlay) {
-      const speedScale = this.state.enemySpeedMultiplier * (1 + this.waveNumber * 0.08);
+      const speedScale = this.state.enemySpeedMultiplier * (1 + this.waveNumber * 0.033);
       for (const enemy of this.enemies.getChildren()) {
         const go = enemy as Phaser.GameObjects.Arc;
         const body = go.body as Phaser.Physics.Arcade.Body;
@@ -337,7 +337,7 @@ export class SurvivorsScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     // Spawn count scales with wave number + wrong-answer multiplier
-    const count = Math.max(1, Math.round(1 + this.waveNumber * 0.3 + (this.state.enemySpawnMultiplier - 1) * 0.5));
+    const count = Math.max(1, Math.round(1 + this.waveNumber * 0.12 + (this.state.enemySpawnMultiplier - 1) * 0.5));
 
     for (let i = 0; i < count; i++) {
       const side = Phaser.Math.Between(0, 3);
@@ -450,6 +450,9 @@ export class SurvivorsScene extends Phaser.Scene {
     this.currentQuestion = this.questionPool.next();
     if (!this.currentQuestion) return;
 
+    // Prevent double-fire: push next question far out until resolved
+    this.nextQuestionAt = Infinity;
+
     this.isShowingOverlay = true;
     this.waveNumber++;
 
@@ -535,19 +538,17 @@ export class SurvivorsScene extends Phaser.Scene {
         this.showWeaponSelection();
       });
     } else {
-      const feedback = this.add.text(width / 2, height / 2 + 130, "Wrong! Enemies grow stronger...", {
-        fontSize: "20px", fontFamily: "sans-serif", color: "#e53935", fontStyle: "bold",
+      const feedback = this.add.text(width / 2, height / 2 + 130, "Wrong!", {
+        fontSize: "28px", fontFamily: "sans-serif", color: "#e53935", fontStyle: "bold",
       }).setOrigin(0.5).setDepth(201);
       container.add(feedback);
 
-      this.cameras.main.shake(200, 0.01);
-
-      this.time.delayedCall(1000, () => {
+      this.time.delayedCall(800, () => {
         container.destroy();
         this.questionPanel = null;
         this.isShowingOverlay = false;
-        // Ramp up difficulty — tighten spawn interval
         this.updateSpawnRate();
+        this.nextQuestionAt = this.state.elapsedSeconds + QUESTION_INTERVAL_SEC;
       });
     }
   }
@@ -646,8 +647,8 @@ export class SurvivorsScene extends Phaser.Scene {
     this.weaponPanel = null;
     this.isShowingOverlay = false;
     this.updateHUD();
-    // Scale enemies after correct answer too
     this.updateSpawnRate();
+    this.nextQuestionAt = this.state.elapsedSeconds + QUESTION_INTERVAL_SEC;
   }
 
   // ---- Max HP selection (when all weapons are maxed) ----
@@ -691,6 +692,7 @@ export class SurvivorsScene extends Phaser.Scene {
       this.isShowingOverlay = false;
       this.updateHUD();
       this.updateSpawnRate();
+      this.nextQuestionAt = this.state.elapsedSeconds + QUESTION_INTERVAL_SEC;
     });
 
     this.weaponPanel = container;
@@ -1091,7 +1093,7 @@ export class SurvivorsScene extends Phaser.Scene {
 
   private updateSpawnRate(): void {
     // Base gets faster with waves, then wrong-answer multiplier on top
-    const waveScale = 1 + this.waveNumber * 0.15;
+    const waveScale = 1 + this.waveNumber * 0.06;
     const newDelay = Math.max(400, BASE_SPAWN_INTERVAL / (waveScale * this.state.enemySpawnMultiplier));
     this.spawnTimer.reset({
       delay: newDelay,
@@ -1113,7 +1115,6 @@ export class SurvivorsScene extends Phaser.Scene {
     // Stop all timers
     this.spawnTimer.remove();
     this.attackTimer.remove();
-    this.questionTimer.remove();
     this.elapsedTimer.remove();
     if (this.fireRingTimer) this.fireRingTimer.remove();
     if (this.lightningTimer) this.lightningTimer.remove();

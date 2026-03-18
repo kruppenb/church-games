@@ -43,36 +43,28 @@ describe("survivors-logic", () => {
       expect(next.questionsCorrect).toBe(1);
       expect(next.questionsTotal).toBe(1);
       expect(next.score).toBe(200);
-      expect(next.enemySpeedMultiplier).toBeCloseTo(1.06);
-      expect(next.enemySpawnMultiplier).toBeCloseTo(1.1);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.025);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.04);
     });
 
-    it("wrong answer applies base scaling plus additional penalty", () => {
+    it("wrong answer applies same base scaling with no extra penalty", () => {
       const state = createInitialState();
       const next = answerQuestion(state, false);
 
       expect(next.questionsCorrect).toBe(0);
       expect(next.questionsTotal).toBe(1);
-      expect(next.enemySpeedMultiplier).toBeCloseTo(1.06 * 1.15);
-      expect(next.enemySpawnMultiplier).toBeCloseTo(1.1 * 1.5);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.025);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.04);
     });
 
-    it("correct answers stack base scaling multiplicatively", () => {
+    it("stacks base scaling multiplicatively across waves", () => {
       let state = createInitialState();
       state = answerQuestion(state, true);
+      state = answerQuestion(state, false);
       state = answerQuestion(state, true);
 
-      expect(state.enemySpeedMultiplier).toBeCloseTo(1.06 ** 2);
-      expect(state.enemySpawnMultiplier).toBeCloseTo(1.1 ** 2);
-    });
-
-    it("stacks wrong-answer penalties multiplicatively", () => {
-      let state = createInitialState();
-      state = answerQuestion(state, false);
-      state = answerQuestion(state, false);
-
-      expect(state.enemySpeedMultiplier).toBeCloseTo((1.06 * 1.15) ** 2);
-      expect(state.enemySpawnMultiplier).toBeCloseTo((1.1 * 1.5) ** 2);
+      expect(state.enemySpeedMultiplier).toBeCloseTo(1.025 ** 3);
+      expect(state.enemySpawnMultiplier).toBeCloseTo(1.04 ** 3);
     });
   });
 
@@ -229,27 +221,29 @@ describe("survivors-logic", () => {
   });
 
   describe("calculateStars", () => {
-    it("returns 3 stars for >= 80% correct and survived", () => {
+    it("returns 3 stars for >= 60% correct and survived", () => {
       let state = createInitialState();
       state = answerQuestion(state, true);
       state = answerQuestion(state, true);
       state = answerQuestion(state, true);
-      state = answerQuestion(state, true);
+      state = answerQuestion(state, false);
       state = answerQuestion(state, false);
       state = { ...state, victory: true };
 
+      // 3/5 = 60% — exactly the threshold
       expect(calculateStars(state)).toBe(3);
     });
 
-    it("returns 2 stars for >= 50% but < 80%", () => {
+    it("returns 2 stars for >= 30% but < 60%", () => {
       let state = createInitialState();
       state = answerQuestion(state, true);
       state = answerQuestion(state, true);
-      state = answerQuestion(state, true);
+      state = answerQuestion(state, false);
       state = answerQuestion(state, false);
       state = answerQuestion(state, false);
       state = { ...state, victory: true };
 
+      // 2/5 = 40% — between 30% and 60%
       expect(calculateStars(state)).toBe(2);
     });
 
