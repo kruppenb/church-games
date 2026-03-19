@@ -4,6 +4,7 @@ import {
   getWaves,
   canAfford,
   canUpgrade,
+  getUpgradeCost,
   placeTower,
   upgradeTower,
   answerQuestion,
@@ -16,6 +17,8 @@ import {
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
+  MAX_TOWER_LEVEL,
+  WAVE_COUNT,
   type GameState,
 } from "./tower-logic";
 
@@ -31,7 +34,7 @@ describe("tower-logic", () => {
       expect(state.villageHp).toBe(10);
       expect(state.maxVillageHp).toBe(10);
       expect(state.wave).toBe(0);
-      expect(state.totalWaves).toBe(5);
+      expect(state.totalWaves).toBe(WAVE_COUNT);
       expect(state.towers).toEqual([]);
       expect(state.questionsCorrect).toBe(0);
       expect(state.questionsTotal).toBe(0);
@@ -44,7 +47,7 @@ describe("tower-logic", () => {
       const state = createInitialState("big-kids");
 
       expect(state.coins).toBe(150);
-      expect(state.totalWaves).toBe(6);
+      expect(state.totalWaves).toBe(WAVE_COUNT);
       expect(state.difficulty).toBe("big-kids");
     });
   });
@@ -53,36 +56,47 @@ describe("tower-logic", () => {
   // getWaves
   // -----------------------------------------------------------------------
   describe("getWaves", () => {
-    it("returns 5 waves for little-kids", () => {
+    it("returns 30 waves for little-kids", () => {
       const waves = getWaves("little-kids");
-      expect(waves).toHaveLength(5);
+      expect(waves).toHaveLength(WAVE_COUNT);
     });
 
-    it("returns 6 waves for big-kids", () => {
+    it("returns 30 waves for big-kids", () => {
       const waves = getWaves("big-kids");
-      expect(waves).toHaveLength(6);
+      expect(waves).toHaveLength(WAVE_COUNT);
     });
 
-    it("wave 1 little-kids has 3 worry enemies", () => {
+    it("wave 1 little-kids has only worry enemies", () => {
       const waves = getWaves("little-kids");
-      expect(waves[0].enemies).toEqual(["worry", "worry", "worry"]);
+      expect(waves[0].enemies.every((e) => e === "worry")).toBe(true);
+      expect(waves[0].enemies.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("wave 1 big-kids has 4 worry enemies", () => {
-      const waves = getWaves("big-kids");
-      expect(waves[0].enemies).toEqual(["worry", "worry", "worry", "worry"]);
+    it("big-kids wave 1 has more enemies than little-kids wave 1", () => {
+      const lk = getWaves("little-kids");
+      const bk = getWaves("big-kids");
+      expect(bk[0].enemies.length).toBeGreaterThanOrEqual(lk[0].enemies.length);
     });
 
-    it("last wave of little-kids includes fear enemies", () => {
+    it("later waves include doubt and fear enemies", () => {
+      const waves = getWaves("little-kids");
+      // By wave 10 there should be doubts
+      expect(waves[9].enemies).toContain("doubt");
+      // By wave 15 there should be fears
+      expect(waves[14].enemies).toContain("fear");
+    });
+
+    it("last wave includes all enemy types", () => {
       const waves = getWaves("little-kids");
       const lastWave = waves[waves.length - 1];
+      expect(lastWave.enemies).toContain("worry");
+      expect(lastWave.enemies).toContain("doubt");
       expect(lastWave.enemies).toContain("fear");
     });
 
-    it("last wave of big-kids includes fear enemies", () => {
-      const waves = getWaves("big-kids");
-      const lastWave = waves[waves.length - 1];
-      expect(lastWave.enemies).toContain("fear");
+    it("enemy count increases across waves", () => {
+      const waves = getWaves("little-kids");
+      expect(waves[29].enemies.length).toBeGreaterThan(waves[0].enemies.length);
     });
   });
 
@@ -171,6 +185,23 @@ describe("tower-logic", () => {
   });
 
   // -----------------------------------------------------------------------
+  // getUpgradeCost
+  // -----------------------------------------------------------------------
+  describe("getUpgradeCost", () => {
+    it("returns base cost for level 1 upgrade", () => {
+      expect(getUpgradeCost("prayer", 1)).toBe(75);
+      expect(getUpgradeCost("light", 1)).toBe(75);
+      expect(getUpgradeCost("bell", 1)).toBe(75);
+    });
+
+    it("scales cost with level", () => {
+      expect(getUpgradeCost("prayer", 2)).toBe(100); // 75 + 25
+      expect(getUpgradeCost("prayer", 3)).toBe(125); // 75 + 50
+      expect(getUpgradeCost("prayer", 4)).toBe(150); // 75 + 75
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // canUpgrade / upgradeTower
   // -----------------------------------------------------------------------
   describe("canUpgrade", () => {
@@ -180,10 +211,13 @@ describe("tower-logic", () => {
       expect(canUpgrade(state, 1)).toBe(true); // upgrade costs 75
     });
 
-    it("returns false when tower is already level 2", () => {
-      let state = createInitialState("little-kids");
+    it("returns false when tower is at max level", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
       state = placeTower(state, "prayer", 0);
-      state = upgradeTower(state, 1);
+      for (let i = 0; i < MAX_TOWER_LEVEL - 1; i++) {
+        state = upgradeTower(state, 1);
+      }
+      expect(state.towers[0].level).toBe(MAX_TOWER_LEVEL);
       expect(canUpgrade(state, 1)).toBe(false);
     });
 
@@ -209,14 +243,34 @@ describe("tower-logic", () => {
       expect(state.coins).toBe(50);
     });
 
-    it("does not upgrade past level 2", () => {
-      let state = createInitialState("little-kids");
+    it("can upgrade to max level with enough coins", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
       state = placeTower(state, "prayer", 0);
-      state = upgradeTower(state, 1);
-      const next = upgradeTower(state, 1);
+      for (let i = 0; i < MAX_TOWER_LEVEL - 1; i++) {
+        state = upgradeTower(state, 1);
+      }
+      expect(state.towers[0].level).toBe(MAX_TOWER_LEVEL);
+    });
 
-      expect(next.towers[0].level).toBe(2);
-      expect(next.coins).toBe(state.coins); // no change
+    it("does not upgrade past max level", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "prayer", 0);
+      for (let i = 0; i < MAX_TOWER_LEVEL; i++) {
+        state = upgradeTower(state, 1);
+      }
+      expect(state.towers[0].level).toBe(MAX_TOWER_LEVEL);
+    });
+
+    it("upgrade cost increases with level", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "prayer", 0);
+      const coinsAfterPlace = state.coins;
+
+      state = upgradeTower(state, 1); // level 1→2, costs 75
+      expect(state.coins).toBe(coinsAfterPlace - 75);
+
+      state = upgradeTower(state, 1); // level 2→3, costs 100
+      expect(state.coins).toBe(coinsAfterPlace - 75 - 100);
     });
 
     it("does not upgrade when insufficient coins", () => {
@@ -436,8 +490,8 @@ describe("tower-logic", () => {
     it("transitions to victory phase on last wave", () => {
       const state: GameState = {
         ...createInitialState("big-kids"),
-        wave: 6,
-        totalWaves: 6,
+        wave: WAVE_COUNT,
+        totalWaves: WAVE_COUNT,
         phase: "wave",
       };
       const next = completeWave(state);
@@ -447,8 +501,8 @@ describe("tower-logic", () => {
     it("transitions to victory for little-kids last wave", () => {
       const state: GameState = {
         ...createInitialState("little-kids"),
-        wave: 5,
-        totalWaves: 5,
+        wave: WAVE_COUNT,
+        totalWaves: WAVE_COUNT,
         phase: "wave",
       };
       const next = completeWave(state);
@@ -543,37 +597,50 @@ describe("tower-logic", () => {
       expect(types).toContain("bell");
     });
 
-    it("prayer tower has correct stats", () => {
+    it("prayer tower has correct base stats", () => {
       const prayer = TOWER_DEFS.prayer;
       expect(prayer.cost).toBe(75);
-      expect(prayer.range).toEqual([100, 140]);
-      expect(prayer.damage).toEqual([1, 1]);
-      expect(prayer.attackSpeed).toEqual([3000, 2000]);
+      expect(prayer.range).toHaveLength(MAX_TOWER_LEVEL);
+      expect(prayer.range[0]).toBe(100);
+      expect(prayer.damage).toHaveLength(MAX_TOWER_LEVEL);
+      expect(prayer.attackSpeed).toHaveLength(MAX_TOWER_LEVEL);
       expect(prayer.upgradeCost).toBe(75);
       expect(prayer.color).toBe(0x4488ff);
     });
 
-    it("light tower has correct stats", () => {
+    it("light tower has correct base stats", () => {
       const light = TOWER_DEFS.light;
       expect(light.cost).toBe(100);
-      expect(light.range).toEqual([120, 120]);
-      expect(light.damage).toEqual([2, 3]);
-      expect(light.attackSpeed).toEqual([1500, 1000]);
+      expect(light.range).toHaveLength(MAX_TOWER_LEVEL);
+      expect(light.damage[0]).toBe(2);
+      expect(light.damage[1]).toBe(3);
     });
 
-    it("bell tower has correct stats", () => {
+    it("bell tower has correct base stats", () => {
       const bell = TOWER_DEFS.bell;
       expect(bell.cost).toBe(125);
-      expect(bell.range).toEqual([80, 100]);
-      expect(bell.damage).toEqual([1, 2]);
-      expect(bell.attackSpeed).toEqual([3000, 2500]);
+      expect(bell.range).toHaveLength(MAX_TOWER_LEVEL);
+      expect(bell.damage[0]).toBe(1);
+      expect(bell.damage[1]).toBe(2);
     });
 
-    it("all towers have range arrays of length 2", () => {
+    it("all towers have stat arrays of length MAX_TOWER_LEVEL", () => {
       for (const def of Object.values(TOWER_DEFS)) {
-        expect(def.range).toHaveLength(2);
-        expect(def.damage).toHaveLength(2);
-        expect(def.attackSpeed).toHaveLength(2);
+        expect(def.range).toHaveLength(MAX_TOWER_LEVEL);
+        expect(def.damage).toHaveLength(MAX_TOWER_LEVEL);
+        expect(def.attackSpeed).toHaveLength(MAX_TOWER_LEVEL);
+      }
+    });
+
+    it("tower stats improve with level", () => {
+      for (const def of Object.values(TOWER_DEFS)) {
+        // Higher levels should have equal or better range
+        for (let i = 1; i < MAX_TOWER_LEVEL; i++) {
+          expect(def.range[i]).toBeGreaterThanOrEqual(def.range[i - 1]);
+          expect(def.damage[i]).toBeGreaterThanOrEqual(def.damage[i - 1]);
+          // Lower attack speed = faster = better
+          expect(def.attackSpeed[i]).toBeLessThanOrEqual(def.attackSpeed[i - 1]);
+        }
       }
     });
   });
@@ -619,9 +686,27 @@ describe("tower-logic", () => {
   // PRAYER_SLOW_FACTOR
   // -----------------------------------------------------------------------
   describe("PRAYER_SLOW_FACTOR", () => {
-    it("has correct slow percentages", () => {
+    it("has correct slow percentages for all levels", () => {
+      expect(PRAYER_SLOW_FACTOR[0]).toBe(0); // unused
       expect(PRAYER_SLOW_FACTOR[1]).toBe(0.4);
-      expect(PRAYER_SLOW_FACTOR[2]).toBe(0.6);
+      expect(PRAYER_SLOW_FACTOR).toHaveLength(MAX_TOWER_LEVEL + 1);
+      // Each level should slow more than the previous
+      for (let i = 2; i <= MAX_TOWER_LEVEL; i++) {
+        expect(PRAYER_SLOW_FACTOR[i]).toBeGreaterThan(PRAYER_SLOW_FACTOR[i - 1]);
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // MAX_TOWER_LEVEL / WAVE_COUNT
+  // -----------------------------------------------------------------------
+  describe("constants", () => {
+    it("MAX_TOWER_LEVEL is 5", () => {
+      expect(MAX_TOWER_LEVEL).toBe(5);
+    });
+
+    it("WAVE_COUNT is 30", () => {
+      expect(WAVE_COUNT).toBe(30);
     });
   });
 
@@ -702,20 +787,20 @@ describe("tower-logic", () => {
       expect(isVillageDestroyed(state)).toBe(true);
     });
 
-    it("upgrade after earning coins from questions", () => {
-      let state = createInitialState("big-kids"); // 150
-      state = placeTower(state, "prayer", 0); // -75 = 75
+    it("upgrade tower through multiple levels", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "light", 0);
 
-      // Can't upgrade yet (need 75 for upgrade)
-      expect(canUpgrade(state, 1)).toBe(true); // exactly 75
+      // Upgrade from 1 to MAX
+      for (let i = 1; i < MAX_TOWER_LEVEL; i++) {
+        expect(canUpgrade(state, 1)).toBe(true);
+        state = upgradeTower(state, 1);
+        expect(state.towers[0].level).toBe(i + 1);
+      }
 
-      state = upgradeTower(state, 1); // -75 = 0
-      expect(state.towers[0].level).toBe(2);
-      expect(state.coins).toBe(0);
-
-      // Earn more coins
-      state = answerQuestion(state, true); // +100 = 100
-      expect(state.coins).toBe(100);
+      // Can't upgrade further
+      expect(canUpgrade(state, 1)).toBe(false);
+      expect(state.towers[0].level).toBe(MAX_TOWER_LEVEL);
     });
   });
 });

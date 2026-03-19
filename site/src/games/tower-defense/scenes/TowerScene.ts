@@ -6,6 +6,7 @@ import {
   getWaves,
   canAfford,
   canUpgrade,
+  getUpgradeCost,
   placeTower,
   upgradeTower,
   answerQuestion,
@@ -18,6 +19,7 @@ import {
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
+  MAX_TOWER_LEVEL,
   type GameState,
   type TowerType,
   type EnemyType,
@@ -42,16 +44,29 @@ const PATH_WAYPOINTS = [
   { x: 800, y: 450 },
 ];
 
-/** Placement spot positions (offset from path). */
+/** Placement spot positions (offset from path). 16 spots for 30 waves. */
 const PLACEMENT_SPOTS = [
+  // First horizontal segment (y=300)
+  { x: 100, y: 360 },
   { x: 150, y: 250 },
+  // First turn (x=200)
+  { x: 140, y: 190 },
   { x: 250, y: 200 },
+  // Middle horizontal segment (y=150)
+  { x: 300, y: 210 },
   { x: 350, y: 100 },
+  { x: 400, y: 210 },
   { x: 450, y: 100 },
+  { x: 500, y: 210 },
+  // Second turn (x=600)
   { x: 550, y: 200 },
+  { x: 660, y: 220 },
   { x: 550, y: 350 },
-  { x: 650, y: 350 },
+  { x: 660, y: 340 },
+  // Final horizontal segment (y=450)
+  { x: 650, y: 400 },
   { x: 700, y: 500 },
+  { x: 750, y: 400 },
 ];
 
 const HUD_HEIGHT = 40;
@@ -457,7 +472,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.92,
+      0.95,
     );
     container.add(bg);
 
@@ -583,7 +598,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.92,
+      0.95,
     );
     container.add(bg);
 
@@ -626,7 +641,7 @@ export class TowerScene extends Phaser.Scene {
     }
 
     // Question text
-    const qText = this.add.text(GAME_W / 2, yOffset + 30, question.text, {
+    const qText = this.add.text(GAME_W / 2, yOffset + 20, question.text, {
       fontSize: "18px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -636,10 +651,10 @@ export class TowerScene extends Phaser.Scene {
     qText.setOrigin(0.5);
     container.add(qText);
 
-    // Answer buttons (2x2 grid)
+    // Answer buttons (2x2 grid) — positioned below question text dynamically
     const btnW = 320;
     const btnH = 50;
-    const startY = yOffset + 100;
+    const startY = Math.min(430, qText.y + qText.height / 2 + 25);
     const positions = [
       { x: GAME_W / 2 - btnW / 2 - 10, y: startY },
       { x: GAME_W / 2 + btnW / 2 + 10, y: startY },
@@ -703,7 +718,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.8,
+      0.95,
     );
     container.add(bg);
 
@@ -948,7 +963,7 @@ export class TowerScene extends Phaser.Scene {
     this.towerSelectionGroup = null;
     this.upgradeButton?.destroy();
 
-    if (tower.state.level >= 2) return;
+    if (tower.state.level >= MAX_TOWER_LEVEL) return;
 
     const container = this.add.container(0, 0);
     container.setDepth(90);
@@ -960,10 +975,12 @@ export class TowerScene extends Phaser.Scene {
     panelBg.setStrokeStyle(2, 0xaa44ff, 0.6);
     container.add(panelBg);
 
+    const upgCost = getUpgradeCost(tower.state.type, tower.state.level);
+
     const label = this.add.text(
       tower.x,
       tower.y - 58,
-      "Upgrade",
+      `Upgrade L${tower.state.level + 1}`,
       {
         fontSize: "13px",
         color: affordable ? "#ffffff" : "#666666",
@@ -977,7 +994,7 @@ export class TowerScene extends Phaser.Scene {
     const costLabel = this.add.text(
       tower.x,
       tower.y - 42,
-      `${def.upgradeCost} coins`,
+      `${upgCost} coins`,
       {
         fontSize: "11px",
         color: affordable ? "#ffdd00" : "#666666",
@@ -1201,14 +1218,20 @@ export class TowerScene extends Phaser.Scene {
     );
     hpBar.setDepth(22);
 
+    // Scale enemy stats with wave number so late waves stay challenging
+    const hpMultiplier = 1 + (this.gameState.wave - 1) * 0.1;
+    const speedMultiplier = 1 + (this.gameState.wave - 1) * 0.015;
+    const scaledHp = Math.round(def.hp * hpMultiplier);
+    const scaledSpeed = def.speed * speedMultiplier;
+
     const enemy: ActiveEnemy = {
       sprite,
       hpBar,
       hpBarBg,
       type,
-      hp: def.hp,
-      maxHp: def.hp,
-      speed: def.speed,
+      hp: scaledHp,
+      maxHp: scaledHp,
+      speed: scaledSpeed,
       waypointIndex: 1,
       slowFactor: 0,
       slowTimer: 0,
@@ -1544,7 +1567,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.92,
+      0.95,
     );
     container.add(bg);
 
@@ -1583,10 +1606,11 @@ export class TowerScene extends Phaser.Scene {
     starsText.setOrigin(0.5);
     container.add(starsText);
 
+    const wavesCleared = `Waves Cleared: ${this.gameState.wave}/${this.gameState.totalWaves}`;
     const statsText = this.add.text(
       GAME_W / 2,
-      290,
-      `Village HP: ${this.gameState.villageHp}/${this.gameState.maxVillageHp}\nQuestions: ${this.gameState.questionsCorrect}/${this.gameState.questionsTotal} correct\nTowers Built: ${this.gameState.towers.length}`,
+      280,
+      `${wavesCleared}\nVillage HP: ${this.gameState.villageHp}/${this.gameState.maxVillageHp}\nQuestions: ${this.gameState.questionsCorrect}/${this.gameState.questionsTotal} correct\nTowers Built: ${this.gameState.towers.length}`,
       {
         fontSize: "14px",
         color: "#cccccc",
@@ -1597,10 +1621,11 @@ export class TowerScene extends Phaser.Scene {
     statsText.setOrigin(0.5);
     container.add(statsText);
 
-    // Verse reminder
+    // Verse reminder — positioned dynamically below stats
+    const verseY = statsText.y + statsText.height / 2 + 20;
     const verseText = this.add.text(
       GAME_W / 2,
-      370,
+      verseY,
       `"${this.lesson.meta.verseText}"\n- ${this.lesson.meta.verseReference}`,
       {
         fontSize: "13px",
@@ -1614,10 +1639,11 @@ export class TowerScene extends Phaser.Scene {
     verseText.setOrigin(0.5);
     container.add(verseText);
 
-    // Play again button
-    const btnBg = this.add.rectangle(GAME_W / 2 - 100, 460, 150, 45, 0x44aa44, 1);
+    // Play again button — positioned below verse
+    const btnY = Math.min(520, verseText.y + verseText.height / 2 + 30);
+    const btnBg = this.add.rectangle(GAME_W / 2 - 100, btnY, 150, 45, 0x44aa44, 1);
     btnBg.setInteractive({ useHandCursor: true });
-    const btnText = this.add.text(GAME_W / 2 - 100, 460, "Play Again", {
+    const btnText = this.add.text(GAME_W / 2 - 100, btnY, "Play Again", {
       fontSize: "16px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1632,9 +1658,9 @@ export class TowerScene extends Phaser.Scene {
     });
 
     // Back button
-    const backBg = this.add.rectangle(GAME_W / 2 + 100, 460, 150, 45, 0x4466aa, 1);
+    const backBg = this.add.rectangle(GAME_W / 2 + 100, btnY, 150, 45, 0x4466aa, 1);
     backBg.setInteractive({ useHandCursor: true });
-    const backText = this.add.text(GAME_W / 2 + 100, 460, "Back", {
+    const backText = this.add.text(GAME_W / 2 + 100, btnY, "Back", {
       fontSize: "16px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1662,7 +1688,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.92,
+      0.95,
     );
     container.add(bg);
 

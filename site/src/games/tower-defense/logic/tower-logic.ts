@@ -9,10 +9,10 @@ export type EnemyType = "worry" | "doubt" | "fear";
 export interface TowerDef {
   type: TowerType;
   cost: number;
-  range: number[]; // [level1, level2]
-  damage: number[]; // [level1, level2]
-  attackSpeed: number[]; // ms between attacks [level1, level2]
-  upgradeCost: number;
+  range: number[]; // per-level stats (level 1 through MAX_TOWER_LEVEL)
+  damage: number[];
+  attackSpeed: number[]; // ms between attacks
+  upgradeCost: number; // base upgrade cost (scales with level)
   color: number;
   label: string;
 }
@@ -30,7 +30,7 @@ export interface EnemyDef {
 export interface TowerState {
   id: number;
   type: TowerType;
-  level: number; // 1 or 2
+  level: number; // 1 through MAX_TOWER_LEVEL
   spotIndex: number;
 }
 
@@ -56,13 +56,17 @@ export interface WaveConfig {
 // Constants
 // ---------------------------------------------------------------------------
 
+export const MAX_TOWER_LEVEL = 5;
+
+export const WAVE_COUNT = 30;
+
 export const TOWER_DEFS: Record<TowerType, TowerDef> = {
   prayer: {
     type: "prayer",
     cost: 75,
-    range: [100, 140],
-    damage: [1, 1],
-    attackSpeed: [3000, 2000], // slow aura tick rate
+    range: [100, 140, 170, 200, 230],
+    damage: [1, 1, 2, 2, 3],
+    attackSpeed: [3000, 2000, 1500, 1200, 800],
     upgradeCost: 75,
     color: 0x4488ff,
     label: "Prayer",
@@ -70,9 +74,9 @@ export const TOWER_DEFS: Record<TowerType, TowerDef> = {
   light: {
     type: "light",
     cost: 100,
-    range: [120, 120],
-    damage: [2, 3],
-    attackSpeed: [1500, 1000],
+    range: [120, 120, 140, 160, 180],
+    damage: [2, 3, 5, 7, 10],
+    attackSpeed: [1500, 1000, 800, 650, 500],
     upgradeCost: 75,
     color: 0xffdd00,
     label: "Light",
@@ -80,9 +84,9 @@ export const TOWER_DEFS: Record<TowerType, TowerDef> = {
   bell: {
     type: "bell",
     cost: 125,
-    range: [80, 100],
-    damage: [1, 2],
-    attackSpeed: [3000, 2500],
+    range: [80, 100, 120, 140, 160],
+    damage: [1, 2, 3, 5, 7],
+    attackSpeed: [3000, 2500, 2000, 1600, 1200],
     upgradeCost: 75,
     color: 0xaa44ff,
     label: "Bell",
@@ -119,7 +123,7 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
   },
 };
 
-export const PRAYER_SLOW_FACTOR = [0, 0.4, 0.6]; // level 0 (unused), level 1, level 2
+export const PRAYER_SLOW_FACTOR = [0, 0.4, 0.55, 0.65, 0.75, 0.82]; // index = level (0 unused)
 
 /** Starting coins by difficulty. */
 const STARTING_COINS: Record<"little-kids" | "big-kids", number> = {
@@ -128,80 +132,34 @@ const STARTING_COINS: Record<"little-kids" | "big-kids", number> = {
 };
 
 // ---------------------------------------------------------------------------
-// Wave definitions
+// Wave generation
 // ---------------------------------------------------------------------------
 
-const LITTLE_KIDS_WAVES: WaveConfig[] = [
-  { enemies: ["worry", "worry", "worry"] },
-  { enemies: ["worry", "worry", "worry", "worry", "worry"] },
-  {
-    enemies: ["worry", "worry", "worry", "worry", "doubt", "doubt"],
-  },
-  {
-    enemies: ["worry", "worry", "worry", "doubt", "doubt", "doubt", "doubt"],
-  },
-  {
-    enemies: [
-      "worry",
-      "worry",
-      "doubt",
-      "doubt",
-      "doubt",
-      "doubt",
-      "fear",
-      "fear",
-    ],
-  },
-];
+/** Generate 30 waves with progressive difficulty. */
+function generateWaves(difficulty: "little-kids" | "big-kids"): WaveConfig[] {
+  const waves: WaveConfig[] = [];
+  // Big-kids acts 2 waves ahead in enemy composition
+  const offset = difficulty === "big-kids" ? 2 : 0;
 
-const BIG_KIDS_WAVES: WaveConfig[] = [
-  { enemies: ["worry", "worry", "worry", "worry"] },
-  {
-    enemies: ["worry", "worry", "worry", "worry", "doubt", "doubt"],
-  },
-  {
-    enemies: ["worry", "worry", "worry", "doubt", "doubt", "doubt", "doubt"],
-  },
-  {
-    enemies: [
-      "worry",
-      "worry",
-      "doubt",
-      "doubt",
-      "doubt",
-      "doubt",
-      "fear",
-      "fear",
-    ],
-  },
-  {
-    enemies: [
-      "worry",
-      "doubt",
-      "doubt",
-      "doubt",
-      "doubt",
-      "doubt",
-      "fear",
-      "fear",
-      "fear",
-    ],
-  },
-  {
-    enemies: [
-      "worry",
-      "worry",
-      "doubt",
-      "doubt",
-      "doubt",
-      "doubt",
-      "fear",
-      "fear",
-      "fear",
-      "fear",
-    ],
-  },
-];
+  for (let w = 1; w <= WAVE_COUNT; w++) {
+    const eff = w + offset;
+    const enemies: EnemyType[] = [];
+
+    // Worry: stays 3-5, providing base density
+    const worry = Math.max(1, Math.min(5, Math.round(3 + Math.min(eff * 0.1, 2))));
+    // Doubt: introduced at effective wave 3, ramps to 10
+    const doubt = eff >= 3 ? Math.min(10, Math.round((eff - 1) * 0.5)) : 0;
+    // Fear: introduced at effective wave 6, ramps to 8
+    const fear = eff >= 6 ? Math.min(8, Math.round((eff - 4) * 0.35)) : 0;
+
+    for (let i = 0; i < worry; i++) enemies.push("worry");
+    for (let i = 0; i < doubt; i++) enemies.push("doubt");
+    for (let i = 0; i < fear; i++) enemies.push("fear");
+
+    waves.push({ enemies });
+  }
+  return waves;
+}
 
 // ---------------------------------------------------------------------------
 // State functions
@@ -211,13 +169,12 @@ const BIG_KIDS_WAVES: WaveConfig[] = [
 export function createInitialState(
   difficulty: "little-kids" | "big-kids",
 ): GameState {
-  const waves = difficulty === "little-kids" ? LITTLE_KIDS_WAVES : BIG_KIDS_WAVES;
   return {
     coins: STARTING_COINS[difficulty],
     villageHp: 10,
     maxVillageHp: 10,
     wave: 0, // 0 = before wave 1
-    totalWaves: waves.length,
+    totalWaves: WAVE_COUNT,
     towers: [],
     questionsCorrect: 0,
     questionsTotal: 0,
@@ -231,7 +188,7 @@ export function createInitialState(
 export function getWaves(
   difficulty: "little-kids" | "big-kids",
 ): WaveConfig[] {
-  return difficulty === "little-kids" ? LITTLE_KIDS_WAVES : BIG_KIDS_WAVES;
+  return generateWaves(difficulty);
 }
 
 /** Whether the player can afford a given tower type. */
@@ -239,11 +196,18 @@ export function canAfford(state: GameState, towerType: TowerType): boolean {
   return state.coins >= TOWER_DEFS[towerType].cost;
 }
 
-/** Whether the player can upgrade a given tower (exists and affordable). */
+/** Cost to upgrade a tower from its current level. Scales with level. */
+export function getUpgradeCost(towerType: TowerType, currentLevel: number): number {
+  const base = TOWER_DEFS[towerType].upgradeCost;
+  // 1→2: 75, 2→3: 100, 3→4: 125, 4→5: 150
+  return base + (currentLevel - 1) * 25;
+}
+
+/** Whether the player can upgrade a given tower (exists, below max level, and affordable). */
 export function canUpgrade(state: GameState, towerId: number): boolean {
   const tower = state.towers.find((t) => t.id === towerId);
-  if (!tower || tower.level >= 2) return false;
-  return state.coins >= TOWER_DEFS[tower.type].upgradeCost;
+  if (!tower || tower.level >= MAX_TOWER_LEVEL) return false;
+  return state.coins >= getUpgradeCost(tower.type, tower.level);
 }
 
 /** Place a new tower on a placement spot. Returns new state with tower added and coins deducted. */
@@ -272,19 +236,19 @@ export function placeTower(
   };
 }
 
-/** Upgrade a tower to level 2. Returns new state with coins deducted. */
+/** Upgrade a tower to next level. Returns new state with coins deducted. */
 export function upgradeTower(state: GameState, towerId: number): GameState {
   const tower = state.towers.find((t) => t.id === towerId);
-  if (!tower || tower.level >= 2) return state;
+  if (!tower || tower.level >= MAX_TOWER_LEVEL) return state;
 
-  const def = TOWER_DEFS[tower.type];
-  if (state.coins < def.upgradeCost) return state;
+  const cost = getUpgradeCost(tower.type, tower.level);
+  if (state.coins < cost) return state;
 
   return {
     ...state,
-    coins: state.coins - def.upgradeCost,
+    coins: state.coins - cost,
     towers: state.towers.map((t) =>
-      t.id === towerId ? { ...t, level: 2 } : t,
+      t.id === towerId ? { ...t, level: t.level + 1 } : t,
     ),
   };
 }
