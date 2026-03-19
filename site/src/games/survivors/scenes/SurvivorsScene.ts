@@ -25,11 +25,11 @@ const AUTO_ATTACK_INTERVAL = 500;
 /** Time between questions (seconds of gameplay, pauses during overlays). */
 const QUESTION_INTERVAL_SEC = 18;
 /** Enemy base speed (px/s). */
-const ENEMY_BASE_SPEED = 50;
+const ENEMY_BASE_SPEED = 60;
 /** Projectile speed (px/s). */
 const PROJECTILE_SPEED = 350;
 /** Base enemy spawn interval (ms) — gets faster each wave. */
-const BASE_SPAWN_INTERVAL = 2200;
+const BASE_SPAWN_INTERVAL = 1800;
 
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
 const ANSWER_LABELS = ["A", "B", "C", "D"];
@@ -261,7 +261,7 @@ export class SurvivorsScene extends Phaser.Scene {
 
     // Move enemies toward player
     if (!this.isShowingOverlay) {
-      const speedScale = this.state.enemySpeedMultiplier * (1 + this.waveNumber * 0.033);
+      const speedScale = this.state.enemySpeedMultiplier * (1 + this.waveNumber * 0.05);
       for (const enemy of this.enemies.getChildren()) {
         const go = enemy as Phaser.GameObjects.Arc;
         const body = go.body as Phaser.Physics.Arcade.Body;
@@ -337,7 +337,7 @@ export class SurvivorsScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     // Spawn count scales with wave number + wrong-answer multiplier
-    const count = Math.max(1, Math.round(1 + this.waveNumber * 0.12 + (this.state.enemySpawnMultiplier - 1) * 0.5));
+    const count = Math.max(1, Math.round(1 + this.waveNumber * 0.18 + (this.state.enemySpawnMultiplier - 1) * 0.5));
 
     for (let i = 0; i < count; i++) {
       const side = Phaser.Math.Between(0, 3);
@@ -443,8 +443,8 @@ export class SurvivorsScene extends Phaser.Scene {
   private triggerQuestion(): void {
     if (this.isShowingOverlay || this.isComplete) return;
     if (!this.questionPool.hasMore()) {
-      this.endGame(true);
-      return;
+      // Recycle questions — game only ends when player dies
+      this.questionPool.reset();
     }
 
     this.currentQuestion = this.questionPool.next();
@@ -1093,7 +1093,7 @@ export class SurvivorsScene extends Phaser.Scene {
 
   private updateSpawnRate(): void {
     // Base gets faster with waves, then wrong-answer multiplier on top
-    const waveScale = 1 + this.waveNumber * 0.06;
+    const waveScale = 1 + this.waveNumber * 0.09;
     const newDelay = Math.max(400, BASE_SPAWN_INTERVAL / (waveScale * this.state.enemySpawnMultiplier));
     this.spawnTimer.reset({
       delay: newDelay,

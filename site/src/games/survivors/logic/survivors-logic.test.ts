@@ -43,8 +43,8 @@ describe("survivors-logic", () => {
       expect(next.questionsCorrect).toBe(1);
       expect(next.questionsTotal).toBe(1);
       expect(next.score).toBe(200);
-      expect(next.enemySpeedMultiplier).toBeCloseTo(1.025);
-      expect(next.enemySpawnMultiplier).toBeCloseTo(1.04);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.04);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.06);
     });
 
     it("wrong answer applies same base scaling with no extra penalty", () => {
@@ -53,8 +53,8 @@ describe("survivors-logic", () => {
 
       expect(next.questionsCorrect).toBe(0);
       expect(next.questionsTotal).toBe(1);
-      expect(next.enemySpeedMultiplier).toBeCloseTo(1.025);
-      expect(next.enemySpawnMultiplier).toBeCloseTo(1.04);
+      expect(next.enemySpeedMultiplier).toBeCloseTo(1.04);
+      expect(next.enemySpawnMultiplier).toBeCloseTo(1.06);
     });
 
     it("stacks base scaling multiplicatively across waves", () => {
@@ -63,8 +63,8 @@ describe("survivors-logic", () => {
       state = answerQuestion(state, false);
       state = answerQuestion(state, true);
 
-      expect(state.enemySpeedMultiplier).toBeCloseTo(1.025 ** 3);
-      expect(state.enemySpawnMultiplier).toBeCloseTo(1.04 ** 3);
+      expect(state.enemySpeedMultiplier).toBeCloseTo(1.04 ** 3);
+      expect(state.enemySpawnMultiplier).toBeCloseTo(1.06 ** 3);
     });
   });
 

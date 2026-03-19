@@ -66,7 +66,7 @@ export function createInitialState(): SurvivorsState {
 
 /**
  * Processes an answer to a question.
- * Base scaling every wave: enemySpeedMultiplier *= 1.025, enemySpawnMultiplier *= 1.04.
+ * Base scaling every wave: enemySpeedMultiplier *= 1.04, enemySpawnMultiplier *= 1.06.
  * - Correct: questionsCorrect++, score += 200.
  * - Wrong: no additional penalty.
  * Always increments questionsTotal.
@@ -79,8 +79,8 @@ export function answerQuestion(
   const next = {
     ...state,
     questionsTotal: state.questionsTotal + 1,
-    enemySpeedMultiplier: state.enemySpeedMultiplier * 1.025,
-    enemySpawnMultiplier: state.enemySpawnMultiplier * 1.04,
+    enemySpeedMultiplier: state.enemySpeedMultiplier * 1.04,
+    enemySpawnMultiplier: state.enemySpawnMultiplier * 1.06,
   };
 
   if (correct) {
