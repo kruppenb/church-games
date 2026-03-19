@@ -40,7 +40,7 @@ export function App() {
               }
             />
             <Route
-              path="/games/brawler"
+              path="/games/fortress"
               element={
                 <ErrorBoundary>
                   <FaithFortress />

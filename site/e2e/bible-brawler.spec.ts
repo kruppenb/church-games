@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Bible Brawler", () => {
+test.describe("Faith Fortress", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/#/games/brawler");
+    await page.goto("/#/games/fortress");
   });
 
   test("Phaser canvas renders", async ({ page }) => {
@@ -13,7 +13,7 @@ test.describe("Bible Brawler", () => {
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
-    await page.screenshot({ path: "e2e/screenshots/brawler-start.png" });
+    await page.screenshot({ path: "e2e/screenshots/fortress-start.png" });
   });
 
   test("character select screen appears", async ({ page }) => {
@@ -23,7 +23,7 @@ test.describe("Bible Brawler", () => {
     // The character select scene should show "Choose Your Hero!" text
     // Since it's in Phaser canvas, we verify via screenshot
     await page.waitForTimeout(1000); // Wait for scene to render
-    await page.screenshot({ path: "e2e/screenshots/brawler-character-select.png" });
+    await page.screenshot({ path: "e2e/screenshots/fortress-character-select.png" });
   });
 
   test("selecting character starts the game", async ({ page }) => {
@@ -39,7 +39,7 @@ test.describe("Bible Brawler", () => {
 
     // Wait for scene transition
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: "e2e/screenshots/brawler-gameplay.png" });
+    await page.screenshot({ path: "e2e/screenshots/fortress-gameplay.png" });
   });
 
   test("question appears during gameplay", async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe("Bible Brawler", () => {
 
     // Wait for first wave/question to appear
     await page.waitForTimeout(3000);
-    await page.screenshot({ path: "e2e/screenshots/brawler-question.png" });
+    await page.screenshot({ path: "e2e/screenshots/fortress-question.png" });
   });
 
   test("answering question continues gameplay", async ({ page }) => {
@@ -71,7 +71,7 @@ test.describe("Bible Brawler", () => {
       await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.55);
       await page.waitForTimeout(1500);
 
-      await page.screenshot({ path: "e2e/screenshots/brawler-after-answer.png" });
+      await page.screenshot({ path: "e2e/screenshots/fortress-after-answer.png" });
     }
   });
 

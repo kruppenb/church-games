@@ -312,12 +312,12 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   gap: var(--space-md);
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .game-card-small {
-  width: 140px;
-  flex: 0 0 140px;
+  width: 120px;
+  flex: 0 0 120px;
   padding: var(--space-lg) var(--space-md);
 }
 .game-card-small .game-card-icon {
@@ -592,13 +592,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .answer-feedback-correct {
-  background: rgba(0, 255, 136, 0.08);
+  background: var(--color-bg-surface, #1a1a2e);
   border: 2px solid rgba(0, 255, 136, 0.3);
   box-shadow: 0 0 40px var(--color-success-glow);
 }
 
 .answer-feedback-wrong {
-  background: rgba(255, 71, 87, 0.08);
+  background: var(--color-bg-surface, #1a1a2e);
   border: 2px solid rgba(255, 71, 87, 0.3);
   box-shadow: 0 0 40px var(--color-error-glow);
 }
@@ -1612,7 +1612,7 @@ h1, h2, h3, h4, h5, h6 {
   .game-card-hero { max-width: 100%; }
   .game-card { padding: var(--space-lg) var(--space-md); }
   .game-card-icon { font-size: 2.5rem; }
-  .game-card-small { width: 110px; flex: 0 0 110px; }
+  .game-card-small { width: 90px; flex: 0 0 90px; }
   .more-games-row { gap: var(--space-sm); }
   .jeopardy-cell { min-height: 48px; }
 }

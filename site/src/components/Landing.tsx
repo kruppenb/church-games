@@ -34,7 +34,7 @@ const GAMES: GameCardInfo[] = [
     icon: "\uD83C\uDFF0",
     description: "Build towers to defend the village from waves of doubt!",
     color: "#ff2d78",
-    route: "/games/brawler",
+    route: "/games/fortress",
   },
   {
     id: "promised-land",

@@ -305,21 +305,21 @@ export class TowerScene extends Phaser.Scene {
     this.coinText = this.add.text(10, 8, "", {
       fontSize: "18px",
       color: "#ffdd00",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
     });
     this.coinText.setDepth(81);
 
     this.hpText = this.add.text(200, 8, "", {
       fontSize: "18px",
       color: "#ff6666",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
     });
     this.hpText.setDepth(81);
 
     this.waveText = this.add.text(450, 8, "", {
       fontSize: "18px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
     });
     this.waveText.setDepth(81);
 
@@ -380,7 +380,7 @@ export class TowerScene extends Phaser.Scene {
       const label = this.add.text(cx + 25, cy - 14, def.label, {
         fontSize: "13px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       });
       label.setDepth(81);
       this.towerStripLabels.push(label);
@@ -388,7 +388,7 @@ export class TowerScene extends Phaser.Scene {
       const cost = this.add.text(cx + 25, cy + 2, `${def.cost}`, {
         fontSize: "12px",
         color: "#ffdd00",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       });
       cost.setDepth(81);
       this.towerStripCosts.push(cost);
@@ -396,7 +396,7 @@ export class TowerScene extends Phaser.Scene {
       const lock = this.add.text(cx, cy - 6, "X", {
         fontSize: "14px",
         color: "#ff0000",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       });
       lock.setOrigin(0.5);
@@ -434,7 +434,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "20px",
         color: "#ff8800",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       },
     );
@@ -457,14 +457,14 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.75,
+      0.92,
     );
     container.add(bg);
 
     const titleText = this.add.text(GAME_W / 2, 120, "Faith Fortress", {
       fontSize: "36px",
       color: "#ffdd00",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     titleText.setOrigin(0.5);
@@ -477,7 +477,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "18px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         wordWrap: { width: 600 },
       },
     );
@@ -491,7 +491,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "14px",
         color: "#aaddff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "italic",
         wordWrap: { width: 550 },
         align: "center",
@@ -507,7 +507,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "13px",
         color: "#88bbdd",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       },
     );
     refText.setOrigin(0.5);
@@ -520,7 +520,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "14px",
         color: "#cccccc",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         align: "center",
         wordWrap: { width: 600 },
       },
@@ -534,7 +534,7 @@ export class TowerScene extends Phaser.Scene {
     const btnText = this.add.text(GAME_W / 2, 450, "Start!", {
       fontSize: "22px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5);
@@ -583,7 +583,7 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.8,
+      0.92,
     );
     container.add(bg);
 
@@ -600,7 +600,7 @@ export class TowerScene extends Phaser.Scene {
         {
           fontSize: "16px",
           color: "#ffdd00",
-          fontFamily: "monospace",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
           fontStyle: "bold",
         },
       );
@@ -613,23 +613,23 @@ export class TowerScene extends Phaser.Scene {
         yOffset,
         storyScene.description,
         {
-          fontSize: "13px",
-          color: "#aaaacc",
-          fontFamily: "monospace",
+          fontSize: "14px",
+          color: "#ccccdd",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
           wordWrap: { width: 600 },
           align: "center",
         },
       );
       sceneDesc.setOrigin(0.5);
       container.add(sceneDesc);
-      yOffset += sceneDesc.height + 20;
+      yOffset += sceneDesc.height + 25;
     }
 
     // Question text
     const qText = this.add.text(GAME_W / 2, yOffset + 30, question.text, {
       fontSize: "18px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       wordWrap: { width: 650 },
       align: "center",
     });
@@ -660,7 +660,7 @@ export class TowerScene extends Phaser.Scene {
         {
           fontSize: "14px",
           color: "#ffffff",
-          fontFamily: "monospace",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
           wordWrap: { width: btnW - 20 },
           align: "center",
         },
@@ -714,7 +714,7 @@ export class TowerScene extends Phaser.Scene {
     const resultLabel = this.add.text(GAME_W / 2, 200, emoji, {
       fontSize: "48px",
       color: resultColor,
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     resultLabel.setOrigin(0.5);
@@ -723,7 +723,7 @@ export class TowerScene extends Phaser.Scene {
     const msgText = this.add.text(GAME_W / 2, 270, resultText, {
       fontSize: "22px",
       color: resultColor,
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     msgText.setOrigin(0.5);
@@ -736,7 +736,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "14px",
         color: "#cccccc",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         wordWrap: { width: 600 },
         align: "center",
       },
@@ -758,7 +758,7 @@ export class TowerScene extends Phaser.Scene {
     const btnText = this.add.text(GAME_W / 2, 430, "Continue", {
       fontSize: "20px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5);
@@ -795,7 +795,7 @@ export class TowerScene extends Phaser.Scene {
         {
           fontSize: "16px",
           color: "#88ff88",
-          fontFamily: "monospace",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
           fontStyle: "bold",
         },
       );
@@ -835,7 +835,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "16px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       },
     );
@@ -911,7 +911,7 @@ export class TowerScene extends Phaser.Scene {
       const costText = this.add.text(cx, cy + 14, `${def.cost}`, {
         fontSize: "11px",
         color: affordable ? "#ffdd00" : "#666666",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       });
       costText.setOrigin(0.5);
       container.add(costText);
@@ -929,7 +929,7 @@ export class TowerScene extends Phaser.Scene {
     const closeBtn = this.add.text(spot.x + panelW / 2 - 5, spot.y - 80, "X", {
       fontSize: "14px",
       color: "#ff4444",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     closeBtn.setOrigin(0.5);
@@ -967,7 +967,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "13px",
         color: affordable ? "#ffffff" : "#666666",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       },
     );
@@ -981,7 +981,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "11px",
         color: affordable ? "#ffdd00" : "#666666",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       },
     );
     costLabel.setOrigin(0.5);
@@ -1055,7 +1055,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "10px",
         color: "#ffffff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       },
     );
     labelText.setOrigin(0.5);
@@ -1123,7 +1123,7 @@ export class TowerScene extends Phaser.Scene {
     const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 30, "Pray!", {
       fontSize: "16px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5);
@@ -1544,14 +1544,14 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.8,
+      0.92,
     );
     container.add(bg);
 
     const title = this.add.text(GAME_W / 2, 120, "Victory!", {
       fontSize: "40px",
       color: "#ffdd00",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     title.setOrigin(0.5);
@@ -1564,7 +1564,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "18px",
         color: "#88ff88",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
       },
     );
     subtitle.setOrigin(0.5);
@@ -1578,7 +1578,7 @@ export class TowerScene extends Phaser.Scene {
     const starsText = this.add.text(GAME_W / 2, 220, starStr, {
       fontSize: "48px",
       color: "#ffdd00",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
     });
     starsText.setOrigin(0.5);
     container.add(starsText);
@@ -1590,7 +1590,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "14px",
         color: "#cccccc",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         align: "center",
       },
     );
@@ -1605,7 +1605,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "13px",
         color: "#aaddff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "italic",
         wordWrap: { width: 550 },
         align: "center",
@@ -1620,7 +1620,7 @@ export class TowerScene extends Phaser.Scene {
     const btnText = this.add.text(GAME_W / 2 - 100, 460, "Play Again", {
       fontSize: "16px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5);
@@ -1637,7 +1637,7 @@ export class TowerScene extends Phaser.Scene {
     const backText = this.add.text(GAME_W / 2 + 100, 460, "Back", {
       fontSize: "16px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     backText.setOrigin(0.5);
@@ -1662,14 +1662,14 @@ export class TowerScene extends Phaser.Scene {
       GAME_W,
       GAME_H,
       0x000000,
-      0.8,
+      0.92,
     );
     container.add(bg);
 
     const title = this.add.text(GAME_W / 2, 150, "Oh no!", {
       fontSize: "36px",
       color: "#ff4444",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     title.setOrigin(0.5);
@@ -1682,7 +1682,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "18px",
         color: "#ffaaaa",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         align: "center",
       },
     );
@@ -1696,7 +1696,7 @@ export class TowerScene extends Phaser.Scene {
       {
         fontSize: "13px",
         color: "#aaddff",
-        fontFamily: "monospace",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "italic",
         wordWrap: { width: 550 },
         align: "center",
@@ -1711,7 +1711,7 @@ export class TowerScene extends Phaser.Scene {
     const btnText = this.add.text(GAME_W / 2 - 100, 380, "Try Again!", {
       fontSize: "16px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     btnText.setOrigin(0.5);
@@ -1728,7 +1728,7 @@ export class TowerScene extends Phaser.Scene {
     const backText = this.add.text(GAME_W / 2 + 100, 380, "Back", {
       fontSize: "16px",
       color: "#ffffff",
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     backText.setOrigin(0.5);
@@ -1755,7 +1755,7 @@ export class TowerScene extends Phaser.Scene {
     const text = this.add.text(x, y, message, {
       fontSize: "16px",
       color,
-      fontFamily: "monospace",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
       fontStyle: "bold",
     });
     text.setOrigin(0.5);
