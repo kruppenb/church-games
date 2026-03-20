@@ -17,14 +17,20 @@ import {
   getShieldBuff,
   getSellRefund,
   sellTower,
+  getBossHp,
+  cycleTowerTargeting,
+  hasPrayerLightSynergy,
+  selectHero,
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
   SHIELD_BUFF_FACTOR,
   SHEPHERD_PUSHBACK,
+  HERO_DEFS,
   MAX_TOWER_LEVEL,
   WAVE_COUNT,
   type GameState,
+  type TowerState,
 } from "./tower-logic";
 
 describe("tower-logic", () => {
@@ -824,6 +830,501 @@ describe("tower-logic", () => {
       // Can't upgrade further
       expect(canUpgrade(state, 1)).toBe(false);
       expect(state.towers[0].level).toBe(MAX_TOWER_LEVEL);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // New tower types (Phase 2)
+  // -----------------------------------------------------------------------
+  describe("new tower types", () => {
+    it("shield tower has correct stats", () => {
+      const shield = TOWER_DEFS.shield;
+      expect(shield.cost).toBe(100);
+      expect(shield.damage).toEqual([0, 0, 0, 0, 0]);
+      expect(shield.color).toBe(0x44cc44);
+      expect(shield.range).toHaveLength(MAX_TOWER_LEVEL);
+    });
+
+    it("praise tower has correct stats", () => {
+      const praise = TOWER_DEFS.praise;
+      expect(praise.cost).toBe(150);
+      expect(praise.damage).toEqual([5, 8, 12, 18, 25]);
+      expect(praise.attackSpeed).toEqual([10000, 8000, 7000, 6000, 5000]);
+      expect(praise.color).toBe(0xffaa00);
+    });
+
+    it("shepherd tower has correct stats", () => {
+      const shepherd = TOWER_DEFS.shepherd;
+      expect(shepherd.cost).toBe(125);
+      expect(shepherd.damage).toEqual([0, 0, 0, 0, 0]);
+      expect(shepherd.attackSpeed).toEqual([4000, 3500, 3000, 2500, 2000]);
+      expect(shepherd.color).toBe(0xffffff);
+    });
+
+    it("can place and upgrade new tower types", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+
+      state = placeTower(state, "shield", 0);
+      expect(state.towers[0].type).toBe("shield");
+      expect(state.coins).toBe(10000 - 100);
+
+      state = placeTower(state, "praise", 1);
+      expect(state.towers[1].type).toBe("praise");
+      expect(state.coins).toBe(10000 - 100 - 150);
+
+      state = placeTower(state, "shepherd", 2);
+      expect(state.towers[2].type).toBe("shepherd");
+
+      // Upgrade shepherd
+      state = upgradeTower(state, 3);
+      expect(state.towers[2].level).toBe(2);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Shield Tower buff (Phase 2)
+  // -----------------------------------------------------------------------
+  describe("Shield Tower buff", () => {
+    const spots = [
+      { x: 100, y: 100 },
+      { x: 130, y: 100 }, // within range of spot 0
+      { x: 500, y: 500 }, // far away
+    ];
+
+    it("returns 0 when no shield towers exist", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "light", level: 1, spotIndex: 1, targeting: "nearest" },
+      ];
+      expect(getShieldBuff(130, 100, towers, spots)).toBe(0);
+    });
+
+    it("returns buff when tower is within shield range", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "shield", level: 1, spotIndex: 0, targeting: "nearest" },
+        { id: 2, type: "light", level: 1, spotIndex: 1, targeting: "nearest" },
+      ];
+      // Shield at spot 0 (100,100), light at spot 1 (130,100) = 30px apart
+      // Shield level 1 range is 100
+      const buff = getShieldBuff(130, 100, towers, spots);
+      expect(buff).toBe(SHIELD_BUFF_FACTOR[1]); // 0.25
+    });
+
+    it("returns 0 when tower is outside shield range", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "shield", level: 1, spotIndex: 0, targeting: "nearest" },
+        { id: 2, type: "light", level: 1, spotIndex: 2, targeting: "nearest" },
+      ];
+      // Shield at spot 0 (100,100), light at spot 2 (500,500) = very far
+      const buff = getShieldBuff(500, 500, towers, spots);
+      expect(buff).toBe(0);
+    });
+
+    it("uses max buff when multiple shields overlap", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "shield", level: 1, spotIndex: 0, targeting: "nearest" }, // 25%
+        { id: 2, type: "shield", level: 3, spotIndex: 1, targeting: "nearest" }, // 35%
+      ];
+      const buff = getShieldBuff(115, 100, towers, spots);
+      expect(buff).toBe(SHIELD_BUFF_FACTOR[3]); // 0.35 (max of the two)
+    });
+
+    it("buff scales with shield tower level", () => {
+      expect(SHIELD_BUFF_FACTOR[1]).toBe(0.25);
+      expect(SHIELD_BUFF_FACTOR[2]).toBe(0.30);
+      expect(SHIELD_BUFF_FACTOR[3]).toBe(0.35);
+      expect(SHIELD_BUFF_FACTOR[4]).toBe(0.40);
+      expect(SHIELD_BUFF_FACTOR[5]).toBe(0.50);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Praise Tower charge timing (Phase 2)
+  // -----------------------------------------------------------------------
+  describe("Praise Tower stats", () => {
+    it("charge time reduces with upgrades", () => {
+      const praise = TOWER_DEFS.praise;
+      expect(praise.attackSpeed[0]).toBe(10000); // L1: 10s
+      expect(praise.attackSpeed[1]).toBe(8000);  // L2: 8s
+      expect(praise.attackSpeed[2]).toBe(7000);  // L3: 7s
+      expect(praise.attackSpeed[3]).toBe(6000);  // L4: 6s
+      expect(praise.attackSpeed[4]).toBe(5000);  // L5: 5s
+    });
+
+    it("damage scales with level", () => {
+      const praise = TOWER_DEFS.praise;
+      expect(praise.damage[0]).toBe(5);
+      expect(praise.damage[4]).toBe(25);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Shepherd Tower pushback (Phase 2)
+  // -----------------------------------------------------------------------
+  describe("Shepherd Tower pushback", () => {
+    it("pushback distance scales with level", () => {
+      expect(SHEPHERD_PUSHBACK[1]).toBe(30);
+      expect(SHEPHERD_PUSHBACK[2]).toBe(40);
+      expect(SHEPHERD_PUSHBACK[3]).toBe(50);
+      expect(SHEPHERD_PUSHBACK[4]).toBe(60);
+      expect(SHEPHERD_PUSHBACK[5]).toBe(80);
+    });
+
+    it("attack speed decreases with level", () => {
+      const s = TOWER_DEFS.shepherd;
+      expect(s.attackSpeed[0]).toBe(4000);
+      expect(s.attackSpeed[4]).toBe(2000);
+      for (let i = 1; i < MAX_TOWER_LEVEL; i++) {
+        expect(s.attackSpeed[i]).toBeLessThan(s.attackSpeed[i - 1]);
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // New enemy types (Phase 3)
+  // -----------------------------------------------------------------------
+  describe("new enemy types", () => {
+    it("temptation sprite has stealth properties", () => {
+      const t = ENEMY_DEFS.temptation;
+      expect(t.hp).toBe(4);
+      expect(t.speed).toBe(70);
+      expect(t.stealth).toBe(true);
+      expect(t.stealthRevealRange).toBe(80);
+      expect(t.size).toBe(8);
+    });
+
+    it("pride golem has shield hits", () => {
+      const p = ENEMY_DEFS.pride;
+      expect(p.hp).toBe(20);
+      expect(p.speed).toBe(25);
+      expect(p.shieldHits).toBe(5);
+      expect(p.villageDamage).toBe(3);
+      expect(p.size).toBe(24);
+    });
+
+    it("envy swarm splits on death", () => {
+      const e = ENEMY_DEFS.envy;
+      expect(e.hp).toBe(8);
+      expect(e.splitsOnDeath).toBe(true);
+      expect(e.splitHp).toBe(3);
+      expect(e.splitSpeed).toBe(55);
+      expect(e.splitCount).toBe(2);
+    });
+
+    it("deception mirage is a decoy with no damage", () => {
+      const d = ENEMY_DEFS.deception;
+      expect(d.hp).toBe(2);
+      expect(d.villageDamage).toBe(0);
+      expect(d.isDecoy).toBe(true);
+      expect(d.alpha).toBe(0.5);
+    });
+
+    it("deception mirage deals no village damage when leaked", () => {
+      let state: GameState = {
+        ...createInitialState("big-kids"),
+        villageHp: 10,
+        wave: 3,
+        phase: "wave",
+      };
+      state = enemyLeaked(state, "deception", 3);
+      expect(state.villageHp).toBe(10); // villageDamage is 0
+    });
+
+    it("pride golem deals 3 village damage when leaked", () => {
+      let state: GameState = {
+        ...createInitialState("big-kids"),
+        villageHp: 10,
+        wave: 3,
+        phase: "wave",
+      };
+      state = enemyLeaked(state, "pride", 3);
+      expect(state.villageHp).toBe(7);
+    });
+
+    it("new enemies appear in later waves for little-kids", () => {
+      const waves = getWaves("little-kids");
+      // Temptation introduced at wave 8 (may need +1 wave for rounding)
+      const hasTemptation = waves.slice(7, 15).some((w) => w.enemies.includes("temptation"));
+      expect(hasTemptation).toBe(true);
+      // All new types should appear somewhere in later waves
+      const allEnemies = waves.flatMap((w) => w.enemies);
+      expect(allEnemies).toContain("temptation");
+      expect(allEnemies).toContain("deception");
+      expect(allEnemies).toContain("pride");
+      expect(allEnemies).toContain("envy");
+    });
+
+    it("new enemies appear earlier for big-kids", () => {
+      const waves = getWaves("big-kids");
+      // Big-kids gets temptation earlier
+      const lkWaves = getWaves("little-kids");
+      const firstTemptBK = waves.findIndex((w) => w.enemies.includes("temptation"));
+      const firstTemptLK = lkWaves.findIndex((w) => w.enemies.includes("temptation"));
+      expect(firstTemptBK).toBeLessThanOrEqual(firstTemptLK);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Boss waves (Phase 4)
+  // -----------------------------------------------------------------------
+  describe("boss waves", () => {
+    it("wave 10 is a Goliath boss wave", () => {
+      const waves = getWaves("little-kids");
+      expect(waves[9].isBossWave).toBe(true);
+      expect(waves[9].bossType).toBe("goliath");
+      expect(waves[9].enemies).toContain("goliath");
+    });
+
+    it("wave 20 is a Pharaoh boss wave", () => {
+      const waves = getWaves("little-kids");
+      expect(waves[19].isBossWave).toBe(true);
+      expect(waves[19].bossType).toBe("pharaoh");
+      expect(waves[19].enemies).toContain("pharaoh");
+    });
+
+    it("wave 30 is a Serpent boss wave", () => {
+      const waves = getWaves("little-kids");
+      expect(waves[29].isBossWave).toBe(true);
+      expect(waves[29].bossType).toBe("serpent");
+    });
+
+    it("non-boss waves are not marked as boss waves", () => {
+      const waves = getWaves("little-kids");
+      expect(waves[0].isBossWave).toBeUndefined();
+      expect(waves[4].isBossWave).toBeUndefined();
+      expect(waves[14].isBossWave).toBeUndefined();
+    });
+
+    it("goliath has single-target damage reduction", () => {
+      expect(ENEMY_DEFS.goliath.singleTargetReduction).toBe(0.5);
+      expect(ENEMY_DEFS.goliath.isBoss).toBe(true);
+    });
+
+    it("pharaoh summons worry clouds", () => {
+      expect(ENEMY_DEFS.pharaoh.summonType).toBe("worry");
+      expect(ENEMY_DEFS.pharaoh.summonInterval).toBe(5000);
+      expect(ENEMY_DEFS.pharaoh.summonCount).toBe(2);
+      expect(ENEMY_DEFS.pharaoh.isBoss).toBe(true);
+    });
+
+    it("serpent regenerates HP", () => {
+      expect(ENEMY_DEFS.serpent.regenPerSecond).toBe(2);
+      expect(ENEMY_DEFS.serpent.isBoss).toBe(true);
+    });
+
+    it("boss HP scales with difficulty", () => {
+      expect(getBossHp("goliath", "little-kids")).toBe(100);
+      expect(getBossHp("goliath", "big-kids")).toBe(150);
+      expect(getBossHp("pharaoh", "little-kids")).toBe(200);
+      expect(getBossHp("pharaoh", "big-kids")).toBe(300);
+      expect(getBossHp("serpent", "little-kids")).toBe(350);
+      expect(getBossHp("serpent", "big-kids")).toBe(525);
+    });
+
+    it("boss waves include some normal enemies", () => {
+      const waves = getWaves("little-kids");
+      const bossWave = waves[9]; // wave 10
+      expect(bossWave.enemies.length).toBeGreaterThan(1);
+      expect(bossWave.enemies.filter((e) => e !== "goliath").length).toBeGreaterThan(0);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Sell/Refund (Phase 5)
+  // -----------------------------------------------------------------------
+  describe("sell/refund", () => {
+    it("refund is 50% of base cost for level 1 tower", () => {
+      expect(getSellRefund("prayer", 1)).toBe(Math.floor(75 * 0.5)); // 37
+      expect(getSellRefund("light", 1)).toBe(Math.floor(100 * 0.5)); // 50
+      expect(getSellRefund("bell", 1)).toBe(Math.floor(125 * 0.5)); // 62
+    });
+
+    it("refund includes upgrade costs at 50%", () => {
+      // prayer L2: base 75 + upgrade 75 = 150 total, refund = 75
+      expect(getSellRefund("prayer", 2)).toBe(Math.floor(150 * 0.5));
+      // prayer L3: base 75 + 75 + 100 = 250, refund = 125
+      expect(getSellRefund("prayer", 3)).toBe(Math.floor(250 * 0.5));
+    });
+
+    it("sellTower removes tower and adds refund", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "light", 0);
+      const coinsAfterPlace = state.coins;
+      const towerId = state.towers[0].id;
+
+      state = sellTower(state, towerId);
+      expect(state.towers).toHaveLength(0);
+      expect(state.coins).toBe(coinsAfterPlace + getSellRefund("light", 1));
+    });
+
+    it("sellTower with upgraded tower refunds correctly", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "prayer", 0);
+      state = upgradeTower(state, 1); // now level 2
+      state = upgradeTower(state, 1); // now level 3
+      const coinsBeforeSell = state.coins;
+
+      state = sellTower(state, 1);
+      expect(state.towers).toHaveLength(0);
+      expect(state.coins).toBe(coinsBeforeSell + getSellRefund("prayer", 3));
+    });
+
+    it("sellTower on nonexistent tower returns same state", () => {
+      const state = createInitialState("little-kids");
+      const result = sellTower(state, 999);
+      expect(result).toEqual(state);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Targeting priority (Phase 5)
+  // -----------------------------------------------------------------------
+  describe("targeting priority", () => {
+    it("new towers default to nearest targeting", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "light", 0);
+      expect(state.towers[0].targeting).toBe("nearest");
+    });
+
+    it("cycleTowerTargeting cycles through priorities", () => {
+      let state: GameState = { ...createInitialState("little-kids"), coins: 10000 };
+      state = placeTower(state, "light", 0);
+
+      state = cycleTowerTargeting(state, 1);
+      expect(state.towers[0].targeting).toBe("strongest");
+
+      state = cycleTowerTargeting(state, 1);
+      expect(state.towers[0].targeting).toBe("fastest");
+
+      state = cycleTowerTargeting(state, 1);
+      expect(state.towers[0].targeting).toBe("nearest");
+    });
+
+    it("cycleTowerTargeting on nonexistent tower returns same state", () => {
+      const state = createInitialState("little-kids");
+      const result = cycleTowerTargeting(state, 999);
+      expect(result).toEqual(state);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Tower synergy (Phase 5)
+  // -----------------------------------------------------------------------
+  describe("tower synergy", () => {
+    const spots = [
+      { x: 100, y: 100 },
+      { x: 150, y: 100 }, // 50px from spot 0 (within 80px)
+      { x: 300, y: 300 }, // far from spot 0
+    ];
+
+    it("detects Prayer-Light synergy when adjacent", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "prayer", level: 1, spotIndex: 0, targeting: "nearest" },
+        { id: 2, type: "light", level: 1, spotIndex: 1, targeting: "nearest" },
+      ];
+      expect(hasPrayerLightSynergy(1, towers, spots)).toBe(true);
+    });
+
+    it("no synergy when Prayer tower is far away", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "prayer", level: 1, spotIndex: 2, targeting: "nearest" },
+        { id: 2, type: "light", level: 1, spotIndex: 0, targeting: "nearest" },
+      ];
+      expect(hasPrayerLightSynergy(0, towers, spots)).toBe(false);
+    });
+
+    it("no synergy when no Prayer tower exists", () => {
+      const towers: TowerState[] = [
+        { id: 1, type: "light", level: 1, spotIndex: 0, targeting: "nearest" },
+        { id: 2, type: "bell", level: 1, spotIndex: 1, targeting: "nearest" },
+      ];
+      expect(hasPrayerLightSynergy(0, towers, spots)).toBe(false);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Hero abilities (Phase 6)
+  // -----------------------------------------------------------------------
+  describe("hero abilities", () => {
+    it("createInitialState has null hero", () => {
+      const state = createInitialState("little-kids");
+      expect(state.hero).toBeNull();
+    });
+
+    it("selectHero sets hero and transitions to question phase", () => {
+      let state = createInitialState("little-kids");
+      state = { ...state, phase: "hero-select" };
+      state = selectHero(state, "david");
+      expect(state.hero).toBe("david");
+      expect(state.phase).toBe("question");
+    });
+
+    it("all three heroes are defined", () => {
+      expect(HERO_DEFS.david).toBeDefined();
+      expect(HERO_DEFS.moses).toBeDefined();
+      expect(HERO_DEFS.esther).toBeDefined();
+    });
+
+    it("David has correct ability stats", () => {
+      const d = HERO_DEFS.david;
+      expect(d.abilityName).toBe("Slingshot");
+      expect(d.cooldown).toBe(30000);
+    });
+
+    it("Moses has correct ability stats", () => {
+      const m = HERO_DEFS.moses;
+      expect(m.abilityName).toBe("Part the Waters");
+      expect(m.cooldown).toBe(45000);
+    });
+
+    it("Esther has correct ability stats", () => {
+      const e = HERO_DEFS.esther;
+      expect(e.abilityName).toBe("Brave Petition");
+      expect(e.cooldown).toBe(40000);
+    });
+
+    it("hero selection is preserved through game flow", () => {
+      let state = createInitialState("big-kids");
+      state = selectHero(state, "moses");
+      state = answerQuestion(state, true);
+      state = placeTower(state, "light", 0);
+      state = startWave(state);
+
+      expect(state.hero).toBe("moses");
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // New tower definitions completeness (all 6 towers)
+  // -----------------------------------------------------------------------
+  describe("all tower stat arrays valid", () => {
+    it("all 6 towers have stat arrays of length MAX_TOWER_LEVEL", () => {
+      for (const def of Object.values(TOWER_DEFS)) {
+        expect(def.range).toHaveLength(MAX_TOWER_LEVEL);
+        expect(def.damage).toHaveLength(MAX_TOWER_LEVEL);
+        expect(def.attackSpeed).toHaveLength(MAX_TOWER_LEVEL);
+      }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // Wave balance checks
+  // -----------------------------------------------------------------------
+  describe("wave balance", () => {
+    it("big-kids waves always have equal or more enemies than same little-kids wave", () => {
+      const lk = getWaves("little-kids");
+      const bk = getWaves("big-kids");
+      for (let i = 0; i < WAVE_COUNT; i++) {
+        expect(bk[i].enemies.length).toBeGreaterThanOrEqual(lk[i].enemies.length);
+      }
+    });
+
+    it("boss waves exist at waves 10, 20, 30 for both difficulties", () => {
+      for (const diff of ["little-kids", "big-kids"] as const) {
+        const waves = getWaves(diff);
+        expect(waves[9].isBossWave).toBe(true);
+        expect(waves[19].isBossWave).toBe(true);
+        expect(waves[29].isBossWave).toBe(true);
+      }
     });
   });
 });
