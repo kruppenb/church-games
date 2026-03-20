@@ -14,9 +14,14 @@ import {
   completeWave,
   calculateStars,
   isVillageDestroyed,
+  getShieldBuff,
+  getSellRefund,
+  sellTower,
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
+  SHIELD_BUFF_FACTOR,
+  SHEPHERD_PUSHBACK,
   MAX_TOWER_LEVEL,
   WAVE_COUNT,
   type GameState,
@@ -589,12 +594,15 @@ describe("tower-logic", () => {
   // TOWER_DEFS constants
   // -----------------------------------------------------------------------
   describe("TOWER_DEFS", () => {
-    it("has 3 tower types", () => {
+    it("has 6 tower types", () => {
       const types = Object.keys(TOWER_DEFS);
-      expect(types).toHaveLength(3);
+      expect(types).toHaveLength(6);
       expect(types).toContain("prayer");
       expect(types).toContain("light");
       expect(types).toContain("bell");
+      expect(types).toContain("shield");
+      expect(types).toContain("praise");
+      expect(types).toContain("shepherd");
     });
 
     it("prayer tower has correct base stats", () => {

@@ -3,7 +3,7 @@
  * No Phaser or DOM dependencies -- extracted for testability.
  */
 
-export type TowerType = "prayer" | "light" | "bell";
+export type TowerType = "prayer" | "light" | "bell" | "shield" | "praise" | "shepherd";
 export type EnemyType = "worry" | "doubt" | "fear";
 
 export interface TowerDef {
@@ -91,6 +91,36 @@ export const TOWER_DEFS: Record<TowerType, TowerDef> = {
     color: 0xaa44ff,
     label: "Bell",
   },
+  shield: {
+    type: "shield",
+    cost: 100,
+    range: [100, 120, 140, 160, 180],
+    damage: [0, 0, 0, 0, 0], // Does not attack
+    attackSpeed: [9999, 9999, 9999, 9999, 9999], // N/A
+    upgradeCost: 75,
+    color: 0x44cc44,
+    label: "Shield",
+  },
+  praise: {
+    type: "praise",
+    cost: 150,
+    range: [9999, 9999, 9999, 9999, 9999], // Hits all enemies on screen
+    damage: [5, 8, 12, 18, 25],
+    attackSpeed: [10000, 8000, 7000, 6000, 5000], // Charge time
+    upgradeCost: 75,
+    color: 0xffaa00,
+    label: "Praise",
+  },
+  shepherd: {
+    type: "shepherd",
+    cost: 125,
+    range: [120, 140, 160, 180, 200],
+    damage: [0, 0, 0, 0, 0], // No damage, pure CC
+    attackSpeed: [4000, 3500, 3000, 2500, 2000],
+    upgradeCost: 75,
+    color: 0xffffff,
+    label: "Shepherd",
+  },
 };
 
 export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
@@ -124,6 +154,12 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
 };
 
 export const PRAYER_SLOW_FACTOR = [0, 0.4, 0.55, 0.65, 0.75, 0.82]; // index = level (0 unused)
+
+/** Shield Tower damage buff percentages per level. index = level (0 unused) */
+export const SHIELD_BUFF_FACTOR = [0, 0.25, 0.30, 0.35, 0.40, 0.50];
+
+/** Shepherd Tower pushback distance per level. index = level (0 unused) */
+export const SHEPHERD_PUSHBACK = [0, 30, 40, 50, 60, 80];
 
 /** Starting coins by difficulty. */
 const STARTING_COINS: Record<"little-kids" | "big-kids", number> = {
@@ -331,4 +367,60 @@ export function calculateStars(state: GameState): number {
 /** Check if village has been destroyed. */
 export function isVillageDestroyed(state: GameState): boolean {
   return state.villageHp <= 0;
+}
+
+/**
+ * Calculate the damage buff a tower receives from nearby Shield Towers.
+ * @param towerX - X position of the tower to check
+ * @param towerY - Y position of the tower to check
+ * @param towers - All placed towers with positions
+ * @param spotPositions - Array of {x,y} for each spot index
+ * @returns Buff multiplier (e.g. 0.25 means +25% damage)
+ */
+export function getShieldBuff(
+  towerX: number,
+  towerY: number,
+  towers: TowerState[],
+  spotPositions: { x: number; y: number }[],
+): number {
+  let maxBuff = 0;
+  for (const t of towers) {
+    if (t.type !== "shield") continue;
+    const spot = spotPositions[t.spotIndex];
+    if (!spot) continue;
+    const range = TOWER_DEFS.shield.range[t.level - 1];
+    const dx = towerX - spot.x;
+    const dy = towerY - spot.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= range) {
+      const buff = SHIELD_BUFF_FACTOR[t.level];
+      if (buff > maxBuff) maxBuff = buff;
+    }
+  }
+  return maxBuff;
+}
+
+/**
+ * Calculate sell refund for a tower (50% of total investment).
+ * Total investment = base cost + sum of all upgrade costs paid.
+ */
+export function getSellRefund(towerType: TowerType, currentLevel: number): number {
+  const baseCost = TOWER_DEFS[towerType].cost;
+  let totalInvestment = baseCost;
+  for (let l = 1; l < currentLevel; l++) {
+    totalInvestment += getUpgradeCost(towerType, l);
+  }
+  return Math.floor(totalInvestment * 0.5);
+}
+
+/** Sell an existing tower. Returns new state with tower removed and refund added. */
+export function sellTower(state: GameState, towerId: number): GameState {
+  const tower = state.towers.find((t) => t.id === towerId);
+  if (!tower) return state;
+  const refund = getSellRefund(tower.type, tower.level);
+  return {
+    ...state,
+    coins: state.coins + refund,
+    towers: state.towers.filter((t) => t.id !== towerId),
+  };
 }

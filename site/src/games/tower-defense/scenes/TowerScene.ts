@@ -16,9 +16,14 @@ import {
   completeWave,
   calculateStars,
   isVillageDestroyed,
+  getShieldBuff,
+  getSellRefund,
+  sellTower,
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
+  SHIELD_BUFF_FACTOR,
+  SHEPHERD_PUSHBACK,
   MAX_TOWER_LEVEL,
   type GameState,
   type TowerType,
@@ -113,6 +118,9 @@ interface ActiveTower {
   labelText: Phaser.GameObjects.Text;
   attackTimer: number; // ms until next attack
   glowing: boolean;
+  praiseChargeTimer?: number; // ms elapsed for Praise Tower charge
+  praiseGlow?: Phaser.GameObjects.Arc; // visual glow for Praise Tower
+  shieldAura?: Phaser.GameObjects.Arc; // visual aura for Shield Tower buff
 }
 
 // ---------------------------------------------------------------------------
@@ -374,9 +382,10 @@ export class TowerScene extends Phaser.Scene {
     );
     this.towerStripBg.setDepth(80);
 
-    const towerTypes: TowerType[] = ["prayer", "light", "bell"];
-    const startX = 120;
-    const spacing = 200;
+    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
+    const spacing = 125;
+    const totalWidth = (towerTypes.length - 1) * spacing;
+    const startX = (GAME_W - totalWidth) / 2;
 
     this.towerStripCircles = [];
     this.towerStripLabels = [];
@@ -388,28 +397,28 @@ export class TowerScene extends Phaser.Scene {
       const cx = startX + i * spacing;
       const cy = TOWER_STRIP_Y + TOWER_STRIP_HEIGHT / 2;
 
-      const circle = this.add.circle(cx, cy, 18, def.color, 0.8);
+      const circle = this.add.circle(cx - 30, cy, 14, def.color, 0.8);
       circle.setDepth(81);
       this.towerStripCircles.push(circle);
 
-      const label = this.add.text(cx + 25, cy - 14, def.label, {
-        fontSize: "13px",
+      const label = this.add.text(cx - 10, cy - 14, def.label, {
+        fontSize: "11px",
         color: "#ffffff",
         fontFamily: "'Segoe UI', Arial, sans-serif",
       });
       label.setDepth(81);
       this.towerStripLabels.push(label);
 
-      const cost = this.add.text(cx + 25, cy + 2, `${def.cost}`, {
-        fontSize: "12px",
+      const cost = this.add.text(cx - 10, cy + 2, `${def.cost}`, {
+        fontSize: "10px",
         color: "#ffdd00",
         fontFamily: "'Segoe UI', Arial, sans-serif",
       });
       cost.setDepth(81);
       this.towerStripCosts.push(cost);
 
-      const lock = this.add.text(cx, cy - 6, "X", {
-        fontSize: "14px",
+      const lock = this.add.text(cx - 30, cy - 4, "X", {
+        fontSize: "12px",
         color: "#ff0000",
         fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
@@ -422,7 +431,7 @@ export class TowerScene extends Phaser.Scene {
   }
 
   private updateTowerStrip(): void {
-    const towerTypes: TowerType[] = ["prayer", "light", "bell"];
+    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
     for (let i = 0; i < towerTypes.length; i++) {
       const affordable = canAfford(this.gameState, towerTypes[i]);
       // On wave 1 (tutorial), only Light tower available
@@ -893,7 +902,7 @@ export class TowerScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.setDepth(90);
 
-    const towerTypes: TowerType[] = ["prayer", "light", "bell"];
+    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
     // On tutorial wave (wave 0 for little-kids), only allow Light
     const available =
       this.gameState.wave <= 0 && this.gameState.difficulty === "little-kids"
@@ -1390,6 +1399,15 @@ export class TowerScene extends Phaser.Scene {
       const range = def.range[level - 1];
       let attackSpeed = def.attackSpeed[level - 1];
 
+      // Shield tower doesn't attack
+      if (tower.state.type === "shield") continue;
+
+      // Praise tower uses its own charge mechanic
+      if (tower.state.type === "praise") {
+        this.updatePraiseTower(tower, delta);
+        continue;
+      }
+
       // Pray boost: double attack rate
       if (this.prayActive) {
         attackSpeed = attackSpeed / 2;
@@ -1412,15 +1430,25 @@ export class TowerScene extends Phaser.Scene {
           continue;
         }
 
+        // Calculate Shield Tower buff
+        const shieldBuff = getShieldBuff(
+          tower.x, tower.y,
+          this.gameState.towers,
+          PLACEMENT_SPOTS,
+        );
+
         switch (tower.state.type) {
           case "light":
-            this.lightTowerAttack(tower, enemiesInRange, def.damage[level - 1]);
+            this.lightTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)));
             break;
           case "bell":
-            this.bellTowerAttack(tower, enemiesInRange, def.damage[level - 1]);
+            this.bellTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)));
             break;
           case "prayer":
-            this.prayerTowerAttack(tower, enemiesInRange, def.damage[level - 1], level);
+            this.prayerTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)), level);
+            break;
+          case "shepherd":
+            this.shepherdTowerAttack(tower, enemiesInRange);
             break;
         }
       }
@@ -1500,6 +1528,125 @@ export class TowerScene extends Phaser.Scene {
       e.slowTimer = 2000; // Slow lasts 2 seconds
       this.damageEnemy(e, damage);
     }
+  }
+
+  private updatePraiseTower(tower: ActiveTower, delta: number): void {
+    const level = tower.state.level;
+    const chargeTime = TOWER_DEFS.praise.attackSpeed[level - 1];
+
+    if (tower.praiseChargeTimer === undefined) {
+      tower.praiseChargeTimer = 0;
+    }
+
+    tower.praiseChargeTimer += delta;
+
+    // Visual: growing golden glow based on charge progress
+    const chargePct = Math.min(tower.praiseChargeTimer / chargeTime, 1);
+    if (!tower.praiseGlow) {
+      tower.praiseGlow = this.add.circle(tower.x, tower.y, 5, 0xffaa00, 0);
+      tower.praiseGlow.setDepth(9);
+    }
+    tower.praiseGlow.setRadius(5 + chargePct * 25);
+    tower.praiseGlow.setAlpha(chargePct * 0.4);
+
+    if (tower.praiseChargeTimer >= chargeTime) {
+      tower.praiseChargeTimer = 0;
+
+      // Calculate Shield Tower buff
+      const shieldBuff = getShieldBuff(
+        tower.x, tower.y,
+        this.gameState.towers,
+        PLACEMENT_SPOTS,
+      );
+
+      // Fire AoE burst hitting ALL alive enemies
+      const damage = Math.round(TOWER_DEFS.praise.damage[level - 1] * (1 + shieldBuff));
+      const aliveEnemies = this.activeEnemies.filter((e) => e.alive);
+      for (const e of aliveEnemies) {
+        this.damageEnemy(e, damage);
+      }
+
+      // Burst visual: expanding gold ring from tower
+      const ring = this.add.circle(tower.x, tower.y, 10, 0xffaa00, 0);
+      ring.setStrokeStyle(3, 0xffaa00, 0.8);
+      ring.setDepth(30);
+      this.tweens.add({
+        targets: ring,
+        radius: 300,
+        alpha: 0,
+        duration: 500,
+        onUpdate: () => {
+          ring.setStrokeStyle(3, 0xffaa00, ring.alpha * 0.8);
+        },
+        onComplete: () => ring.destroy(),
+      });
+
+      // Flash the praise glow
+      if (tower.praiseGlow) {
+        tower.praiseGlow.setAlpha(0.8);
+        tower.praiseGlow.setRadius(30);
+      }
+
+      this.spawnFloatingText(tower.x, tower.y - 30, "PRAISE!", "#ffaa00");
+    }
+  }
+
+  private shepherdTowerAttack(
+    tower: ActiveTower,
+    enemies: ActiveEnemy[],
+  ): void {
+    const level = tower.state.level;
+    const pushback = SHEPHERD_PUSHBACK[level];
+
+    // Find nearest enemy
+    let nearest = enemies[0];
+    let minDist = Infinity;
+    for (const e of enemies) {
+      const dx = e.sprite.x - tower.x;
+      const dy = e.sprite.y - tower.y;
+      const d = dx * dx + dy * dy;
+      if (d < minDist) {
+        minDist = d;
+        nearest = e;
+      }
+    }
+
+    if (!nearest) return;
+
+    // Push enemy backward along the path
+    // Find which segment the enemy is on and push it backward
+    const wpIdx = nearest.waypointIndex;
+    if (wpIdx <= 0) return; // Already at start
+
+    // Calculate direction from previous waypoint to current (the direction enemy is traveling)
+    const prev = PATH_WAYPOINTS[wpIdx - 1];
+    const curr = PATH_WAYPOINTS[wpIdx];
+    const dx = curr.x - prev.x;
+    const dy = curr.y - prev.y;
+    const segLen = Math.sqrt(dx * dx + dy * dy);
+    if (segLen === 0) return;
+
+    // Push backward (opposite to travel direction)
+    const pushX = -(dx / segLen) * pushback;
+    const pushY = -(dy / segLen) * pushback;
+
+    nearest.sprite.x += pushX;
+    nearest.sprite.y += pushY;
+
+    // Visual: white wave effect
+    const wave = this.add.circle(tower.x, tower.y, 10, 0xffffff, 0);
+    wave.setStrokeStyle(2, 0xffffff, 0.6);
+    wave.setDepth(30);
+    this.tweens.add({
+      targets: wave,
+      radius: TOWER_DEFS.shepherd.range[level - 1],
+      alpha: 0,
+      duration: 300,
+      onUpdate: () => {
+        wave.setStrokeStyle(2, 0xffffff, wave.alpha * 0.6);
+      },
+      onComplete: () => wave.destroy(),
+    });
   }
 
   // =========================================================================
@@ -1803,13 +1950,35 @@ export class TowerScene extends Phaser.Scene {
   private drawPrayerAuras(): void {
     // Draw subtle blue circles for Prayer towers
     for (const tower of this.activeTowers) {
-      if (tower.state.type !== "prayer") continue;
-      const range = TOWER_DEFS.prayer.range[tower.state.level - 1];
-      const pulse = 0.04 + 0.02 * Math.sin(this.time.now / 600);
-      this.effectsGraphics.lineStyle(1, 0x4488ff, pulse * 3);
-      this.effectsGraphics.strokeCircle(tower.x, tower.y, range);
-      this.effectsGraphics.fillStyle(0x4488ff, pulse);
-      this.effectsGraphics.fillCircle(tower.x, tower.y, range);
+      if (tower.state.type === "prayer") {
+        const range = TOWER_DEFS.prayer.range[tower.state.level - 1];
+        const pulse = 0.04 + 0.02 * Math.sin(this.time.now / 600);
+        this.effectsGraphics.lineStyle(1, 0x4488ff, pulse * 3);
+        this.effectsGraphics.strokeCircle(tower.x, tower.y, range);
+        this.effectsGraphics.fillStyle(0x4488ff, pulse);
+        this.effectsGraphics.fillCircle(tower.x, tower.y, range);
+      }
+
+      // Shield Tower: green glow aura
+      if (tower.state.type === "shield") {
+        const range = TOWER_DEFS.shield.range[tower.state.level - 1];
+        const pulse = 0.06 + 0.03 * Math.sin(this.time.now / 500);
+        this.effectsGraphics.lineStyle(1, 0x44cc44, pulse * 3);
+        this.effectsGraphics.strokeCircle(tower.x, tower.y, range);
+        this.effectsGraphics.fillStyle(0x44cc44, pulse);
+        this.effectsGraphics.fillCircle(tower.x, tower.y, range);
+
+        // Draw green glow on buffed towers within range
+        for (const other of this.activeTowers) {
+          if (other === tower || other.state.type === "shield") continue;
+          const dx = other.x - tower.x;
+          const dy = other.y - tower.y;
+          if (Math.sqrt(dx * dx + dy * dy) <= range) {
+            this.effectsGraphics.lineStyle(2, 0x44cc44, 0.3 + 0.1 * Math.sin(this.time.now / 400));
+            this.effectsGraphics.strokeCircle(other.x, other.y, 18);
+          }
+        }
+      }
     }
   }
 
