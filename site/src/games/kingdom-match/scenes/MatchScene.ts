@@ -397,16 +397,39 @@ export class MatchScene extends Phaser.Scene {
   // ─── Grid Drawing ───────────────────────────────
 
   private clearBoard(): void {
-    // Remove all game objects except overlay
-    const toKeep = this.overlay;
+    // Kill all running tweens so nothing references destroyed objects
+    this.tweens.killAll();
+
+    // Explicitly destroy every tile sprite container
+    for (let r = 0; r < this.tileSprites.length; r++) {
+      for (let c = 0; c < (this.tileSprites[r]?.length ?? 0); c++) {
+        const sprite = this.tileSprites[r][c];
+        if (sprite) {
+          sprite.destroy();
+          this.tileSprites[r][c] = null;
+        }
+      }
+    }
+    this.tileSprites = [];
+
+    // Destroy selection highlight
+    if (this.selectedHighlight) {
+      this.selectedHighlight.destroy();
+      this.selectedHighlight = null;
+    }
+    this.selectedTile = null;
+
+    // Remove all game objects except the overlay container and its children.
+    // Collect first, then destroy, to avoid mutating the list while iterating.
+    const toDestroy: Phaser.GameObjects.GameObject[] = [];
     this.children.each((child) => {
-      if (child !== toKeep && !toKeep.exists(child as Phaser.GameObjects.GameObject)) {
-        child.destroy();
+      if (child !== this.overlay) {
+        toDestroy.push(child);
       }
     });
-    this.tileSprites = [];
-    this.selectedTile = null;
-    this.selectedHighlight = null;
+    for (const obj of toDestroy) {
+      obj.destroy();
+    }
   }
 
   private drawGrid(): void {
@@ -428,6 +451,7 @@ export class MatchScene extends Phaser.Scene {
       0x0d0520,
     );
     gridBg.setStrokeStyle(2, 0x2a1a4e);
+    gridBg.setDepth(1);
 
     // Draw cell backgrounds (checkerboard)
     for (let r = 0; r < this.gridSize; r++) {
@@ -435,7 +459,7 @@ export class MatchScene extends Phaser.Scene {
         const x = this.gridOffsetX + c * this.tileSize + this.tileSize / 2;
         const y = this.gridOffsetY + r * this.tileSize + this.tileSize / 2;
         const shade = (r + c) % 2 === 0 ? 0x1a0a3e : 0x150832;
-        this.add.rectangle(x, y, this.tileSize - 1, this.tileSize - 1, shade);
+        this.add.rectangle(x, y, this.tileSize - 1, this.tileSize - 1, shade).setDepth(2);
       }
     }
 
