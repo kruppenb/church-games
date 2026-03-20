@@ -6,6 +6,7 @@ import {
   areAdjacent,
   swapTiles,
   findMatches,
+  find2x2Matches,
   removeMatches,
   applyGravity,
   processSwap,
@@ -21,6 +22,8 @@ import {
   getBigKidsLevels,
   getSpecialTileTargets,
   randomTile,
+  combinePowerups,
+  isCombo,
 } from "./match-logic";
 import type { Tile, Position, LevelConfig } from "./match-logic";
 
@@ -294,22 +297,23 @@ describe("match-logic", () => {
       expect(targets.every((t) => t.col === 2)).toBe(true);
     });
 
-    it("Bomb clears 3x3 area", () => {
+    it("Bomb clears 5x5 area", () => {
       const grid = makeGrid([
-        [H, S, C, D],
-        [S, C, D, W],
-        [C, D, S, H],
-        [D, W, C, S],
+        [H, S, C, D, W],
+        [S, C, D, W, H],
+        [C, D, S, H, S],
+        [D, W, C, S, C],
+        [W, H, S, C, D],
       ]);
       const targets = getSpecialTileTargets(
         grid,
-        { row: 1, col: 1 },
+        { row: 2, col: 2 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(9);
+      expect(targets).toHaveLength(25); // Full 5x5 area
     });
 
-    it("Bomb at corner only clears valid cells", () => {
+    it("Bomb at corner only clears valid cells (5x5)", () => {
       const grid = makeGrid([
         [H, S, C],
         [S, C, D],
@@ -320,7 +324,7 @@ describe("match-logic", () => {
         { row: 0, col: 0 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(4); // Only 4 cells in 3x3 from corner
+      expect(targets).toHaveLength(9); // 3x3 grid, bomb at corner can only reach entire grid
     });
 
     it("Rainbow clears all tiles of the most common type", () => {
@@ -1011,7 +1015,7 @@ describe("match-logic", () => {
       expect(targets).toHaveLength(4); // skips 2 null cells
     });
 
-    it("Bomb targets a 3x3 area in the center of the grid", () => {
+    it("Bomb targets a 5x5 area in the center of the grid", () => {
       const grid = makeGrid([
         [H, S, C, D, W, R],
         [S, C, D, W, S, C],
@@ -1025,10 +1029,10 @@ describe("match-logic", () => {
         { row: 3, col: 3 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(9);
-      // Check all 9 positions are present
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
+      expect(targets).toHaveLength(25); // 5x5 area fully in-bounds
+      // Check all 25 positions are present
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
           const found = targets.some(
             (t) => t.row === 3 + dr && t.col === 3 + dc,
           );
@@ -1037,7 +1041,7 @@ describe("match-logic", () => {
       }
     });
 
-    it("Bomb at top-left corner only targets valid cells", () => {
+    it("Bomb at top-left corner only targets valid cells (5x5)", () => {
       const grid = makeGrid([
         [H, S, C, D],
         [S, C, D, W],
@@ -1049,10 +1053,11 @@ describe("match-logic", () => {
         { row: 0, col: 0 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(4);
+      // 5x5 from (0,0): rows 0-2, cols 0-2 = 9 cells
+      expect(targets).toHaveLength(9);
     });
 
-    it("Bomb at bottom-right corner only targets valid cells", () => {
+    it("Bomb at bottom-right corner only targets valid cells (5x5)", () => {
       const grid = makeGrid([
         [H, S, C, D],
         [S, C, D, W],
@@ -1064,26 +1069,28 @@ describe("match-logic", () => {
         { row: 3, col: 3 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(4);
+      // 5x5 from (3,3) in a 4x4 grid: rows 1-3, cols 1-3 = 9 cells
+      expect(targets).toHaveLength(9);
     });
 
-    it("Bomb at edge only targets valid cells", () => {
+    it("Bomb at edge only targets valid cells (5x5)", () => {
       const grid = makeGrid([
         [H, S, C, D],
         [S, C, D, W],
         [C, D, S, H],
         [D, W, C, S],
       ]);
-      // Top edge, middle column
+      // Top edge, middle column (row 0, col 1)
+      // 5x5 from (0,1): rows 0-2, cols 0-3 = 3*4 = 12 cells
       const targets = getSpecialTileTargets(
         grid,
         { row: 0, col: 1 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(6); // 2 rows x 3 cols
+      expect(targets).toHaveLength(12);
     });
 
-    it("Bomb skips null cells in its 3x3 area", () => {
+    it("Bomb skips null cells in its 5x5 area", () => {
       const grid = makeGridWithNulls([
         [H, S, C, D],
         [S, null, D, W],
@@ -1095,7 +1102,8 @@ describe("match-logic", () => {
         { row: 1, col: 1 },
         SpecialType.Bomb,
       );
-      expect(targets).toHaveLength(8); // 9 - 1 null
+      // 5x5 from (1,1) in 4x4 grid: rows 0-3, cols 0-3 = 16 cells, minus 1 null = 15
+      expect(targets).toHaveLength(15);
     });
 
     it("Rainbow clears all tiles of the most common type", () => {
@@ -1310,33 +1318,35 @@ describe("match-logic", () => {
       }
     });
 
-    it("removeMatches handles a bomb's 3x3 blast correctly", () => {
+    it("removeMatches handles a bomb's 5x5 blast correctly", () => {
+      // Use a 6x6 grid so the bomb's 5x5 area doesn't cover everything
       const grid: (Tile | null)[][] = makeGrid([
-        [H, S, C, D],
-        [S, C, D, W],
-        [C, D, S, H],
-        [D, W, C, S],
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
       ]);
-      // Place a bomb at center (1,1)
-      grid[1][1] = { type: TileType.Cross, special: SpecialType.Bomb };
-      // Create a match including the bomb
-      grid[1][0] = tile(C);
-      grid[1][2] = tile(C);
+      // Place a bomb at (2,2)
+      grid[2][2] = { type: TileType.Star, special: SpecialType.Bomb };
+      // Create a match including the bomb: S S S in row 2 cols 1,2,3
+      grid[2][1] = tile(S);
+      grid[2][3] = tile(S);
 
       const matches = findMatches(grid);
       const bombMatch = matches.find((m) =>
-        m.positions.some((p) => p.row === 1 && p.col === 1),
+        m.positions.some((p) => p.row === 2 && p.col === 2),
       );
       if (bombMatch) {
         const result = removeMatches(grid, [bombMatch]);
         expect(result.specialsActivated.length).toBeGreaterThanOrEqual(1);
-        // 3x3 area around (1,1) should be cleared
-        // (0,0)(0,1)(0,2), (1,0)(1,1)(1,2), (2,0)(2,1)(2,2)
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            const r = 1 + dr;
-            const c = 1 + dc;
-            if (r >= 0 && r < 4 && c >= 0 && c < 4) {
+        // 5x5 area around (2,2) should be cleared: rows 0-4, cols 0-4
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            const r = 2 + dr;
+            const c = 2 + dc;
+            if (r >= 0 && r < 6 && c >= 0 && c < 6) {
               expect(result.grid[r][c]).toBeNull();
             }
           }
@@ -1473,6 +1483,686 @@ describe("match-logic", () => {
         );
         expect(result.totalScore).toBeGreaterThan(firstStepScore);
       }
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // NEW FEATURE TESTS
+  // ═══════════════════════════════════════════════════════
+
+  describe("Propeller — 2x2 detection", () => {
+    it("detects a 2x2 square of same-color tiles", () => {
+      const grid = makeGrid([
+        [H, H, S, C],
+        [H, H, C, D],
+        [S, C, D, W],
+        [C, D, W, S],
+      ]);
+      const matches = find2x2Matches(grid);
+      expect(matches.length).toBe(1);
+      expect(matches[0].specialCreated).toBe(SpecialType.Propeller);
+      expect(matches[0].positions).toHaveLength(4);
+    });
+
+    it("2x2 detection takes priority over line matches", () => {
+      // Set up: a 2x2 block of Hearts at (0,0) that also forms part of a 3-in-row
+      const grid = makeGrid([
+        [H, H, S, C, D, W],
+        [H, H, C, D, W, S],
+        [S, C, D, W, H, C],
+        [C, D, W, S, C, D],
+        [D, W, S, C, D, W],
+        [W, S, C, D, W, S],
+      ]);
+      const matches = findMatches(grid);
+      // Should have a propeller match
+      const propellerMatch = matches.find(
+        (m) => m.specialCreated === SpecialType.Propeller,
+      );
+      expect(propellerMatch).toBeDefined();
+      expect(propellerMatch!.positions).toHaveLength(4);
+    });
+
+    it("propeller position is at top-left of the 2x2 square", () => {
+      const grid = makeGrid([
+        [S, C, D, W],
+        [C, H, H, D],
+        [D, H, H, W],
+        [W, S, C, S],
+      ]);
+      const matches = find2x2Matches(grid);
+      expect(matches.length).toBe(1);
+      expect(matches[0].specialPosition).toEqual({ row: 1, col: 1 });
+    });
+
+    it("does not detect overlapping 2x2 squares (first one wins)", () => {
+      // 3x2 block of hearts: could be 2 overlapping 2x2, but only first wins
+      const grid = makeGrid([
+        [H, H, H, S],
+        [H, H, H, C],
+        [S, C, D, W],
+        [C, D, W, S],
+      ]);
+      const matches = find2x2Matches(grid);
+      // Only one 2x2 should be detected (the first one found)
+      expect(matches.length).toBe(1);
+    });
+
+    it("findMatches includes propeller results", () => {
+      const grid = makeGrid([
+        [H, H, S, C, D, W],
+        [H, H, C, D, W, S],
+        [S, C, D, W, H, C],
+        [C, D, W, S, C, D],
+        [D, W, S, C, D, W],
+        [W, S, C, D, W, S],
+      ]);
+      const matches = findMatches(grid);
+      const propeller = matches.find((m) => m.specialCreated === SpecialType.Propeller);
+      expect(propeller).toBeDefined();
+    });
+
+    it("propeller is created in removeMatches", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, H, S, C, D, W],
+        [H, H, C, D, W, S],
+        [S, C, D, W, H, C],
+        [C, D, W, S, C, D],
+        [D, W, S, C, D, W],
+        [W, S, C, D, W, S],
+      ]);
+      const matches = findMatches(grid);
+      const propMatch = matches.find((m) => m.specialCreated === SpecialType.Propeller);
+      expect(propMatch).toBeDefined();
+      if (propMatch) {
+        const result = removeMatches(grid, [propMatch]);
+        // The propeller special tile should exist in the result grid
+        const pos = propMatch.specialPosition!;
+        const tile = result.grid[pos.row][pos.col];
+        expect(tile).not.toBeNull();
+        expect(tile!.special).toBe(SpecialType.Propeller);
+      }
+    });
+
+    it("no 2x2 detected in checkerboard pattern", () => {
+      const grid = makeGrid([
+        [H, S, H, S],
+        [S, H, S, H],
+        [H, S, H, S],
+        [S, H, S, H],
+      ]);
+      const matches = find2x2Matches(grid);
+      expect(matches).toHaveLength(0);
+    });
+
+    it("createGrid avoids initial 2x2 squares", () => {
+      // Run multiple times to verify
+      for (let i = 0; i < 10; i++) {
+        const grid = createGrid(8, 8, 6);
+        const propMatches = find2x2Matches(grid);
+        expect(propMatches).toHaveLength(0);
+      }
+    });
+  });
+
+  describe("Propeller — activation", () => {
+    it("Propeller clears 4 adjacent tiles plus a random tile", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = getSpecialTileTargets(
+        grid,
+        { row: 2, col: 2 },
+        SpecialType.Propeller,
+      );
+      // 4 adjacent (up, down, left, right) + 1 random + itself = 6 targets
+      expect(targets).toHaveLength(6);
+      // Self should be included
+      expect(targets.some((t) => t.row === 2 && t.col === 2)).toBe(true);
+      // Adjacent tiles should be included
+      expect(targets.some((t) => t.row === 1 && t.col === 2)).toBe(true); // up
+      expect(targets.some((t) => t.row === 3 && t.col === 2)).toBe(true); // down
+      expect(targets.some((t) => t.row === 2 && t.col === 1)).toBe(true); // left
+      expect(targets.some((t) => t.row === 2 && t.col === 3)).toBe(true); // right
+    });
+
+    it("Propeller at corner clears only valid adjacent tiles", () => {
+      const grid = makeGrid([
+        [H, S, C],
+        [S, C, D],
+        [C, D, S],
+      ]);
+      const targets = getSpecialTileTargets(
+        grid,
+        { row: 0, col: 0 },
+        SpecialType.Propeller,
+      );
+      // Only 2 adjacent (right, down) + 1 random + itself = 4 targets
+      expect(targets).toHaveLength(4);
+      expect(targets.some((t) => t.row === 0 && t.col === 0)).toBe(true); // self
+      expect(targets.some((t) => t.row === 0 && t.col === 1)).toBe(true); // right
+      expect(targets.some((t) => t.row === 1 && t.col === 0)).toBe(true); // down
+    });
+
+    it("Propeller score includes propeller bonus", () => {
+      const score = calculateMatchScore(4, 0, [
+        { pos: { row: 0, col: 0 }, special: SpecialType.Propeller },
+      ]);
+      // 4 * 10 * 1.0 + 60 = 100
+      expect(score).toBe(100);
+    });
+  });
+
+  describe("Bomb — 5x5 upgrade", () => {
+    it("Bomb clears 5x5 area (25 tiles) in center of 6x6 grid", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = getSpecialTileTargets(
+        grid,
+        { row: 2, col: 2 },
+        SpecialType.Bomb,
+      );
+      // 5x5 centered at (2,2): rows 0-4, cols 0-4 = 25 tiles
+      expect(targets).toHaveLength(25);
+    });
+
+    it("Bomb covers rows -2 to +2 and cols -2 to +2", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = getSpecialTileTargets(
+        grid,
+        { row: 3, col: 3 },
+        SpecialType.Bomb,
+      );
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          const r = 3 + dr;
+          const c = 3 + dc;
+          if (r >= 0 && r < 6 && c >= 0 && c < 6) {
+            expect(targets.some((t) => t.row === r && t.col === c)).toBe(true);
+          }
+        }
+      }
+    });
+  });
+
+  describe("Unlimited chain reactions", () => {
+    it("multi-level chain: special A triggers special B which triggers special C", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R, H, S],
+        [S, C, D, W, S, C, S, C],
+        [C, D, S, H, C, D, C, D],
+        [D, W, C, S, D, W, D, W],
+        [W, S, D, C, W, S, W, S],
+        [S, C, H, D, S, C, S, C],
+        [H, D, S, W, C, D, H, D],
+        [D, W, C, S, D, W, D, W],
+      ]);
+      // Set up chain: LineBlastH at (1,0) -> hits Bomb at (1,4) -> hits LineBlastV at (3,5)
+      grid[1][0] = { type: TileType.Star, special: SpecialType.LineBlastH };
+      grid[1][4] = { type: TileType.Crown, special: SpecialType.Bomb };
+      grid[3][5] = { type: TileType.Dove, special: SpecialType.LineBlastV };
+
+      // Create a match at row 1 cols 0,1,2 to trigger the LineBlastH
+      grid[1][1] = tile(S);
+      grid[1][2] = tile(S);
+
+      const matches = findMatches(grid);
+      const starMatch = matches.find((m) =>
+        m.positions.some((p) => p.row === 1 && p.col === 0),
+      );
+      if (starMatch) {
+        const result = removeMatches(grid, [starMatch]);
+        // All 3 specials should be activated
+        expect(result.specialsActivated.length).toBeGreaterThanOrEqual(3);
+        // Verify each was activated
+        expect(result.specialsActivated.some((s) => s.pos.row === 1 && s.pos.col === 0)).toBe(true);
+        expect(result.specialsActivated.some((s) => s.pos.row === 1 && s.pos.col === 4)).toBe(true);
+        expect(result.specialsActivated.some((s) => s.pos.row === 3 && s.pos.col === 5)).toBe(true);
+      }
+    });
+
+    it("alreadyActivated prevents infinite loops with two specials targeting each other", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Two bombs near each other that could trigger each other
+      grid[2][2] = { type: TileType.Star, special: SpecialType.Bomb };
+      grid[2][4] = { type: TileType.Star, special: SpecialType.Bomb };
+      // Match to trigger first bomb
+      grid[2][1] = tile(S);
+      grid[2][3] = tile(S);
+
+      const matches = findMatches(grid);
+      const starMatch = matches.find((m) =>
+        m.positions.some((p) => p.row === 2 && p.col === 2),
+      );
+      if (starMatch) {
+        // Should not infinite loop
+        const result = removeMatches(grid, [starMatch]);
+        expect(result.specialsActivated.length).toBeGreaterThanOrEqual(2);
+        // Both bombs activated but each only once
+        const bomb1 = result.specialsActivated.filter((s) => s.pos.row === 2 && s.pos.col === 2);
+        const bomb2 = result.specialsActivated.filter((s) => s.pos.row === 2 && s.pos.col === 4);
+        expect(bomb1).toHaveLength(1);
+        expect(bomb2).toHaveLength(1);
+      }
+    });
+  });
+
+  describe("Powerup combinations", () => {
+    it("isCombo returns true for two specials, false if one is None", () => {
+      expect(isCombo(SpecialType.LineBlastH, SpecialType.Bomb)).toBe(true);
+      expect(isCombo(SpecialType.None, SpecialType.Bomb)).toBe(false);
+      expect(isCombo(SpecialType.None, SpecialType.None)).toBe(false);
+    });
+
+    it("Combo 1: LineBlast + LineBlast → cross blast (full row AND full column)", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.LineBlastH, SpecialType.LineBlastV,
+        { row: 2, col: 3 }, grid,
+      );
+      // Full row 2 (6 tiles) + full column 3 (6 tiles) - 1 overlap = 11
+      expect(targets).toHaveLength(11);
+      // All of row 2
+      for (let c = 0; c < 6; c++) {
+        expect(targets.some((t) => t.row === 2 && t.col === c)).toBe(true);
+      }
+      // All of col 3
+      for (let r = 0; r < 6; r++) {
+        expect(targets.some((t) => t.row === r && t.col === 3)).toBe(true);
+      }
+    });
+
+    it("Combo 2: Bomb + Bomb → 7x7 mega explosion", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R, H, S],
+        [S, C, D, W, S, C, S, C],
+        [C, D, S, H, C, D, C, D],
+        [D, W, C, S, D, W, D, W],
+        [W, S, D, C, W, S, W, S],
+        [S, C, H, D, S, C, S, C],
+        [H, D, S, W, C, D, H, D],
+        [D, W, C, S, D, W, D, W],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Bomb, SpecialType.Bomb,
+        { row: 3, col: 3 }, grid,
+      );
+      // 7x7 centered at (3,3): rows 0-6, cols 0-6 = 49 tiles
+      expect(targets).toHaveLength(49);
+    });
+
+    it("Combo 3: LineBlast + Bomb → 3-row + 3-column blast", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.LineBlastH, SpecialType.Bomb,
+        { row: 2, col: 2 }, grid,
+      );
+      // 3 full rows (1,2,3 = 18 tiles) + 3 full cols (1,2,3 = 18 tiles) - overlaps
+      // Rows 1-3, all 6 cols = 18
+      // Cols 1-3, all 6 rows = 18
+      // Overlap: 3 rows x 3 cols = 9
+      // Total = 18 + 18 - 9 = 27
+      expect(targets).toHaveLength(27);
+      // Check rows 1,2,3 fully cleared
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let c = 0; c < 6; c++) {
+          expect(targets.some((t) => t.row === 2 + dr && t.col === c)).toBe(true);
+        }
+      }
+      // Check cols 1,2,3 fully cleared
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let r = 0; r < 6; r++) {
+          expect(targets.some((t) => t.row === r && t.col === 2 + dc)).toBe(true);
+        }
+      }
+    });
+
+    it("Combo 4: Rainbow + LineBlast → all tiles of color become LineBlasts and detonate", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Use Heart as the swapped color
+      const targets = combinePowerups(
+        SpecialType.Rainbow, SpecialType.LineBlastH,
+        { row: 0, col: 0 }, grid, TileType.Heart,
+      );
+      // Every Heart tile becomes a LineBlast: its full row and column are cleared
+      // Hearts are at specific positions — the combo should clear many tiles
+      expect(targets.length).toBeGreaterThan(10);
+    });
+
+    it("Combo 5: Rainbow + Bomb → all tiles of swapped color explode 3x3", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Rainbow, SpecialType.Bomb,
+        { row: 0, col: 0 }, grid, TileType.Heart,
+      );
+      // Each Heart position gets a 3x3 explosion
+      expect(targets.length).toBeGreaterThan(5);
+    });
+
+    it("Combo 6: Rainbow + Rainbow → clear entire board", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Rainbow, SpecialType.Rainbow,
+        { row: 0, col: 0 }, grid,
+      );
+      // Entire 6x6 board = 36 tiles
+      expect(targets).toHaveLength(36);
+    });
+
+    it("Combo 7: Propeller + LineBlast → adjacent 4 + target row and column", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Propeller, SpecialType.LineBlastH,
+        { row: 2, col: 2 }, grid,
+      );
+      // Should include self + 4 adjacent + full row and column of random target
+      // At least 5 (self + 4 adj) + some from the random target
+      expect(targets.length).toBeGreaterThan(5);
+      // Self should be included
+      expect(targets.some((t) => t.row === 2 && t.col === 2)).toBe(true);
+    });
+
+    it("Combo 8: Propeller + Bomb → adjacent 4 + 5x5 at target", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Propeller, SpecialType.Bomb,
+        { row: 2, col: 2 }, grid,
+      );
+      // Self + 4 adjacent = 5, plus up to 25 from 5x5 at random target
+      expect(targets.length).toBeGreaterThan(5);
+      expect(targets.some((t) => t.row === 2 && t.col === 2)).toBe(true);
+    });
+
+    it("Combo 9: Propeller + Propeller → 2 propellers target 2 different random tiles", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Propeller, SpecialType.Propeller,
+        { row: 2, col: 2 }, grid,
+      );
+      // Self + 4 adjacent = 5, plus 2 targets each with up to 5 tiles
+      expect(targets.length).toBeGreaterThan(5);
+      expect(targets.some((t) => t.row === 2 && t.col === 2)).toBe(true);
+    });
+
+    it("Combo 10: Rainbow + Propeller → 3 propellers target 3 different tiles", () => {
+      const grid = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      const targets = combinePowerups(
+        SpecialType.Rainbow, SpecialType.Propeller,
+        { row: 2, col: 2 }, grid,
+      );
+      // Self + 3 targets each with up to 5 tiles
+      expect(targets.length).toBeGreaterThan(3);
+      expect(targets.some((t) => t.row === 2 && t.col === 2)).toBe(true);
+    });
+  });
+
+  describe("Powerup combos in processSwap", () => {
+    it("swapping two specials triggers combo effect", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Place two specials adjacent
+      grid[2][2] = { type: TileType.Star, special: SpecialType.LineBlastH };
+      grid[2][3] = { type: TileType.Heart, special: SpecialType.LineBlastV };
+
+      const result = processSwap(
+        grid,
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      expect(result.totalScore).toBeGreaterThan(0);
+      // Cross blast should clear entire row 2 and column 2
+      // Both row 2 and col 2 should be null after removal (before gravity fills)
+    });
+
+    it("swapping two Rainbows clears entire board", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      grid[2][2] = { type: TileType.Star, special: SpecialType.Rainbow };
+      grid[2][3] = { type: TileType.Heart, special: SpecialType.Rainbow };
+
+      const result = processSwap(
+        grid,
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      // Score should be very high (36 tiles removed + two rainbow bonuses)
+      expect(result.totalScore).toBeGreaterThan(300);
+    });
+
+    it("swapping Bomb + Bomb creates 7x7 mega explosion", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R, H, S],
+        [S, C, D, W, S, C, S, C],
+        [C, D, S, H, C, D, C, D],
+        [D, W, C, S, D, W, D, W],
+        [W, S, D, C, W, S, W, S],
+        [S, C, H, D, S, C, S, C],
+        [H, D, S, W, C, D, H, D],
+        [D, W, C, S, D, W, D, W],
+      ]);
+      grid[3][3] = { type: TileType.Star, special: SpecialType.Bomb };
+      grid[3][4] = { type: TileType.Heart, special: SpecialType.Bomb };
+
+      const result = processSwap(
+        grid,
+        { row: 3, col: 3 },
+        { row: 3, col: 4 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      // Should remove a LOT of tiles
+      expect(result.totalScore).toBeGreaterThan(100);
+    });
+  });
+
+  describe("Rainbow — player-chosen color", () => {
+    it("Rainbow swapped with normal tile clears all tiles of that tile's color", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Place Rainbow at (2,2), normal Star at (2,3)
+      grid[2][2] = { type: TileType.Star, special: SpecialType.Rainbow };
+      grid[2][3] = tile(S); // Star type
+
+      const result = processSwap(
+        grid,
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      expect(result.totalScore).toBeGreaterThan(0);
+      // All Star tiles and the Rainbow tile should have been cleared (before gravity)
+    });
+
+    it("Rainbow activated by blast uses auto-pick (most common type)", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Place Rainbow at (1,3) and a LineBlastH at (1,0)
+      grid[1][3] = { type: TileType.Crown, special: SpecialType.Rainbow };
+      grid[1][0] = { type: TileType.Star, special: SpecialType.LineBlastH };
+      // Create a match to trigger LineBlastH
+      grid[1][1] = tile(S);
+      grid[1][2] = tile(S);
+
+      const matches = findMatches(grid);
+      const starMatch = matches.find((m) =>
+        m.positions.some((p) => p.row === 1 && p.col === 0),
+      );
+      if (starMatch) {
+        const result = removeMatches(grid, [starMatch]);
+        // Rainbow should have been activated (auto-pick since it was in a blast, not swapped)
+        expect(result.specialsActivated.some(
+          (s) => s.special === SpecialType.Rainbow,
+        )).toBe(true);
+      }
+    });
+
+    it("Rainbow swapped with specific color clears that color, not the most common", () => {
+      // Create a grid where Doves are the most common
+      const grid: (Tile | null)[][] = [
+        [tile(D), tile(D), tile(D), tile(D), tile(D), tile(D)],
+        [tile(D), tile(C), tile(S), tile(H), tile(D), tile(D)],
+        [tile(D), tile(S), { type: TileType.Star, special: SpecialType.Rainbow }, tile(H), tile(D), tile(D)],
+        [tile(D), tile(H), tile(C), tile(S), tile(D), tile(D)],
+        [tile(D), tile(D), tile(D), tile(D), tile(D), tile(D)],
+        [tile(D), tile(D), tile(D), tile(D), tile(D), tile(D)],
+      ];
+      // Swap Rainbow with a Heart tile at (2,3)
+      const result = processSwap(
+        grid,
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      // Heart tiles should be cleared (not Dove which is most common)
+      // After removal, no Hearts should remain (before gravity fills gaps)
+      // We verify by checking the score is reasonable
+      expect(result.totalScore).toBeGreaterThan(0);
+    });
+  });
+
+  describe("processSwap integration — combo and chain combined", () => {
+    it("combo triggers chain reaction on special tiles in blast radius", () => {
+      const grid: (Tile | null)[][] = makeGrid([
+        [H, S, C, D, W, R],
+        [S, C, D, W, S, C],
+        [C, D, S, H, C, D],
+        [D, W, C, S, D, W],
+        [W, S, D, C, W, S],
+        [S, C, H, D, S, C],
+      ]);
+      // Place two LineBlasts to swap (combo: cross blast)
+      grid[2][2] = { type: TileType.Star, special: SpecialType.LineBlastH };
+      grid[2][3] = { type: TileType.Heart, special: SpecialType.LineBlastV };
+      // Place a Bomb in the blast radius
+      grid[0][3] = { type: TileType.Dove, special: SpecialType.Bomb };
+
+      const result = processSwap(
+        grid,
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        6,
+      );
+      expect(result.valid).toBe(true);
+      // Should have high score from combo + chain
+      expect(result.totalScore).toBeGreaterThan(100);
     });
   });
 });

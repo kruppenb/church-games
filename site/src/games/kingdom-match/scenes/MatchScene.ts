@@ -53,6 +53,7 @@ const SPECIAL_ICONS: Record<SpecialType, string> = {
   [SpecialType.LineBlastV]: "\u2195",
   [SpecialType.Bomb]: "\u2737",
   [SpecialType.Rainbow]: "\u2726",
+  [SpecialType.Propeller]: "\u2738",
 };
 
 /** Mapping from TileType to image asset key */
@@ -72,6 +73,7 @@ const SPECIAL_IMAGE_KEYS: Record<SpecialType, string> = {
   [SpecialType.LineBlastV]: "match-lineblast",
   [SpecialType.Bomb]: "match-bomb",
   [SpecialType.Rainbow]: "match-rainbow",
+  [SpecialType.Propeller]: "match-propeller",
 };
 
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
@@ -151,6 +153,7 @@ export class MatchScene extends Phaser.Scene {
       { key: "match-lineblast", path: "assets/match/lineblast.png" },
       { key: "match-bomb", path: "assets/match/bomb.png" },
       { key: "match-rainbow", path: "assets/match/rainbow.png" },
+      { key: "match-propeller", path: "assets/match/propeller.png" },
     ];
 
     for (const asset of tileAssets) {
@@ -625,6 +628,17 @@ export class MatchScene extends Phaser.Scene {
         yoyo: true,
         repeat: -1,
       });
+
+      // Spin animation for Propeller tiles
+      if (t.special === SpecialType.Propeller) {
+        this.tweens.add({
+          targets: container,
+          angle: 360,
+          duration: 2000,
+          repeat: -1,
+          ease: "Linear",
+        });
+      }
 
       // Add a colored border around the tile for specials (visible in both modes)
       if (!useImage) {

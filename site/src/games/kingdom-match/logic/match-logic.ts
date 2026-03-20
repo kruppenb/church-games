@@ -13,8 +13,9 @@ export enum SpecialType {
   None = 0,
   LineBlastH = 1, // Clears entire row
   LineBlastV = 2, // Clears entire column
-  Bomb = 3, // Clears 3x3 area
+  Bomb = 3, // Clears 5x5 area
   Rainbow = 4, // Clears all tiles of one color
+  Propeller = 5, // Clears 4 adjacent + flies to random tile
 }
 
 export interface Tile {
@@ -92,6 +93,7 @@ const SPECIAL_TILE_BONUS = 50;
 const LINE_BLAST_BONUS = 100;
 const BOMB_BONUS = 80;
 const RAINBOW_BONUS = 150;
+const PROPELLER_BONUS = 60;
 
 // --- Level Configs ---
 
@@ -185,7 +187,7 @@ export function createGrid(rows: number, cols: number, tileCount: number): Tile[
 
 /**
  * Check if placing a tile type at (row, col) would create a match of 3
- * by looking at the already-placed tiles to the left and above.
+ * or a 2x2 square by looking at the already-placed tiles to the left and above.
  */
 function wouldCreateMatch(
   grid: Tile[][],
@@ -208,6 +210,25 @@ function wouldCreateMatch(
     row >= 2 &&
     grid[row - 1]?.[col]?.type === type &&
     grid[row - 2]?.[col]?.type === type
+  ) {
+    return true;
+  }
+  // Check 2x2 squares (would create Propeller)
+  // Check top-left: (row-1,col-1), (row-1,col), (row,col-1) + current
+  if (
+    row >= 1 && col >= 1 &&
+    grid[row - 1]?.[col - 1]?.type === type &&
+    grid[row - 1]?.[col]?.type === type &&
+    grid[row]?.[col - 1]?.type === type
+  ) {
+    return true;
+  }
+  // Check top-right: (row-1,col), (row-1,col+1), (row,col+1) + current
+  if (
+    row >= 1 && col + 1 < _cols &&
+    grid[row - 1]?.[col]?.type === type &&
+    grid[row - 1]?.[col + 1]?.type === type &&
+    grid[row]?.[col + 1]?.type === type
   ) {
     return true;
   }
@@ -239,13 +260,73 @@ export function swapTiles(
 // --- Match Detection ---
 
 /**
+ * Find all 2x2 square matches in the grid (for Propeller creation).
+ * Returns positions grouped by each 2x2 square found.
+ * 2x2 detection runs BEFORE line matches and takes priority.
+ */
+export function find2x2Matches(grid: (Tile | null)[][]): MatchResult[] {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const results: MatchResult[] = [];
+  const used = new Set<string>();
+
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < cols - 1; c++) {
+      const tl = grid[r][c];
+      const tr = grid[r][c + 1];
+      const bl = grid[r + 1][c];
+      const br = grid[r + 1][c + 1];
+
+      if (
+        tl && tr && bl && br &&
+        tl.type === tr.type &&
+        tl.type === bl.type &&
+        tl.type === br.type
+      ) {
+        const keys = [
+          `${r},${c}`, `${r},${c + 1}`,
+          `${r + 1},${c}`, `${r + 1},${c + 1}`,
+        ];
+        // Don't create a propeller if any of these cells are already used by another 2x2
+        if (keys.some((k) => used.has(k))) continue;
+        for (const k of keys) used.add(k);
+
+        const positions: Position[] = [
+          { row: r, col: c }, { row: r, col: c + 1 },
+          { row: r + 1, col: c }, { row: r + 1, col: c + 1 },
+        ];
+        // Propeller is placed at top-left of the 2x2
+        results.push({
+          positions,
+          specialCreated: SpecialType.Propeller,
+          specialPosition: { row: r, col: c },
+        });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
  * Find all matches in the grid.
  * Returns array of MatchResult, each with positions and what special to create.
+ * 2x2 squares are detected first (creating Propellers) and take priority.
  */
 export function findMatches(grid: (Tile | null)[][]): MatchResult[] {
   const rows = grid.length;
   const cols = grid[0].length;
 
+  // --- Phase 1: Detect 2x2 squares for Propeller (highest priority) ---
+  const propellerMatches = find2x2Matches(grid);
+  const propellerUsed = new Set<string>();
+  for (const pm of propellerMatches) {
+    for (const p of pm.positions) {
+      propellerUsed.add(`${p.row},${p.col}`);
+    }
+  }
+
+  // --- Phase 2: Detect line matches (3+), excluding cells used by propellers ---
   // Track which cells are part of a match
   const matched = new Set<string>();
   const rawMatches: { positions: Position[]; direction: "h" | "v" }[] = [];
@@ -256,15 +337,22 @@ export function findMatches(grid: (Tile | null)[][]): MatchResult[] {
     for (let c = 1; c <= cols; c++) {
       const current = c < cols ? grid[r][c] : null;
       const prev = grid[r][runStart];
-      if (current && prev && current.type === prev.type) {
+      if (
+        current && prev && current.type === prev.type &&
+        !propellerUsed.has(`${r},${c}`) && !propellerUsed.has(`${r},${runStart}`)
+      ) {
         // Continue run
       } else {
-        const runLength = c - runStart;
-        if (runLength >= 3 && prev !== null) {
-          const positions: Position[] = [];
-          for (let k = runStart; k < c; k++) {
+        // Filter out propeller-used positions from this run
+        const positions: Position[] = [];
+        for (let k = runStart; k < c; k++) {
+          if (!propellerUsed.has(`${r},${k}`) && grid[r][k] && grid[r][runStart] && grid[r][k]!.type === grid[r][runStart]!.type) {
             positions.push({ row: r, col: k });
-            matched.add(`${r},${k}`);
+          }
+        }
+        if (positions.length >= 3) {
+          for (const p of positions) {
+            matched.add(`${p.row},${p.col}`);
           }
           rawMatches.push({ positions, direction: "h" });
         }
@@ -279,15 +367,21 @@ export function findMatches(grid: (Tile | null)[][]): MatchResult[] {
     for (let r = 1; r <= rows; r++) {
       const current = r < rows ? grid[r][c] : null;
       const prev = grid[runStart][c];
-      if (current && prev && current.type === prev.type) {
+      if (
+        current && prev && current.type === prev.type &&
+        !propellerUsed.has(`${r},${c}`) && !propellerUsed.has(`${runStart},${c}`)
+      ) {
         // Continue run
       } else {
-        const runLength = r - runStart;
-        if (runLength >= 3 && prev !== null) {
-          const positions: Position[] = [];
-          for (let k = runStart; k < r; k++) {
+        const positions: Position[] = [];
+        for (let k = runStart; k < r; k++) {
+          if (!propellerUsed.has(`${k},${c}`) && grid[k][c] && grid[runStart][c] && grid[k][c]!.type === grid[runStart][c]!.type) {
             positions.push({ row: k, col: c });
-            matched.add(`${k},${c}`);
+          }
+        }
+        if (positions.length >= 3) {
+          for (const p of positions) {
+            matched.add(`${p.row},${p.col}`);
           }
           rawMatches.push({ positions, direction: "v" });
         }
@@ -347,14 +441,17 @@ export function findMatches(grid: (Tile | null)[][]): MatchResult[] {
     }
   }
 
-  // Determine special tile for each group
-  return mergedGroups.map((positions) => {
+  // Determine special tile for each line-match group
+  const lineResults = mergedGroups.map((positions) => {
     const special = determineSpecial(positions, rawMatches);
     // Place special at center of the group
     const specialPosition =
       special !== SpecialType.None ? getCenterPosition(positions) : null;
     return { positions, specialCreated: special, specialPosition };
   });
+
+  // Combine propeller matches and line matches
+  return [...propellerMatches, ...lineResults];
 }
 
 /**
@@ -439,8 +536,8 @@ export function getSpecialTileTargets(
       break;
 
     case SpecialType.Bomb:
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
           const r = pos.row + dr;
           const c = pos.col + dc;
           if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] !== null) {
@@ -482,6 +579,41 @@ export function getSpecialTileTargets(
       break;
     }
 
+    case SpecialType.Propeller: {
+      // Clear 4 adjacent tiles (up/down/left/right)
+      const adjacent = [
+        { row: pos.row - 1, col: pos.col },
+        { row: pos.row + 1, col: pos.col },
+        { row: pos.row, col: pos.col - 1 },
+        { row: pos.row, col: pos.col + 1 },
+      ];
+      for (const a of adjacent) {
+        if (a.row >= 0 && a.row < rows && a.col >= 0 && a.col < cols && grid[a.row][a.col] !== null) {
+          targets.push(a);
+        }
+      }
+      // Fly to a random tile and clear it
+      const available: Position[] = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c] !== null && !(r === pos.row && c === pos.col)) {
+            // Skip tiles already targeted
+            const alreadyTargeted = targets.some((t) => t.row === r && t.col === c);
+            if (!alreadyTargeted) {
+              available.push({ row: r, col: c });
+            }
+          }
+        }
+      }
+      if (available.length > 0) {
+        const randomTarget = available[Math.floor(Math.random() * available.length)];
+        targets.push(randomTarget);
+      }
+      // Also include the propeller tile itself
+      targets.push(pos);
+      break;
+    }
+
     default:
       break;
   }
@@ -495,6 +627,9 @@ export function getSpecialTileTargets(
  * Remove matched tiles from the grid.
  * Returns the grid with nulls where tiles were removed,
  * plus any special tiles that were activated.
+ * Supports unlimited chain reactions: when a special tile is caught in
+ * another special's blast, it activates recursively. An `alreadyActivated`
+ * Set prevents infinite loops.
  */
 export function removeMatches(
   grid: (Tile | null)[][],
@@ -507,43 +642,55 @@ export function removeMatches(
   const newGrid = grid.map((row) => [...row]);
   const toRemove = new Set<string>();
   const specialsActivated: { pos: Position; special: SpecialType }[] = [];
+  const alreadyActivated = new Set<string>(); // Prevent infinite loops
+
+  // Helper: activate a special tile and recursively chain
+  function activateSpecial(pos: Position, special: SpecialType) {
+    const key = `${pos.row},${pos.col}`;
+    if (alreadyActivated.has(key)) return;
+    alreadyActivated.add(key);
+
+    specialsActivated.push({ pos, special });
+    const targets = getSpecialTileTargets(newGrid, pos, special);
+    for (const t of targets) {
+      const tKey = `${t.row},${t.col}`;
+      if (!toRemove.has(tKey)) {
+        toRemove.add(tKey);
+        // Check if this newly targeted tile is itself special -> chain reaction
+        const tile = newGrid[t.row][t.col];
+        if (tile && tile.special !== SpecialType.None) {
+          activateSpecial(t, tile.special);
+        }
+      } else {
+        // Already marked for removal, but check if it's a special we haven't activated
+        const tile = newGrid[t.row][t.col];
+        if (tile && tile.special !== SpecialType.None && !alreadyActivated.has(tKey)) {
+          activateSpecial(t, tile.special);
+        }
+      }
+    }
+  }
 
   // First pass: collect all positions to remove, check for special tile activations
   for (const match of matches) {
     for (const pos of match.positions) {
+      toRemove.add(`${pos.row},${pos.col}`);
       const tile = newGrid[pos.row][pos.col];
       if (tile && tile.special !== SpecialType.None) {
-        // Special tile is being matched - activate it
-        specialsActivated.push({ pos, special: tile.special });
-        const targets = getSpecialTileTargets(newGrid, pos, tile.special);
-        for (const t of targets) {
-          toRemove.add(`${t.row},${t.col}`);
-        }
+        activateSpecial(pos, tile.special);
       }
-      toRemove.add(`${pos.row},${pos.col}`);
     }
   }
 
-  // Check if any removed tiles are themselves special (chain reaction)
-  const additionalRemovals = new Set<string>();
-  for (const key of toRemove) {
+  // Second pass: check all tiles marked for removal that are special but not yet activated
+  // (this handles tiles that were in the blast radius but not the original match)
+  const keysToCheck = [...toRemove];
+  for (const key of keysToCheck) {
     const [r, c] = key.split(",").map(Number);
     const tile = newGrid[r][c];
-    if (
-      tile &&
-      tile.special !== SpecialType.None &&
-      !specialsActivated.some((s) => s.pos.row === r && s.pos.col === c)
-    ) {
-      specialsActivated.push({ pos: { row: r, col: c }, special: tile.special });
-      const targets = getSpecialTileTargets(newGrid, { row: r, col: c }, tile.special);
-      for (const t of targets) {
-        additionalRemovals.add(`${t.row},${t.col}`);
-      }
+    if (tile && tile.special !== SpecialType.None && !alreadyActivated.has(key)) {
+      activateSpecial({ row: r, col: c }, tile.special);
     }
-  }
-
-  for (const key of additionalRemovals) {
-    toRemove.add(key);
   }
 
   // Create special tiles from matches BEFORE removing
@@ -680,10 +827,288 @@ export function applyGravityDeterministic(
   return { movements, spawned, grid: newGrid };
 }
 
+// --- Powerup Combinations ---
+
+/**
+ * Get a normalized combo key from two special types (sorted for deterministic lookup).
+ */
+function getComboKey(a: SpecialType, b: SpecialType): string {
+  const sorted = [a, b].sort((x, y) => x - y);
+  return `${sorted[0]},${sorted[1]}`;
+}
+
+/**
+ * Check if two special types form a known combo.
+ */
+export function isCombo(a: SpecialType, b: SpecialType): boolean {
+  if (a === SpecialType.None || b === SpecialType.None) return false;
+  return true; // Any two specials form a combo
+}
+
+/**
+ * Helper to check if a type is a LineBlast (H or V).
+ */
+function isLineBlast(s: SpecialType): boolean {
+  return s === SpecialType.LineBlastH || s === SpecialType.LineBlastV;
+}
+
+/**
+ * Combine two powerups and return the set of positions to remove.
+ * Takes both special types, the position where the combo occurs,
+ * the grid, and optionally the color of the normal tile for Rainbow combos.
+ */
+export function combinePowerups(
+  specialA: SpecialType,
+  specialB: SpecialType,
+  pos: Position,
+  grid: (Tile | null)[][],
+  _swappedColor?: TileType,
+): Position[] {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const targets: Position[] = [];
+  const targetSet = new Set<string>();
+
+  function addTarget(r: number, c: number) {
+    if (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] !== null) {
+      const key = `${r},${c}`;
+      if (!targetSet.has(key)) {
+        targetSet.add(key);
+        targets.push({ row: r, col: c });
+      }
+    }
+  }
+
+  // Normalize: put the "bigger" special second for consistent handling
+  let sA = specialA;
+  let sB = specialB;
+
+  // 1. LineBlast + LineBlast → Cross blast (full row AND full column)
+  if (isLineBlast(sA) && isLineBlast(sB)) {
+    for (let c = 0; c < cols; c++) addTarget(pos.row, c);
+    for (let r = 0; r < rows; r++) addTarget(r, pos.col);
+    return targets;
+  }
+
+  // 2. Bomb + Bomb → 7x7 mega explosion
+  if (sA === SpecialType.Bomb && sB === SpecialType.Bomb) {
+    for (let dr = -3; dr <= 3; dr++) {
+      for (let dc = -3; dc <= 3; dc++) {
+        addTarget(pos.row + dr, pos.col + dc);
+      }
+    }
+    return targets;
+  }
+
+  // 3. LineBlast + Bomb → 3-row + 3-column blast
+  if ((isLineBlast(sA) && sB === SpecialType.Bomb) || (sA === SpecialType.Bomb && isLineBlast(sB))) {
+    // Clear 3 rows centered on pos
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let c = 0; c < cols; c++) {
+        addTarget(pos.row + dr, c);
+      }
+    }
+    // Clear 3 columns centered on pos
+    for (let dc = -1; dc <= 1; dc++) {
+      for (let r = 0; r < rows; r++) {
+        addTarget(r, pos.col + dc);
+      }
+    }
+    return targets;
+  }
+
+  // 4. Rainbow + LineBlast → All tiles of the swapped color become LineBlasts and detonate
+  if ((sA === SpecialType.Rainbow && isLineBlast(sB)) || (isLineBlast(sA) && sB === SpecialType.Rainbow)) {
+    const targetType = _swappedColor ?? findMostCommonType(grid, pos);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const tile = grid[r][c];
+        if (tile && tile.type === targetType) {
+          // This tile becomes a LineBlast and detonates: clear its row and column
+          for (let cc = 0; cc < cols; cc++) addTarget(r, cc);
+          for (let rr = 0; rr < rows; rr++) addTarget(rr, c);
+        }
+      }
+    }
+    addTarget(pos.row, pos.col);
+    return targets;
+  }
+
+  // 5. Rainbow + Bomb → All tiles of the swapped color explode in 3x3 each
+  if ((sA === SpecialType.Rainbow && sB === SpecialType.Bomb) || (sA === SpecialType.Bomb && sB === SpecialType.Rainbow)) {
+    const targetType = _swappedColor ?? findMostCommonType(grid, pos);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const tile = grid[r][c];
+        if (tile && tile.type === targetType) {
+          // 3x3 explosion around this tile
+          for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+              addTarget(r + dr, c + dc);
+            }
+          }
+        }
+      }
+    }
+    addTarget(pos.row, pos.col);
+    return targets;
+  }
+
+  // 6. Rainbow + Rainbow → Clear entire board
+  if (sA === SpecialType.Rainbow && sB === SpecialType.Rainbow) {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        addTarget(r, c);
+      }
+    }
+    return targets;
+  }
+
+  // 7. Propeller + LineBlast → Clear adjacent 4 tiles + target tile's full row and column
+  if ((sA === SpecialType.Propeller && isLineBlast(sB)) || (isLineBlast(sA) && sB === SpecialType.Propeller)) {
+    // Clear 4 adjacent tiles
+    addTarget(pos.row - 1, pos.col);
+    addTarget(pos.row + 1, pos.col);
+    addTarget(pos.row, pos.col - 1);
+    addTarget(pos.row, pos.col + 1);
+    addTarget(pos.row, pos.col);
+    // Pick a random target tile
+    const available: Position[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c] !== null && !targetSet.has(`${r},${c}`)) {
+          available.push({ row: r, col: c });
+        }
+      }
+    }
+    if (available.length > 0) {
+      const rndTarget = available[Math.floor(Math.random() * available.length)];
+      // Clear target's full row and column
+      for (let c = 0; c < cols; c++) addTarget(rndTarget.row, c);
+      for (let r = 0; r < rows; r++) addTarget(r, rndTarget.col);
+    }
+    return targets;
+  }
+
+  // 8. Propeller + Bomb → Clear adjacent 4 tiles + 5x5 at target
+  if ((sA === SpecialType.Propeller && sB === SpecialType.Bomb) || (sA === SpecialType.Bomb && sB === SpecialType.Propeller)) {
+    // Clear 4 adjacent tiles
+    addTarget(pos.row - 1, pos.col);
+    addTarget(pos.row + 1, pos.col);
+    addTarget(pos.row, pos.col - 1);
+    addTarget(pos.row, pos.col + 1);
+    addTarget(pos.row, pos.col);
+    // Pick a random target tile
+    const available: Position[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c] !== null && !targetSet.has(`${r},${c}`)) {
+          available.push({ row: r, col: c });
+        }
+      }
+    }
+    if (available.length > 0) {
+      const rndTarget = available[Math.floor(Math.random() * available.length)];
+      // 5x5 explosion at target
+      for (let dr = -2; dr <= 2; dr++) {
+        for (let dc = -2; dc <= 2; dc++) {
+          addTarget(rndTarget.row + dr, rndTarget.col + dc);
+        }
+      }
+    }
+    return targets;
+  }
+
+  // 9. Propeller + Propeller → 2 propellers target 2 different random tiles
+  if (sA === SpecialType.Propeller && sB === SpecialType.Propeller) {
+    // Clear 4 adjacent tiles of the combo position
+    addTarget(pos.row - 1, pos.col);
+    addTarget(pos.row + 1, pos.col);
+    addTarget(pos.row, pos.col - 1);
+    addTarget(pos.row, pos.col + 1);
+    addTarget(pos.row, pos.col);
+    // Pick 2 random target tiles
+    const available: Position[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c] !== null && !targetSet.has(`${r},${c}`)) {
+          available.push({ row: r, col: c });
+        }
+      }
+    }
+    const count = Math.min(2, available.length);
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor(Math.random() * available.length);
+      const rndTarget = available.splice(idx, 1)[0];
+      // Clear 4 adjacent tiles of each target
+      addTarget(rndTarget.row, rndTarget.col);
+      addTarget(rndTarget.row - 1, rndTarget.col);
+      addTarget(rndTarget.row + 1, rndTarget.col);
+      addTarget(rndTarget.row, rndTarget.col - 1);
+      addTarget(rndTarget.row, rndTarget.col + 1);
+    }
+    return targets;
+  }
+
+  // 10. Rainbow + Propeller → 3 propellers target 3 different tiles
+  if ((sA === SpecialType.Rainbow && sB === SpecialType.Propeller) || (sA === SpecialType.Propeller && sB === SpecialType.Rainbow)) {
+    addTarget(pos.row, pos.col);
+    // Pick 3 random target tiles
+    const available: Position[] = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (grid[r][c] !== null && !targetSet.has(`${r},${c}`)) {
+          available.push({ row: r, col: c });
+        }
+      }
+    }
+    const count = Math.min(3, available.length);
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor(Math.random() * available.length);
+      const rndTarget = available.splice(idx, 1)[0];
+      // Clear target + 4 adjacent tiles
+      addTarget(rndTarget.row, rndTarget.col);
+      addTarget(rndTarget.row - 1, rndTarget.col);
+      addTarget(rndTarget.row + 1, rndTarget.col);
+      addTarget(rndTarget.row, rndTarget.col - 1);
+      addTarget(rndTarget.row, rndTarget.col + 1);
+    }
+    return targets;
+  }
+
+  return targets;
+}
+
+/**
+ * Helper: find most common tile type on the board, excluding a specific position.
+ */
+function findMostCommonType(grid: (Tile | null)[][], excludePos: Position): TileType {
+  const typeCounts = new Map<TileType, number>();
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[0].length; c++) {
+      const tile = grid[r][c];
+      if (tile && !(r === excludePos.row && c === excludePos.col)) {
+        typeCounts.set(tile.type, (typeCounts.get(tile.type) ?? 0) + 1);
+      }
+    }
+  }
+  let bestType = TileType.Heart;
+  let bestCount = 0;
+  for (const [type, count] of typeCounts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestType = type;
+    }
+  }
+  return bestType;
+}
+
 // --- Full Match Cycle ---
 
 /**
  * Process a complete swap: validate, find matches, remove, apply gravity, cascade.
+ * Detects powerup combos when two special tiles are swapped adjacent to each other.
+ * When Rainbow is swapped with a normal tile, uses the normal tile's color.
  * Returns all cascade steps for animation purposes.
  */
 export function processSwap(
@@ -696,6 +1121,224 @@ export function processSwap(
     return { valid: false, steps: [], finalGrid: grid, totalScore: 0 };
   }
 
+  const tileA = grid[a.row][a.col];
+  const tileB = grid[b.row][b.col];
+
+  // --- Check for powerup combo: both tiles are special ---
+  if (
+    tileA && tileB &&
+    tileA.special !== SpecialType.None &&
+    tileB.special !== SpecialType.None
+  ) {
+    let currentGrid = grid.map((row) => [...row]);
+    // Determine swapped color for Rainbow combos
+    let swappedColor: TileType | undefined;
+    if (tileA.special === SpecialType.Rainbow && tileB.special !== SpecialType.Rainbow) {
+      swappedColor = tileB.type;
+    } else if (tileB.special === SpecialType.Rainbow && tileA.special !== SpecialType.Rainbow) {
+      swappedColor = tileA.type;
+    }
+
+    // Use position of tile A (where the combo activates)
+    const comboTargets = combinePowerups(tileA.special, tileB.special, a, currentGrid, swappedColor);
+
+    // Remove the two special tiles
+    const toRemove = new Set<string>();
+    toRemove.add(`${a.row},${a.col}`);
+    toRemove.add(`${b.row},${b.col}`);
+    for (const t of comboTargets) {
+      toRemove.add(`${t.row},${t.col}`);
+    }
+
+    // Check for chain reactions: any special tiles in the blast radius
+    const alreadyActivated = new Set<string>();
+    alreadyActivated.add(`${a.row},${a.col}`);
+    alreadyActivated.add(`${b.row},${b.col}`);
+
+    const specialsActivated: { pos: Position; special: SpecialType }[] = [
+      { pos: a, special: tileA.special },
+      { pos: b, special: tileB.special },
+    ];
+
+    // Recursive chain reaction for combo blasts
+    function chainFromCombo(keysToCheck: string[]) {
+      const newKeys: string[] = [];
+      for (const key of keysToCheck) {
+        const [r, c] = key.split(",").map(Number);
+        const tile = currentGrid[r][c];
+        if (tile && tile.special !== SpecialType.None && !alreadyActivated.has(key)) {
+          alreadyActivated.add(key);
+          specialsActivated.push({ pos: { row: r, col: c }, special: tile.special });
+          const targets = getSpecialTileTargets(currentGrid, { row: r, col: c }, tile.special);
+          for (const t of targets) {
+            const tKey = `${t.row},${t.col}`;
+            if (!toRemove.has(tKey)) {
+              toRemove.add(tKey);
+              newKeys.push(tKey);
+            }
+          }
+        }
+      }
+      if (newKeys.length > 0) {
+        chainFromCombo(newKeys);
+      }
+    }
+
+    chainFromCombo([...toRemove]);
+
+    // Remove tiles
+    let removedCount = 0;
+    for (const key of toRemove) {
+      const [r, c] = key.split(",").map(Number);
+      if (currentGrid[r][c] !== null) {
+        currentGrid[r][c] = null;
+        removedCount++;
+      }
+    }
+
+    const stepScore = calculateMatchScore(removedCount, 0, specialsActivated);
+
+    // Apply gravity
+    const gravity = applyGravity(currentGrid, tileCount);
+    currentGrid = gravity.grid;
+
+    const steps: CascadeStep[] = [{
+      matches: [{
+        positions: comboTargets,
+        specialCreated: SpecialType.None,
+        specialPosition: null,
+      }],
+      gravity,
+      chainIndex: 0,
+    }];
+
+    let totalScore = stepScore;
+    let chainIndex = 1;
+
+    // Continue cascade after combo
+    let matches = findMatches(currentGrid);
+    while (matches.length > 0) {
+      const { grid: gridAfterRemoval, removedCount: rc, specialsActivated: sa } =
+        removeMatches(currentGrid, matches);
+      const cascadeScore = calculateMatchScore(rc, chainIndex, sa);
+      totalScore += cascadeScore;
+      const grav = applyGravity(gridAfterRemoval, tileCount);
+      currentGrid = grav.grid;
+      steps.push({ matches, gravity: grav, chainIndex });
+      matches = findMatches(currentGrid);
+      chainIndex++;
+    }
+
+    return { valid: true, steps, finalGrid: currentGrid, totalScore };
+  }
+
+  // --- Check for Rainbow + normal tile swap (player-chosen color) ---
+  if (tileA && tileB) {
+    const rainbowAtA = tileA.special === SpecialType.Rainbow;
+    const rainbowAtB = tileB.special === SpecialType.Rainbow;
+    if ((rainbowAtA && tileB.special === SpecialType.None) ||
+        (rainbowAtB && tileA.special === SpecialType.None)) {
+      let currentGrid = grid.map((row) => [...row]);
+      const rainbowPos = rainbowAtA ? a : b;
+      const normalPos = rainbowAtA ? b : a;
+      const normalTile = rainbowAtA ? tileB : tileA;
+      const chosenColor = normalTile.type;
+
+      // Clear all tiles of the chosen color + the rainbow tile
+      const toRemove = new Set<string>();
+      toRemove.add(`${rainbowPos.row},${rainbowPos.col}`);
+      const specialsActivated: { pos: Position; special: SpecialType }[] = [
+        { pos: rainbowPos, special: SpecialType.Rainbow },
+      ];
+
+      for (let r = 0; r < currentGrid.length; r++) {
+        for (let c = 0; c < currentGrid[0].length; c++) {
+          const tile = currentGrid[r][c];
+          if (tile && tile.type === chosenColor) {
+            toRemove.add(`${r},${c}`);
+          }
+        }
+      }
+
+      // Chain reactions from removed specials
+      const alreadyActivated = new Set<string>();
+      alreadyActivated.add(`${rainbowPos.row},${rainbowPos.col}`);
+
+      function chainFromRainbow(keysToCheck: string[]) {
+        const newKeys: string[] = [];
+        for (const key of keysToCheck) {
+          const [r, c] = key.split(",").map(Number);
+          const tile = currentGrid[r][c];
+          if (tile && tile.special !== SpecialType.None && !alreadyActivated.has(key)) {
+            alreadyActivated.add(key);
+            specialsActivated.push({ pos: { row: r, col: c }, special: tile.special });
+            const targets = getSpecialTileTargets(currentGrid, { row: r, col: c }, tile.special);
+            for (const t of targets) {
+              const tKey = `${t.row},${t.col}`;
+              if (!toRemove.has(tKey)) {
+                toRemove.add(tKey);
+                newKeys.push(tKey);
+              }
+            }
+          }
+        }
+        if (newKeys.length > 0) {
+          chainFromRainbow(newKeys);
+        }
+      }
+
+      chainFromRainbow([...toRemove]);
+
+      let removedCount = 0;
+      for (const key of toRemove) {
+        const [r, c] = key.split(",").map(Number);
+        if (currentGrid[r][c] !== null) {
+          currentGrid[r][c] = null;
+          removedCount++;
+        }
+      }
+
+      const stepScore = calculateMatchScore(removedCount, 0, specialsActivated);
+      const gravity = applyGravity(currentGrid, tileCount);
+      currentGrid = gravity.grid;
+
+      const allRemoved: Position[] = [];
+      for (const key of toRemove) {
+        const [r, c] = key.split(",").map(Number);
+        allRemoved.push({ row: r, col: c });
+      }
+
+      const steps: CascadeStep[] = [{
+        matches: [{
+          positions: allRemoved,
+          specialCreated: SpecialType.None,
+          specialPosition: null,
+        }],
+        gravity,
+        chainIndex: 0,
+      }];
+
+      let totalScore = stepScore;
+      let chainIndex = 1;
+
+      let matches = findMatches(currentGrid);
+      while (matches.length > 0) {
+        const { grid: gridAfterRemoval, removedCount: rc, specialsActivated: sa } =
+          removeMatches(currentGrid, matches);
+        const cascadeScore = calculateMatchScore(rc, chainIndex, sa);
+        totalScore += cascadeScore;
+        const grav = applyGravity(gridAfterRemoval, tileCount);
+        currentGrid = grav.grid;
+        steps.push({ matches, gravity: grav, chainIndex });
+        matches = findMatches(currentGrid);
+        chainIndex++;
+      }
+
+      return { valid: true, steps, finalGrid: currentGrid, totalScore };
+    }
+  }
+
+  // --- Normal swap (no combo, no rainbow+normal) ---
   // Perform the swap
   let currentGrid = swapTiles(grid, a, b);
 
@@ -761,6 +1404,9 @@ export function calculateMatchScore(
         break;
       case SpecialType.Rainbow:
         specialBonus += RAINBOW_BONUS;
+        break;
+      case SpecialType.Propeller:
+        specialBonus += PROPELLER_BONUS;
         break;
     }
   }
@@ -978,4 +1624,5 @@ export const SPECIAL_COLORS: Record<SpecialType, number> = {
   [SpecialType.LineBlastV]: 0x00ffff,
   [SpecialType.Bomb]: 0xff6600,
   [SpecialType.Rainbow]: 0xffffff,
+  [SpecialType.Propeller]: 0x66ff66,
 };
