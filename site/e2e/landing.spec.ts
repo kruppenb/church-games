@@ -21,8 +21,8 @@ test.describe("Landing Page", () => {
     await expect(page.locator(".landing-lesson-title")).toBeVisible({ timeout: 5000 });
     await expect(page.locator("text=More Games")).toBeVisible();
     const smallCards = page.locator(".game-card-small");
-    // 8 total games - 2 hero = 6 small cards
-    await expect(smallCards).toHaveCount(6);
+    // 9 total games - 2 hero = 7 small cards
+    await expect(smallCards).toHaveCount(7);
   });
 
   test("only shows difficulty picker, no group/individual toggle", async ({ page }) => {

@@ -14,6 +14,7 @@ const Millionaire = lazy(() => import("./games/millionaire"));
 const Survivors = lazy(() => import("./games/survivors"));
 const Jeopardy = lazy(() => import("./games/jeopardy"));
 const ScriptureCards = lazy(() => import("./games/card-battler"));
+const KingdomMatch = lazy(() => import("./games/kingdom-match"));
 
 export function App() {
   return (
@@ -84,6 +85,14 @@ export function App() {
               element={
                 <ErrorBoundary>
                   <ScriptureCards />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/games/match"
+              element={
+                <ErrorBoundary>
+                  <KingdomMatch />
                 </ErrorBoundary>
               }
             />

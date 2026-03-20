@@ -76,6 +76,14 @@ const GAMES: GameCardInfo[] = [
     color: "#e91e63",
     route: "/games/cards",
   },
+  {
+    id: "kingdom-match",
+    name: "Kingdom Match",
+    icon: "\uD83D\uDC51",
+    description: "Match tiles to build the Kingdom!",
+    color: "#9b59b6",
+    route: "/games/match",
+  },
 ];
 
 // Quiz is always shown as hero. The spotlight picks one additional hero game.
