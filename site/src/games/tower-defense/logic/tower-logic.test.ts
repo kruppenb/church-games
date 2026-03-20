@@ -91,12 +91,20 @@ describe("tower-logic", () => {
       expect(waves[14].enemies).toContain("fear");
     });
 
-    it("last wave includes all enemy types", () => {
+    it("last wave is a boss wave with serpent", () => {
       const waves = getWaves("little-kids");
       const lastWave = waves[waves.length - 1];
-      expect(lastWave.enemies).toContain("worry");
-      expect(lastWave.enemies).toContain("doubt");
-      expect(lastWave.enemies).toContain("fear");
+      expect(lastWave.isBossWave).toBe(true);
+      expect(lastWave.bossType).toBe("serpent");
+      expect(lastWave.enemies).toContain("serpent");
+    });
+
+    it("wave 29 (non-boss) includes multiple enemy types", () => {
+      const waves = getWaves("little-kids");
+      const wave29 = waves[28]; // 0-indexed
+      expect(wave29.enemies).toContain("worry");
+      expect(wave29.enemies).toContain("doubt");
+      expect(wave29.enemies).toContain("fear");
     });
 
     it("enemy count increases across waves", () => {
@@ -657,9 +665,9 @@ describe("tower-logic", () => {
   // ENEMY_DEFS constants
   // -----------------------------------------------------------------------
   describe("ENEMY_DEFS", () => {
-    it("has 7 enemy types", () => {
+    it("has 10 enemy types (7 normal + 3 bosses)", () => {
       const types = Object.keys(ENEMY_DEFS);
-      expect(types).toHaveLength(7);
+      expect(types).toHaveLength(10);
       expect(types).toContain("worry");
       expect(types).toContain("doubt");
       expect(types).toContain("fear");
@@ -667,6 +675,9 @@ describe("tower-logic", () => {
       expect(types).toContain("pride");
       expect(types).toContain("envy");
       expect(types).toContain("deception");
+      expect(types).toContain("goliath");
+      expect(types).toContain("pharaoh");
+      expect(types).toContain("serpent");
     });
 
     it("worry enemy has correct stats", () => {

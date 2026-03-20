@@ -19,6 +19,7 @@ import {
   getShieldBuff,
   getSellRefund,
   sellTower,
+  getBossHp,
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
@@ -111,6 +112,8 @@ interface ActiveEnemy {
   stealthed: boolean; // Temptation: currently invisible
   shieldHitsRemaining: number; // Pride Golem: hits left before shield breaks
   isSplit: boolean; // Whether this is a split mini-enemy from Envy Swarm
+  summonTimer: number; // Pharaoh: ms until next summon
+  regenAccum: number; // Serpent: accumulated regen time
 }
 
 interface ActiveTower {
@@ -1139,6 +1142,12 @@ export class TowerScene extends Phaser.Scene {
     this.enemiesToSpawn = [...waveConfig.enemies];
     this.spawnTimer = 0;
 
+    // Boss wave announcement
+    if (waveConfig.isBossWave && waveConfig.bossType) {
+      const bossName = ENEMY_DEFS[waveConfig.bossType].label;
+      this.showBossAnnouncement(bossName);
+    }
+
     // Show Pray button
     this.showPrayButton();
   }
@@ -1239,7 +1248,16 @@ export class TowerScene extends Phaser.Scene {
     // Scale enemy stats with wave number so late waves stay challenging
     const hpMultiplier = 1 + (this.gameState.wave - 1) * 0.1;
     const speedMultiplier = 1 + (this.gameState.wave - 1) * 0.015;
-    const scaledHp = overrideHp ?? Math.round(def.hp * hpMultiplier);
+
+    let scaledHp: number;
+    if (overrideHp) {
+      scaledHp = overrideHp;
+    } else if (def.isBoss) {
+      // Boss HP uses getBossHp for difficulty scaling, no wave scaling
+      scaledHp = getBossHp(type, this.gameState.difficulty);
+    } else {
+      scaledHp = Math.round(def.hp * hpMultiplier);
+    }
     const scaledSpeed = overrideSpeed ?? def.speed * speedMultiplier;
 
     // Pride Golem shield visual
@@ -1272,6 +1290,8 @@ export class TowerScene extends Phaser.Scene {
       stealthed: isStealth,
       shieldHitsRemaining: def.shieldHits ?? 0,
       isSplit: !!atPosition,
+      summonTimer: def.summonInterval ?? 0,
+      regenAccum: 0,
     };
 
     this.activeEnemies.push(enemy);
@@ -1371,6 +1391,33 @@ export class TowerScene extends Phaser.Scene {
           enemy.slowTimer = 0;
         }
       }
+
+      // Pharaoh: summon enemies periodically
+      const eDef = ENEMY_DEFS[enemy.type];
+      if (eDef.summonType && eDef.summonInterval && eDef.summonCount) {
+        enemy.summonTimer -= delta;
+        if (enemy.summonTimer <= 0) {
+          enemy.summonTimer = eDef.summonInterval;
+          for (let s = 0; s < eDef.summonCount; s++) {
+            this.spawnEnemy(eDef.summonType, {
+              x: enemy.sprite.x + (Math.random() - 0.5) * 30,
+              y: enemy.sprite.y + (Math.random() - 0.5) * 30,
+              waypointIndex: enemy.waypointIndex,
+            });
+          }
+          this.spawnFloatingText(enemy.sprite.x, enemy.sprite.y - 30, "Summon!", "#aa8800");
+        }
+      }
+
+      // Serpent: regenerate HP
+      if (eDef.regenPerSecond && eDef.regenPerSecond > 0) {
+        enemy.regenAccum += delta;
+        if (enemy.regenAccum >= 1000) {
+          const regenTicks = Math.floor(enemy.regenAccum / 1000);
+          enemy.regenAccum -= regenTicks * 1000;
+          enemy.hp = Math.min(enemy.maxHp, enemy.hp + eDef.regenPerSecond * regenTicks);
+        }
+      }
     }
   }
 
@@ -1395,7 +1442,7 @@ export class TowerScene extends Phaser.Scene {
     }
   }
 
-  private damageEnemy(enemy: ActiveEnemy, damage: number): void {
+  private damageEnemy(enemy: ActiveEnemy, damage: number, isSingleTarget = false): void {
     // Pride Golem shield: absorbs hits
     if (enemy.shieldHitsRemaining > 0) {
       enemy.shieldHitsRemaining--;
@@ -1419,10 +1466,16 @@ export class TowerScene extends Phaser.Scene {
       return; // Shield absorbed the hit
     }
 
-    enemy.hp -= damage;
+    // Goliath: 50% damage reduction from single-target towers
+    let actualDamage = damage;
+    const def = ENEMY_DEFS[enemy.type];
+    if (isSingleTarget && def.singleTargetReduction) {
+      actualDamage = Math.max(1, Math.round(damage * (1 - def.singleTargetReduction)));
+    }
+
+    enemy.hp -= actualDamage;
 
     // White flash effect
-    const def = ENEMY_DEFS[enemy.type];
     const baseAlpha = def.alpha ?? 1;
     enemy.sprite.setFillStyle(0xffffff, baseAlpha);
     this.time.delayedCall(100, () => {
@@ -1591,7 +1644,7 @@ export class TowerScene extends Phaser.Scene {
 
     this.time.delayedCall(150, () => beam.destroy());
 
-    this.damageEnemy(nearest, damage);
+    this.damageEnemy(nearest, damage, true); // single-target
   }
 
   private bellTowerAttack(
@@ -2054,6 +2107,36 @@ export class TowerScene extends Phaser.Scene {
   // =========================================================================
   // Prayer aura visual (drawn each frame)
   // =========================================================================
+
+  private showBossAnnouncement(bossName: string): void {
+    const text = this.add.text(GAME_W / 2, GAME_H / 2 - 40, `BOSS: ${bossName}!`, {
+      fontSize: "32px",
+      color: "#ff4444",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    text.setOrigin(0.5);
+    text.setDepth(95);
+
+    this.tweens.add({
+      targets: text,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 500,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: text,
+          alpha: 0,
+          y: text.y - 50,
+          duration: 800,
+          onComplete: () => text.destroy(),
+        });
+      },
+    });
+  }
 
   private drawPrayerAuras(): void {
     // Draw subtle blue circles for Prayer towers

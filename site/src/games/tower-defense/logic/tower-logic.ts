@@ -4,7 +4,7 @@
  */
 
 export type TowerType = "prayer" | "light" | "bell" | "shield" | "praise" | "shepherd";
-export type EnemyType = "worry" | "doubt" | "fear" | "temptation" | "pride" | "envy" | "deception";
+export type EnemyType = "worry" | "doubt" | "fear" | "temptation" | "pride" | "envy" | "deception" | "goliath" | "pharaoh" | "serpent";
 
 export interface TowerDef {
   type: TowerType;
@@ -34,6 +34,12 @@ export interface EnemyDef {
   splitCount?: number;
   isDecoy?: boolean; // Deception Mirage: draws fire but does no damage
   alpha?: number; // Rendering alpha (0-1)
+  isBoss?: boolean; // Boss enemy
+  singleTargetReduction?: number; // Goliath: % damage reduction from single-target towers (0-1)
+  summonType?: EnemyType; // Pharaoh: spawns this enemy type periodically
+  summonInterval?: number; // ms between summons
+  summonCount?: number; // How many to summon each time
+  regenPerSecond?: number; // Serpent: HP regen per second
 }
 
 export interface TowerState {
@@ -59,6 +65,8 @@ export interface GameState {
 
 export interface WaveConfig {
   enemies: EnemyType[];
+  isBossWave?: boolean;
+  bossType?: EnemyType;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +213,41 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
     isDecoy: true,
     alpha: 0.5,
   },
+  goliath: {
+    type: "goliath",
+    hp: 100,
+    speed: 20,
+    villageDamage: 5,
+    color: 0x881111,
+    size: 35,
+    label: "Goliath",
+    isBoss: true,
+    singleTargetReduction: 0.5,
+  },
+  pharaoh: {
+    type: "pharaoh",
+    hp: 200,
+    speed: 25,
+    villageDamage: 4,
+    color: 0xaa8800,
+    size: 30,
+    label: "Pharaoh",
+    isBoss: true,
+    summonType: "worry",
+    summonInterval: 5000,
+    summonCount: 2,
+  },
+  serpent: {
+    type: "serpent",
+    hp: 350,
+    speed: 30,
+    villageDamage: 6,
+    color: 0x225522,
+    size: 28,
+    label: "Serpent",
+    isBoss: true,
+    regenPerSecond: 2,
+  },
 };
 
 export const PRAYER_SLOW_FACTOR = [0, 0.4, 0.55, 0.65, 0.75, 0.82]; // index = level (0 unused)
@@ -256,6 +299,21 @@ function generateWaves(difficulty: "little-kids" | "big-kids"): WaveConfig[] {
     const pride = w >= prideIntro ? Math.min(3, Math.round((w - prideIntro + 1) * 0.3)) : 0;
     // Envy Swarm: splits on death
     const envy = w >= envyIntro ? Math.min(3, Math.round((w - envyIntro + 1) * 0.3)) : 0;
+
+    // Boss waves: every 10th wave
+    if (w === 10 || w === 20 || w === 30) {
+      let bossType: EnemyType;
+      if (w === 10) bossType = "goliath";
+      else if (w === 20) bossType = "pharaoh";
+      else bossType = "serpent";
+
+      // Boss wave has boss + a few normal enemies
+      const bossEnemies: EnemyType[] = [bossType];
+      for (let i = 0; i < Math.min(worry, 3); i++) bossEnemies.push("worry");
+      for (let i = 0; i < Math.min(doubt, 2); i++) bossEnemies.push("doubt");
+      waves.push({ enemies: bossEnemies, isBossWave: true, bossType });
+      continue;
+    }
 
     for (let i = 0; i < worry; i++) enemies.push("worry");
     for (let i = 0; i < doubt; i++) enemies.push("doubt");
@@ -440,6 +498,12 @@ export function calculateStars(state: GameState): number {
 /** Check if village has been destroyed. */
 export function isVillageDestroyed(state: GameState): boolean {
   return state.villageHp <= 0;
+}
+
+/** Get boss HP for the given difficulty. Big-kids bosses have 1.5x HP. */
+export function getBossHp(bossType: EnemyType, difficulty: "little-kids" | "big-kids"): number {
+  const baseHp = ENEMY_DEFS[bossType].hp;
+  return difficulty === "big-kids" ? Math.round(baseHp * 1.5) : baseHp;
 }
 
 /**
