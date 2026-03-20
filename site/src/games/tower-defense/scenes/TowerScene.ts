@@ -161,6 +161,7 @@ export class TowerScene extends Phaser.Scene {
   private effectsGraphics!: Phaser.GameObjects.Graphics;
 
   // HUD elements
+  private hudBg!: Phaser.GameObjects.Rectangle;
   private coinText!: Phaser.GameObjects.Text;
   private hpText!: Phaser.GameObjects.Text;
   private waveText!: Phaser.GameObjects.Text;
@@ -337,7 +338,7 @@ export class TowerScene extends Phaser.Scene {
 
   private createHud(): void {
     // Background bar
-    const hudBg = this.add.rectangle(
+    this.hudBg = this.add.rectangle(
       GAME_W / 2,
       HUD_HEIGHT / 2,
       GAME_W,
@@ -345,7 +346,7 @@ export class TowerScene extends Phaser.Scene {
       0x000000,
       0.6,
     );
-    hudBg.setDepth(80);
+    this.hudBg.setDepth(80);
 
     this.coinText = this.add.text(10, 8, "", {
       fontSize: "18px",
@@ -499,9 +500,17 @@ export class TowerScene extends Phaser.Scene {
   // =========================================================================
 
   private setGameElementsVisible(visible: boolean): void {
-    // Tower labels
+    // HUD
+    this.hudBg.setVisible(visible);
+    this.coinText.setVisible(visible);
+    this.hpText.setVisible(visible);
+    this.waveText.setVisible(visible);
+    // Tower sprites, range circles, labels
     for (const tower of this.activeTowers) {
       tower.labelText.setVisible(visible);
+      tower.sprite.setVisible(visible);
+      tower.rangeCircle.setVisible(visible);
+      if (tower.praiseGlow) tower.praiseGlow.setVisible(visible);
     }
     // Placement circles
     for (const circle of this.spotCircles) {
@@ -520,6 +529,9 @@ export class TowerScene extends Phaser.Scene {
     for (const l of this.towerStripLabels) l.setVisible(visible);
     for (const c of this.towerStripCosts) c.setVisible(visible);
     for (const l of this.towerStripLocks) l.setVisible(visible);
+    // Village
+    this.villageGraphics.setVisible(visible);
+    this.villageGlow.setVisible(visible);
   }
 
   // =========================================================================
@@ -1100,8 +1112,16 @@ export class TowerScene extends Phaser.Scene {
     }
     const startX = selPanelX - ((count - 1) * spacing) / 2;
 
+    // Vertical clamp: keep panel below HUD and above tower strip
+    const panelH = 75;
+    let selPanelY = spot.y - 55;
+    const minY = HUD_HEIGHT + selMargin + panelH / 2;
+    if (selPanelY < minY) {
+      selPanelY = spot.y + 55; // flip below the spot if too high
+    }
+
     // Background panel
-    const panelBg = this.add.rectangle(selPanelX, spot.y - 55, panelW, 75, 0x222233, 0.9);
+    const panelBg = this.add.rectangle(selPanelX, selPanelY, panelW, panelH, 0x222233, 0.9);
     panelBg.setStrokeStyle(2, 0x4488ff, 0.6);
     container.add(panelBg);
 
@@ -1109,7 +1129,7 @@ export class TowerScene extends Phaser.Scene {
       const tType = available[i];
       const def = TOWER_DEFS[tType];
       const cx = startX + i * spacing;
-      const cy = spot.y - 55;
+      const cy = selPanelY;
 
       const affordable = canAfford(this.gameState, tType);
       const alpha = affordable ? 1 : 0.3;

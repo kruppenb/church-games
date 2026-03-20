@@ -1,6 +1,6 @@
 # Church Games
 
-Bible lesson mini-games for K-5th grade kids. Vite + React + TypeScript static site with 7 mini-games, deployed to GitHub Pages.
+Bible lesson mini-games for K-5th grade kids. Vite + React + TypeScript static site with 8 mini-games, deployed to GitHub Pages.
 
 ## Commands
 
@@ -27,11 +27,12 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 |-------|------|------|-------------|
 | /games/quiz | Quiz Showdown | React | Timed MC questions, Kahoot-style |
 | /games/words | Word Scramble | React | Letter unscramble with hints |
-| /games/brawler | Bible Brawler | Phaser | Side-scrolling beat-em-up with doubt monsters |
+| /games/fortress | Faith Fortress | Phaser | 30-wave tower defense with 6 towers, 7 enemies, 3 bosses, hero abilities |
 | /games/rpg | Promised Land | Phaser | Board-game RPG with loot drops and random events |
-| /games/escape | Escape Room | Phaser | Series of locked rooms with timed puzzles |
+| /games/escape | Bible Millionaire | Phaser | Temple-building game |
 | /games/survivors | Survivors | Phaser | Vampire Survivors-style auto-battler with progressive weapon upgrades |
 | /games/jeopardy | Jeopardy | React | Classic 5x5 category board with correct/wrong feedback |
+| /games/cards | Scripture Cards | Phaser | Faith-powered card battle game |
 
 ## Landing Page
 
@@ -63,6 +64,21 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 - **Visual testing**: Use Playwright MCP browser tools (see `docs/visual-testing.md`)
 - Tests must actually play the games, not just validate schemas
 - **Phaser games (especially Survivors)**: Always verify changes with Playwright e2e tests (`cd site && npx playwright test e2e/survivors.spec.ts --project "Desktop Chrome"`). Build first (`npm run build`) since Phaser scenes don't hot-reload. Check the screenshots in `site/e2e/screenshots/` to visually confirm gameplay.
+
+## Visual Validation Loop (Required)
+
+After any significant game changes (new features, UI overhauls, game expansions), you MUST run a Playwright visual playthrough loop:
+
+1. Build the game: `cd site && npm run build`
+2. Start preview server: `npx vite preview --port 4174`
+3. Use Playwright MCP browser tools to play through the game end-to-end
+4. Take screenshots at each phase (menus, gameplay, overlays, feedback screens)
+5. Log all issues found (text readability, UI clipping, overlay bleed-through, broken interactions, missing labels)
+6. Fix all issues found
+7. **Repeat from step 1** until a clean playthrough finds zero issues
+8. Run `npm run test && npm run test:e2e` to confirm no regressions
+
+This is not optional — ship no game changes without a clean visual playthrough.
 
 ## Known Dev Quirks
 

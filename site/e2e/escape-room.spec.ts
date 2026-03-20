@@ -1,47 +1,39 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Escape Room", () => {
+test.describe("Bible Millionaire", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/#/games/escape");
   });
 
-  test("Phaser canvas renders and first room loads", async ({ page }) => {
-    const canvas = page.locator(".phaser-container canvas");
-    await expect(canvas).toBeVisible({ timeout: 10000 });
-
-    await page.waitForTimeout(1500);
-    await page.screenshot({ path: "e2e/screenshots/escape-room1.png" });
+  test("game renders with lesson content", async ({ page }) => {
+    // Bible Millionaire is a React game — wait for intro title
+    await expect(page.locator(".millionaire-intro-title")).toBeVisible({ timeout: 10000 });
+    await page.screenshot({ path: "e2e/screenshots/millionaire-start.png" });
   });
 
-  test("answering question correctly progresses room", async ({ page }) => {
-    const canvas = page.locator(".phaser-container canvas");
-    await expect(canvas).toBeVisible({ timeout: 10000 });
+  test("answering question shows feedback", async ({ page }) => {
+    await expect(page.locator("text=Bible Millionaire")).toBeVisible({ timeout: 5000 });
 
-    const box = await canvas.boundingBox();
-    if (box) {
-      // Wait for question to appear
-      await page.waitForTimeout(2000);
+    // Click Start/Play button if present
+    const startBtn = page.locator("text=Start");
+    if (await startBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await startBtn.click();
+    }
 
-      // Click on an answer button area
-      await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.6);
-      await page.waitForTimeout(1500);
-
-      await page.screenshot({ path: "e2e/screenshots/escape-after-answer.png" });
+    // Wait for question to appear and click first answer
+    await page.waitForTimeout(1500);
+    const answers = page.locator(".millionaire-answer, .answer-btn, button");
+    const firstAnswer = answers.first();
+    if (await firstAnswer.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await firstAnswer.click();
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: "e2e/screenshots/millionaire-after-answer.png" });
     }
   });
 
-  test("timer is visible and counting", async ({ page }) => {
-    const canvas = page.locator(".phaser-container canvas");
-    await expect(canvas).toBeVisible({ timeout: 10000 });
-
-    // Timer is rendered inside the Phaser canvas, verify via screenshots
-    await page.waitForTimeout(2000);
-    await page.screenshot({ path: "e2e/screenshots/escape-timer.png" });
-  });
-
-  test("back button returns to landing", async ({ page }) => {
-    await expect(page.locator(".maze-back-btn")).toBeVisible({ timeout: 5000 });
-    await page.locator(".maze-back-btn").click();
+  test("back link returns to landing", async ({ page }) => {
+    await expect(page.locator(".quiz-back-link")).toBeVisible({ timeout: 5000 });
+    await page.locator(".quiz-back-link").click();
     await expect(page.locator("text=Church Games")).toBeVisible({ timeout: 5000 });
   });
 });

@@ -5,7 +5,19 @@ test.describe("Faith Fortress", () => {
     await page.goto("/#/games/fortress");
   });
 
-  test("Phaser canvas renders", async ({ page }) => {
+  test("difficulty picker appears on direct navigation", async ({ page }) => {
+    // When navigating directly, an in-game difficulty picker should show
+    await expect(page.locator("text=Choose your difficulty")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("text=Little Kids")).toBeVisible();
+    await expect(page.locator("text=Big Kids")).toBeVisible();
+    await page.screenshot({ path: "e2e/screenshots/fortress-difficulty.png" });
+  });
+
+  test("Phaser canvas renders after difficulty selection", async ({ page }) => {
+    // Select difficulty
+    await expect(page.locator("text=Big Kids")).toBeVisible({ timeout: 5000 });
+    await page.locator("text=Big Kids").click();
+
     // Wait for the Phaser container
     await expect(page.locator(".phaser-container")).toBeVisible({ timeout: 5000 });
 
@@ -16,58 +28,65 @@ test.describe("Faith Fortress", () => {
     await page.screenshot({ path: "e2e/screenshots/fortress-start.png" });
   });
 
-  test("character select screen appears", async ({ page }) => {
-    const canvas = page.locator(".phaser-container canvas");
-    await expect(canvas).toBeVisible({ timeout: 10000 });
-
-    // The character select scene should show "Choose Your Hero!" text
-    // Since it's in Phaser canvas, we verify via screenshot
-    await page.waitForTimeout(1000); // Wait for scene to render
-    await page.screenshot({ path: "e2e/screenshots/fortress-character-select.png" });
-  });
-
   test("selecting character starts the game", async ({ page }) => {
+    // Select difficulty
+    await page.locator("text=Big Kids").click();
+
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
-    // Click on the canvas to select a character (roughly center area)
+    // Wait for intro, then click Start
+    await page.waitForTimeout(1500);
     const box = await canvas.boundingBox();
     if (box) {
-      // Click in the character select area (first character card)
-      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.45);
-    }
+      // Click Start button (bottom center of intro screen)
+      await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.75);
+      await page.waitForTimeout(1000);
 
-    // Wait for scene transition
-    await page.waitForTimeout(1500);
-    await page.screenshot({ path: "e2e/screenshots/fortress-gameplay.png" });
+      // Hero selection should be showing — click first hero's Select button
+      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.7);
+      await page.waitForTimeout(1500);
+
+      await page.screenshot({ path: "e2e/screenshots/fortress-gameplay.png" });
+    }
   });
 
   test("question appears during gameplay", async ({ page }) => {
+    await page.locator("text=Big Kids").click();
+
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
-    // Select character
+    // Click through intro + hero select
+    await page.waitForTimeout(1500);
     const box = await canvas.boundingBox();
     if (box) {
-      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.45);
-    }
+      await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.75);
+      await page.waitForTimeout(1000);
+      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.7);
+      await page.waitForTimeout(2000);
 
-    // Wait for first wave/question to appear
-    await page.waitForTimeout(3000);
-    await page.screenshot({ path: "e2e/screenshots/fortress-question.png" });
+      await page.screenshot({ path: "e2e/screenshots/fortress-question.png" });
+    }
   });
 
   test("answering question continues gameplay", async ({ page }) => {
+    await page.locator("text=Big Kids").click();
+
     const canvas = page.locator(".phaser-container canvas");
     await expect(canvas).toBeVisible({ timeout: 10000 });
 
-    // Select character
+    await page.waitForTimeout(1500);
     const box = await canvas.boundingBox();
     if (box) {
-      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.45);
-      await page.waitForTimeout(3000);
+      // Intro → Start
+      await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.75);
+      await page.waitForTimeout(1000);
+      // Hero select
+      await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.7);
+      await page.waitForTimeout(2000);
 
-      // Click on an answer button area (top-left of the answer grid in the question panel)
+      // Click an answer (top-left answer button area)
       await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.55);
       await page.waitForTimeout(1500);
 
