@@ -1,17 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
 import { useLesson } from "@/hooks/useLesson";
-import { useDifficulty } from "@/hooks/useDifficulty";
+import { useDifficulty, type Difficulty } from "@/hooks/useDifficulty";
 import { TowerScene } from "./scenes/TowerScene";
 
 export function TowerDefense() {
   const { lesson, loading, error } = useLesson();
-  const { difficulty } = useDifficulty();
+  const { difficulty: contextDifficulty, setDifficulty } = useDifficulty();
+  const [difficultyConfirmed, setDifficultyConfirmed] = useState(false);
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handlePickDifficulty = (d: Difficulty) => {
+    setDifficulty(d);
+    setDifficultyConfirmed(true);
+  };
+
   useEffect(() => {
-    if (!containerRef.current || !lesson) return;
+    if (!containerRef.current || !lesson || !difficultyConfirmed) return;
 
     // Destroy any previous game instance
     if (gameRef.current) {
@@ -34,7 +40,7 @@ export function TowerDefense() {
 
     // Pass data to Phaser via registry
     game.registry.set("lesson", lesson);
-    game.registry.set("difficulty", difficulty);
+    game.registry.set("difficulty", contextDifficulty);
 
     gameRef.current = game;
 
@@ -42,7 +48,7 @@ export function TowerDefense() {
       game.destroy(true);
       gameRef.current = null;
     };
-  }, [lesson, difficulty]);
+  }, [lesson, contextDifficulty, difficultyConfirmed]);
 
   if (loading) {
     return (
@@ -61,6 +67,69 @@ export function TowerDefense() {
           <a href="#/" className="btn btn-primary">
             Back to Home
           </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (!difficultyConfirmed) {
+    return (
+      <div className="adventure-container">
+        <a href="#/" className="adventure-back-btn btn btn-secondary">
+          &larr; Back to Games
+        </a>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            gap: "24px",
+            color: "#fff",
+            fontFamily: "'Segoe UI', Arial, sans-serif",
+          }}
+        >
+          <h1 style={{ fontSize: "32px", color: "#ffdd00", margin: 0 }}>
+            Faith Fortress
+          </h1>
+          <p style={{ fontSize: "16px", color: "#ccc", margin: 0 }}>
+            Choose your difficulty:
+          </p>
+          <div style={{ display: "flex", gap: "20px" }}>
+            <button
+              className="btn btn-primary"
+              style={{
+                padding: "16px 32px",
+                fontSize: "18px",
+                cursor: "pointer",
+                backgroundColor:
+                  contextDifficulty === "little-kids" ? "#44aa44" : "#336633",
+                border: "2px solid #44aa44",
+                borderRadius: "8px",
+                color: "#fff",
+              }}
+              onClick={() => handlePickDifficulty("little-kids")}
+            >
+              Little Kids
+            </button>
+            <button
+              className="btn btn-primary"
+              style={{
+                padding: "16px 32px",
+                fontSize: "18px",
+                cursor: "pointer",
+                backgroundColor:
+                  contextDifficulty === "big-kids" ? "#4488ff" : "#335588",
+                border: "2px solid #4488ff",
+                borderRadius: "8px",
+                color: "#fff",
+              }}
+              onClick={() => handlePickDifficulty("big-kids")}
+            >
+              Big Kids
+            </button>
+          </div>
         </div>
       </div>
     );

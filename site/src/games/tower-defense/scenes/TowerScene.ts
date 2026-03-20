@@ -439,9 +439,9 @@ export class TowerScene extends Phaser.Scene {
       cost.setDepth(81);
       this.towerStripCosts.push(cost);
 
-      const lock = this.add.text(cx - 30, cy - 4, "X", {
-        fontSize: "12px",
-        color: "#ff0000",
+      const lock = this.add.text(cx - 30, cy - 4, "", {
+        fontSize: "10px",
+        color: "#ff6666",
         fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       });
@@ -465,6 +465,13 @@ export class TowerScene extends Phaser.Scene {
       const locked = !affordable || !available;
       this.towerStripCircles[i].setAlpha(locked ? 0.3 : 0.8);
       this.towerStripLocks[i].setVisible(locked);
+      if (locked) {
+        if (!available) {
+          this.towerStripLocks[i].setText("Locked");
+        } else {
+          this.towerStripLocks[i].setText("Low $");
+        }
+      }
     }
   }
 
@@ -488,11 +495,40 @@ export class TowerScene extends Phaser.Scene {
   }
 
   // =========================================================================
+  // Show/hide game elements during overlays
+  // =========================================================================
+
+  private setGameElementsVisible(visible: boolean): void {
+    // Tower labels
+    for (const tower of this.activeTowers) {
+      tower.labelText.setVisible(visible);
+    }
+    // Placement circles
+    for (const circle of this.spotCircles) {
+      if (visible) {
+        // Only show unoccupied spots
+        const idx = this.spotCircles.indexOf(circle);
+        const occupied = this.activeTowers.some((t) => t.state.spotIndex === idx);
+        circle.setVisible(!occupied);
+      } else {
+        circle.setVisible(false);
+      }
+    }
+    // Tower strip
+    this.towerStripBg.setVisible(visible);
+    for (const c of this.towerStripCircles) c.setVisible(visible);
+    for (const l of this.towerStripLabels) l.setVisible(visible);
+    for (const c of this.towerStripCosts) c.setVisible(visible);
+    for (const l of this.towerStripLocks) l.setVisible(visible);
+  }
+
+  // =========================================================================
   // OVERLAYS: Intro
   // =========================================================================
 
   private showIntroOverlay(): void {
     this.overlayContainer?.destroy();
+    this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
     container.setDepth(100);
 
@@ -602,6 +638,7 @@ export class TowerScene extends Phaser.Scene {
 
   private showHeroSelectOverlay(): void {
     this.overlayContainer?.destroy();
+    this.setGameElementsVisible(false);
     this.gameState = { ...this.gameState, phase: "hero-select" };
 
     const container = this.add.container(0, 0);
@@ -736,6 +773,7 @@ export class TowerScene extends Phaser.Scene {
 
   private showQuestionOverlay(question: Question): void {
     this.questionOverlay?.destroy();
+    this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
     container.setDepth(100);
 
@@ -769,7 +807,7 @@ export class TowerScene extends Phaser.Scene {
       );
       sceneTitle.setOrigin(0.5);
       container.add(sceneTitle);
-      yOffset += 30;
+      yOffset += 45;
 
       const sceneDesc = this.add.text(
         GAME_W / 2,
@@ -943,6 +981,7 @@ export class TowerScene extends Phaser.Scene {
     this.gameState = { ...this.gameState, phase: "placement" };
     this.autoPlaceTimer = 0;
     this.tutorialPlaced = false;
+    this.setGameElementsVisible(true);
     this.updateHud();
     this.updateTowerStrip();
     this.updateSpotVisuals();
@@ -1050,11 +1089,19 @@ export class TowerScene extends Phaser.Scene {
 
     const count = available.length;
     const spacing = 50;
-    const startX = spot.x - ((count - 1) * spacing) / 2;
+    const panelW = count * spacing + 30;
+    // Clamp panel center to stay within screen bounds
+    const selMargin = 5;
+    let selPanelX = spot.x;
+    if (selPanelX - panelW / 2 < selMargin) {
+      selPanelX = selMargin + panelW / 2;
+    } else if (selPanelX + panelW / 2 > GAME_W - selMargin) {
+      selPanelX = GAME_W - selMargin - panelW / 2;
+    }
+    const startX = selPanelX - ((count - 1) * spacing) / 2;
 
     // Background panel
-    const panelW = count * spacing + 30;
-    const panelBg = this.add.rectangle(spot.x, spot.y - 55, panelW, 60, 0x222233, 0.9);
+    const panelBg = this.add.rectangle(selPanelX, spot.y - 55, panelW, 75, 0x222233, 0.9);
     panelBg.setStrokeStyle(2, 0x4488ff, 0.6);
     container.add(panelBg);
 
@@ -1066,6 +1113,15 @@ export class TowerScene extends Phaser.Scene {
 
       const affordable = canAfford(this.gameState, tType);
       const alpha = affordable ? 1 : 0.3;
+
+      // Tower name label above the circle
+      const nameText = this.add.text(cx, cy - 28, def.label, {
+        fontSize: "9px",
+        color: affordable ? "#ffffff" : "#666666",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+      });
+      nameText.setOrigin(0.5);
+      container.add(nameText);
 
       const circle = this.add.circle(cx, cy - 8, 16, def.color, alpha);
       circle.setInteractive({ useHandCursor: affordable });
@@ -1089,7 +1145,7 @@ export class TowerScene extends Phaser.Scene {
     }
 
     // Close button
-    const closeBtn = this.add.text(spot.x + panelW / 2 - 5, spot.y - 80, "X", {
+    const closeBtn = this.add.text(selPanelX + panelW / 2 - 5, spot.y - 80, "X", {
       fontSize: "14px",
       color: "#ff4444",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1118,9 +1174,20 @@ export class TowerScene extends Phaser.Scene {
     const canUpg = tower.state.level < MAX_TOWER_LEVEL && canUpgrade(this.gameState, tower.state.id);
     const atMax = tower.state.level >= MAX_TOWER_LEVEL;
 
-    // Panel - larger to fit upgrade + sell + targeting
+    // Clamp panel position to stay within screen bounds
+    const panelW = 160;
     const panelH = 80;
-    const panelBg = this.add.rectangle(tower.x, tower.y - 60, 160, panelH, 0x222233, 0.9);
+    const margin = 5;
+    let panelX = tower.x;
+    const panelY = tower.y - 60;
+    // Clamp horizontally
+    if (panelX - panelW / 2 < margin) {
+      panelX = margin + panelW / 2;
+    } else if (panelX + panelW / 2 > GAME_W - margin) {
+      panelX = GAME_W - margin - panelW / 2;
+    }
+
+    const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, 0x222233, 0.9);
     panelBg.setStrokeStyle(2, 0xaa44ff, 0.6);
     container.add(panelBg);
 
@@ -1129,11 +1196,11 @@ export class TowerScene extends Phaser.Scene {
       const upgCost = getUpgradeCost(tower.state.type, tower.state.level);
       const affordable = canUpg;
 
-      const upgBtn = this.add.rectangle(tower.x - 30, tower.y - 80, 90, 22, affordable ? 0x4488ff : 0x333333, 0.8);
+      const upgBtn = this.add.rectangle(panelX - 30, panelY - 20, 90, 22, affordable ? 0x4488ff : 0x333333, 0.8);
       if (affordable) upgBtn.setInteractive({ useHandCursor: true });
       container.add(upgBtn);
 
-      const upgText = this.add.text(tower.x - 30, tower.y - 80, `Upg L${tower.state.level + 1} (${upgCost})`, {
+      const upgText = this.add.text(panelX - 30, panelY - 20, `Upg L${tower.state.level + 1} (${upgCost})`, {
         fontSize: "10px",
         color: affordable ? "#ffffff" : "#666666",
         fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1158,7 +1225,7 @@ export class TowerScene extends Phaser.Scene {
         });
       }
     } else {
-      const maxText = this.add.text(tower.x - 30, tower.y - 80, "MAX LEVEL", {
+      const maxText = this.add.text(panelX - 30, panelY - 20, "MAX LEVEL", {
         fontSize: "10px",
         color: "#ffdd00",
         fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1170,11 +1237,11 @@ export class TowerScene extends Phaser.Scene {
 
     // -- Sell button (top right) --
     const refund = getSellRefund(tower.state.type, tower.state.level);
-    const sellBtn = this.add.rectangle(tower.x + 50, tower.y - 80, 50, 22, 0xcc3333, 0.8);
+    const sellBtn = this.add.rectangle(panelX + 50, panelY - 20, 50, 22, 0xcc3333, 0.8);
     sellBtn.setInteractive({ useHandCursor: true });
     container.add(sellBtn);
 
-    const sellText = this.add.text(tower.x + 50, tower.y - 80, `Sell +${refund}`, {
+    const sellText = this.add.text(panelX + 50, panelY - 20, `Sell +${refund}`, {
       fontSize: "9px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1203,11 +1270,11 @@ export class TowerScene extends Phaser.Scene {
 
     // -- Targeting priority button (bottom row) --
     const targetingLabel = tower.state.targeting.charAt(0).toUpperCase() + tower.state.targeting.slice(1);
-    const targetBtn = this.add.rectangle(tower.x, tower.y - 48, 140, 22, 0x336633, 0.8);
+    const targetBtn = this.add.rectangle(panelX, panelY + 12, 140, 22, 0x336633, 0.8);
     targetBtn.setInteractive({ useHandCursor: true });
     container.add(targetBtn);
 
-    const targetText = this.add.text(tower.x, tower.y - 48, `Target: ${targetingLabel}`, {
+    const targetText = this.add.text(panelX, panelY + 12, `Target: ${targetingLabel}`, {
       fontSize: "10px",
       color: "#88ff88",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1370,14 +1437,15 @@ export class TowerScene extends Phaser.Scene {
 
   private showFastForwardButton(): void {
     this.fastForwardButton?.destroy();
-    this.fastForward = false;
+    // Preserve the current fast forward state across waves (don't reset)
 
     const container = this.add.container(0, 0);
     container.setDepth(85);
 
-    const btnBg = this.add.rectangle(GAME_W - 80, HUD_HEIGHT + 70, 80, 30, 0x444444, 0.8);
+    const btnBg = this.add.rectangle(GAME_W - 80, HUD_HEIGHT + 70, 80, 30,
+      this.fastForward ? 0x886600 : 0x444444, 0.8);
     btnBg.setInteractive({ useHandCursor: true });
-    const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 70, "1x", {
+    const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 70, this.fastForward ? "2x" : "1x", {
       fontSize: "14px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -2212,7 +2280,7 @@ export class TowerScene extends Phaser.Scene {
     this.prayOnCooldown = false;
     this.fastForwardButton?.destroy();
     this.fastForwardButton = null;
-    this.fastForward = false;
+    // Preserve this.fastForward state across waves (don't reset)
     this.heroAbilityButton?.destroy();
     this.heroAbilityButton = null;
     this.estherBoostActive = false;
@@ -2235,6 +2303,7 @@ export class TowerScene extends Phaser.Scene {
 
   private showVictoryOverlay(): void {
     this.overlayContainer?.destroy();
+    this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
     container.setDepth(100);
 
@@ -2356,6 +2425,7 @@ export class TowerScene extends Phaser.Scene {
 
   private showDefeatOverlay(): void {
     this.overlayContainer?.destroy();
+    this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
     container.setDepth(100);
 
