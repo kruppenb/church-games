@@ -55,6 +55,25 @@ const SPECIAL_ICONS: Record<SpecialType, string> = {
   [SpecialType.Rainbow]: "\u2726",
 };
 
+/** Mapping from TileType to image asset key */
+const TILE_IMAGE_KEYS: Record<TileType, string> = {
+  [TileType.Heart]: "match-heart",
+  [TileType.Star]: "match-star",
+  [TileType.Cross]: "match-cross",
+  [TileType.Dove]: "match-dove",
+  [TileType.Crown]: "match-crown",
+  [TileType.Scroll]: "match-scroll",
+};
+
+/** Mapping from SpecialType to image asset key */
+const SPECIAL_IMAGE_KEYS: Record<SpecialType, string> = {
+  [SpecialType.None]: "",
+  [SpecialType.LineBlastH]: "match-lineblast",
+  [SpecialType.LineBlastV]: "match-lineblast",
+  [SpecialType.Bomb]: "match-bomb",
+  [SpecialType.Rainbow]: "match-rainbow",
+};
+
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
 const ANSWER_LABELS = ["A", "B", "C", "D"];
 
@@ -113,8 +132,44 @@ export class MatchScene extends Phaser.Scene {
   // Question state
   private currentQuestion: Question | null = null;
 
+  // Track which image assets loaded successfully
+  private loadedImages = new Set<string>();
+
   constructor() {
     super({ key: "MatchScene" });
+  }
+
+  preload(): void {
+    // Attempt to load tile images — if they don't exist, we fall back to shapes
+    const tileAssets = [
+      { key: "match-heart", path: "assets/match/heart.png" },
+      { key: "match-star", path: "assets/match/star.png" },
+      { key: "match-cross", path: "assets/match/cross.png" },
+      { key: "match-dove", path: "assets/match/dove.png" },
+      { key: "match-crown", path: "assets/match/crown.png" },
+      { key: "match-scroll", path: "assets/match/scroll.png" },
+      { key: "match-lineblast", path: "assets/match/lineblast.png" },
+      { key: "match-bomb", path: "assets/match/bomb.png" },
+      { key: "match-rainbow", path: "assets/match/rainbow.png" },
+    ];
+
+    for (const asset of tileAssets) {
+      this.load.image(asset.key, asset.path);
+    }
+
+    // Track successful loads
+    this.load.on("filecomplete", (key: string) => {
+      this.loadedImages.add(key);
+    });
+
+    // Suppress errors for missing images (we have fallbacks)
+    this.load.on(
+      "loaderror",
+      (file: Phaser.Loader.File) => {
+        // Silently ignore — will use geometric shape fallback
+        console.debug(`Match icon not found: ${file.key} — using shape fallback`);
+      },
+    );
   }
 
   create(): void {
@@ -474,6 +529,11 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Check if an image asset key was loaded successfully */
+  private hasImage(key: string): boolean {
+    return this.loadedImages.has(key) && this.textures.exists(key);
+  }
+
   private createTileSprite(
     row: number,
     col: number,
@@ -486,50 +546,74 @@ export class MatchScene extends Phaser.Scene {
     const container = this.add.container(x, y);
     container.setDepth(10);
 
-    // Tile background (rounded rect via rectangle)
-    const color = TILE_COLORS[t.type];
-    const bg = this.add.rectangle(0, 0, size, size, color);
-    bg.setStrokeStyle(2, 0xffffff30);
-    container.add(bg);
+    const tileImageKey = TILE_IMAGE_KEYS[t.type];
+    const useImage = this.hasImage(tileImageKey);
 
-    // Inner highlight for 3D effect
-    const highlight = this.add.rectangle(
-      0,
-      -size * 0.08,
-      size * 0.8,
-      size * 0.4,
-      0xffffff,
-      0.15,
-    );
-    container.add(highlight);
+    if (useImage) {
+      // Use generated image asset
+      const img = this.add.image(0, 0, tileImageKey);
+      // Scale to fit tile size
+      const scale = size / Math.max(img.width, img.height);
+      img.setScale(scale);
+      container.add(img);
+    } else {
+      // Fallback: geometric shape with icon text
+      const color = TILE_COLORS[t.type];
+      const bg = this.add.rectangle(0, 0, size, size, color);
+      bg.setStrokeStyle(2, 0xffffff30);
+      container.add(bg);
 
-    // Icon text
-    const iconSize = Math.max(14, Math.floor(size * 0.4));
-    const icon = this.add
-      .text(0, -2, TILE_ICONS[t.type], {
-        fontSize: `${iconSize}px`,
-        fontFamily: "Arial, sans-serif",
-      })
-      .setOrigin(0.5);
-    container.add(icon);
+      // Inner highlight for 3D effect
+      const highlight = this.add.rectangle(
+        0,
+        -size * 0.08,
+        size * 0.8,
+        size * 0.4,
+        0xffffff,
+        0.15,
+      );
+      container.add(highlight);
+
+      // Icon text
+      const iconSize = Math.max(14, Math.floor(size * 0.4));
+      const icon = this.add
+        .text(0, -2, TILE_ICONS[t.type], {
+          fontSize: `${iconSize}px`,
+          fontFamily: "Arial, sans-serif",
+        })
+        .setOrigin(0.5);
+      container.add(icon);
+    }
 
     // Special tile indicator
     if (t.special !== SpecialType.None) {
       const specialColor = SPECIAL_COLORS[t.special];
-      bg.setStrokeStyle(3, specialColor);
+      const specialImageKey = SPECIAL_IMAGE_KEYS[t.special];
+      const useSpecialImage = specialImageKey && this.hasImage(specialImageKey);
 
-      const specialIcon = this.add
-        .text(0, size * 0.28, SPECIAL_ICONS[t.special], {
-          fontSize: `${Math.floor(iconSize * 0.7)}px`,
-          fontFamily: "Arial, sans-serif",
-          color:
-            "#" +
-            specialColor.toString(16).padStart(6, "0"),
-        })
-        .setOrigin(0.5);
-      container.add(specialIcon);
+      if (useSpecialImage) {
+        // Show special powerup image overlay
+        const specialImg = this.add.image(0, size * 0.2, specialImageKey);
+        const specialScale = (size * 0.45) / Math.max(specialImg.width, specialImg.height);
+        specialImg.setScale(specialScale);
+        specialImg.setAlpha(0.9);
+        container.add(specialImg);
+      } else {
+        // Fallback: text icon for special
+        const iconSize = Math.max(14, Math.floor(size * 0.4));
+        const specialIcon = this.add
+          .text(0, size * 0.28, SPECIAL_ICONS[t.special], {
+            fontSize: `${Math.floor(iconSize * 0.7)}px`,
+            fontFamily: "Arial, sans-serif",
+            color:
+              "#" +
+              specialColor.toString(16).padStart(6, "0"),
+          })
+          .setOrigin(0.5);
+        container.add(specialIcon);
+      }
 
-      // Glow effect for special tiles
+      // Glow effect for special tiles (applies to both image and fallback)
       const glow = this.add.rectangle(0, 0, size + 4, size + 4, specialColor, 0.2);
       container.addAt(glow, 0);
 
@@ -541,11 +625,22 @@ export class MatchScene extends Phaser.Scene {
         yoyo: true,
         repeat: -1,
       });
+
+      // Add a colored border around the tile for specials (visible in both modes)
+      if (!useImage) {
+        // For fallback shapes, update the existing bg stroke
+        const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
+        if (bg && bg.setStrokeStyle) {
+          bg.setStrokeStyle(3, specialColor);
+        }
+      }
     }
 
-    // Make interactive
-    bg.setInteractive({ useHandCursor: true });
-    bg.on("pointerdown", () => this.onTileClick(row, col));
+    // Make interactive — use an invisible hit area covering the tile
+    const hitArea = this.add.rectangle(0, 0, size, size, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+    hitArea.on("pointerdown", () => this.onTileClick(row, col));
+    container.add(hitArea);
 
     this.tileSprites[row][col] = container;
     return container;
