@@ -657,12 +657,16 @@ describe("tower-logic", () => {
   // ENEMY_DEFS constants
   // -----------------------------------------------------------------------
   describe("ENEMY_DEFS", () => {
-    it("has 3 enemy types", () => {
+    it("has 7 enemy types", () => {
       const types = Object.keys(ENEMY_DEFS);
-      expect(types).toHaveLength(3);
+      expect(types).toHaveLength(7);
       expect(types).toContain("worry");
       expect(types).toContain("doubt");
       expect(types).toContain("fear");
+      expect(types).toContain("temptation");
+      expect(types).toContain("pride");
+      expect(types).toContain("envy");
+      expect(types).toContain("deception");
     });
 
     it("worry enemy has correct stats", () => {

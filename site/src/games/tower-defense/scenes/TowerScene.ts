@@ -99,6 +99,7 @@ interface ActiveEnemy {
   sprite: Phaser.GameObjects.Arc;
   hpBar: Phaser.GameObjects.Rectangle;
   hpBarBg: Phaser.GameObjects.Rectangle;
+  shieldSprite?: Phaser.GameObjects.Arc; // Pride Golem shield visual
   type: EnemyType;
   hp: number;
   maxHp: number;
@@ -107,6 +108,9 @@ interface ActiveEnemy {
   slowFactor: number; // 0 = no slow, 0.4 = 40% slow, etc.
   slowTimer: number; // ms remaining on slow
   alive: boolean;
+  stealthed: boolean; // Temptation: currently invisible
+  shieldHitsRemaining: number; // Pride Golem: hits left before shield breaks
+  isSplit: boolean; // Whether this is a split mini-enemy from Envy Swarm
 }
 
 interface ActiveTower {
@@ -1198,17 +1202,22 @@ export class TowerScene extends Phaser.Scene {
   // Enemy spawning & management
   // =========================================================================
 
-  private spawnEnemy(type: EnemyType): void {
+  private spawnEnemy(type: EnemyType, atPosition?: { x: number; y: number; waypointIndex: number }, overrideHp?: number, overrideSpeed?: number): void {
     const def = ENEMY_DEFS[type];
-    const start = PATH_WAYPOINTS[0];
+    const startX = atPosition?.x ?? PATH_WAYPOINTS[0].x;
+    const startY = atPosition?.y ?? PATH_WAYPOINTS[0].y;
+    const startWaypoint = atPosition?.waypointIndex ?? 1;
 
-    const sprite = this.add.circle(start.x, start.y, def.size, def.color, 1);
+    const alpha = def.alpha ?? 1;
+    const isStealth = def.stealth ?? false;
+
+    const sprite = this.add.circle(startX, startY, def.size, def.color, isStealth ? 0 : alpha);
     sprite.setDepth(20);
 
     // HP bar background
     const hpBarBg = this.add.rectangle(
-      start.x,
-      start.y - def.size - 6,
+      startX,
+      startY - def.size - 6,
       def.size * 2,
       4,
       0x333333,
@@ -1218,8 +1227,8 @@ export class TowerScene extends Phaser.Scene {
 
     // HP bar foreground
     const hpBar = this.add.rectangle(
-      start.x,
-      start.y - def.size - 6,
+      startX,
+      startY - def.size - 6,
       def.size * 2,
       4,
       0x44ff44,
@@ -1230,21 +1239,39 @@ export class TowerScene extends Phaser.Scene {
     // Scale enemy stats with wave number so late waves stay challenging
     const hpMultiplier = 1 + (this.gameState.wave - 1) * 0.1;
     const speedMultiplier = 1 + (this.gameState.wave - 1) * 0.015;
-    const scaledHp = Math.round(def.hp * hpMultiplier);
-    const scaledSpeed = def.speed * speedMultiplier;
+    const scaledHp = overrideHp ?? Math.round(def.hp * hpMultiplier);
+    const scaledSpeed = overrideSpeed ?? def.speed * speedMultiplier;
+
+    // Pride Golem shield visual
+    let shieldSprite: Phaser.GameObjects.Arc | undefined;
+    if (def.shieldHits) {
+      shieldSprite = this.add.circle(startX, startY, def.size + 4, 0xddaa44, 0.3);
+      shieldSprite.setStrokeStyle(2, 0xddaa44, 0.6);
+      shieldSprite.setDepth(19);
+    }
+
+    // Stealth enemies: hide HP bars initially
+    if (isStealth) {
+      hpBarBg.setAlpha(0);
+      hpBar.setAlpha(0);
+    }
 
     const enemy: ActiveEnemy = {
       sprite,
       hpBar,
       hpBarBg,
+      shieldSprite,
       type,
       hp: scaledHp,
       maxHp: scaledHp,
       speed: scaledSpeed,
-      waypointIndex: 1,
+      waypointIndex: startWaypoint,
       slowFactor: 0,
       slowTimer: 0,
       alive: true,
+      stealthed: isStealth,
+      shieldHitsRemaining: def.shieldHits ?? 0,
+      isSplit: !!atPosition,
     };
 
     this.activeEnemies.push(enemy);
@@ -1300,11 +1327,40 @@ export class TowerScene extends Phaser.Scene {
         enemy.hpBar.setFillStyle(0xffaa00, 1);
       }
 
+      // Update Pride Golem shield position
+      if (enemy.shieldSprite) {
+        enemy.shieldSprite.x = enemy.sprite.x;
+        enemy.shieldSprite.y = enemy.sprite.y;
+      }
+
+      // Stealth: check proximity to towers
+      if (enemy.stealthed) {
+        const revealRange = ENEMY_DEFS[enemy.type].stealthRevealRange ?? 80;
+        let nearTower = false;
+        for (const tower of this.activeTowers) {
+          const tdx = enemy.sprite.x - tower.x;
+          const tdy = enemy.sprite.y - tower.y;
+          if (Math.sqrt(tdx * tdx + tdy * tdy) <= revealRange) {
+            nearTower = true;
+            break;
+          }
+        }
+        if (nearTower) {
+          enemy.stealthed = false;
+          const baseAlpha = ENEMY_DEFS[enemy.type].alpha ?? 1;
+          enemy.sprite.setAlpha(baseAlpha);
+          enemy.hpBarBg.setAlpha(0.8);
+          enemy.hpBar.setAlpha(1);
+        }
+      }
+
       // Slow visual - blue tint
+      const def2 = ENEMY_DEFS[enemy.type];
+      const baseAlpha = def2.alpha ?? 1;
       if (enemy.slowFactor > 0) {
-        enemy.sprite.setFillStyle(0x4488ff, 0.9);
+        enemy.sprite.setFillStyle(0x4488ff, enemy.stealthed ? 0 : baseAlpha * 0.9);
       } else {
-        enemy.sprite.setFillStyle(ENEMY_DEFS[enemy.type].color, 1);
+        enemy.sprite.setFillStyle(def2.color, enemy.stealthed ? 0 : baseAlpha);
       }
 
       // Decay slow timer
@@ -1323,6 +1379,7 @@ export class TowerScene extends Phaser.Scene {
     enemy.sprite.destroy();
     enemy.hpBar.destroy();
     enemy.hpBarBg.destroy();
+    enemy.shieldSprite?.destroy();
 
     this.gameState = enemyLeaked(
       this.gameState,
@@ -1339,17 +1396,42 @@ export class TowerScene extends Phaser.Scene {
   }
 
   private damageEnemy(enemy: ActiveEnemy, damage: number): void {
+    // Pride Golem shield: absorbs hits
+    if (enemy.shieldHitsRemaining > 0) {
+      enemy.shieldHitsRemaining--;
+      // Visual: flash shield
+      if (enemy.shieldSprite) {
+        enemy.shieldSprite.setFillStyle(0xffdd00, 0.6);
+        this.time.delayedCall(100, () => {
+          if (enemy.shieldSprite && enemy.shieldHitsRemaining > 0) {
+            enemy.shieldSprite.setFillStyle(0xddaa44, 0.3);
+          }
+        });
+      }
+      if (enemy.shieldHitsRemaining <= 0) {
+        // Shield breaks
+        if (enemy.shieldSprite) {
+          enemy.shieldSprite.destroy();
+          enemy.shieldSprite = undefined;
+        }
+        this.spawnFloatingText(enemy.sprite.x, enemy.sprite.y - 20, "Shield broke!", "#ffaa00");
+      }
+      return; // Shield absorbed the hit
+    }
+
     enemy.hp -= damage;
 
     // White flash effect
-    enemy.sprite.setFillStyle(0xffffff, 1);
+    const def = ENEMY_DEFS[enemy.type];
+    const baseAlpha = def.alpha ?? 1;
+    enemy.sprite.setFillStyle(0xffffff, baseAlpha);
     this.time.delayedCall(100, () => {
       if (enemy.alive) {
         const tint =
           enemy.slowFactor > 0
             ? 0x4488ff
-            : ENEMY_DEFS[enemy.type].color;
-        enemy.sprite.setFillStyle(tint, 1);
+            : def.color;
+        enemy.sprite.setFillStyle(tint, baseAlpha);
       }
     });
 
@@ -1361,11 +1443,32 @@ export class TowerScene extends Phaser.Scene {
   private handleEnemyDefeated(enemy: ActiveEnemy): void {
     enemy.alive = false;
 
+    const def = ENEMY_DEFS[enemy.type];
+
+    // Envy Swarm: splits into mini-swarms on death (but not if already a split)
+    if (def.splitsOnDeath && !enemy.isSplit && def.splitCount && def.splitHp && def.splitSpeed) {
+      for (let i = 0; i < def.splitCount; i++) {
+        const offsetX = (Math.random() - 0.5) * 20;
+        const offsetY = (Math.random() - 0.5) * 20;
+        this.spawnEnemy(
+          enemy.type,
+          {
+            x: enemy.sprite.x + offsetX,
+            y: enemy.sprite.y + offsetY,
+            waypointIndex: enemy.waypointIndex,
+          },
+          def.splitHp,
+          def.splitSpeed,
+        );
+      }
+      this.spawnFloatingText(enemy.sprite.x, enemy.sprite.y - 20, "Split!", "#44aa44");
+    }
+
     // Particle effect - small burst
     for (let i = 0; i < 5; i++) {
       const px = enemy.sprite.x + (Math.random() - 0.5) * 20;
       const py = enemy.sprite.y + (Math.random() - 0.5) * 20;
-      const particle = this.add.circle(px, py, 3, ENEMY_DEFS[enemy.type].color, 0.8);
+      const particle = this.add.circle(px, py, 3, def.color, 0.8);
       particle.setDepth(25);
       this.tweens.add({
         targets: particle,
@@ -1383,6 +1486,7 @@ export class TowerScene extends Phaser.Scene {
     enemy.sprite.destroy();
     enemy.hpBar.destroy();
     enemy.hpBarBg.destroy();
+    enemy.shieldSprite?.destroy();
 
     this.gameState = enemyDefeated(this.gameState);
     this.updateHud();
@@ -1418,8 +1522,11 @@ export class TowerScene extends Phaser.Scene {
         tower.attackTimer = attackSpeed;
 
         // Find enemies in range
+        // Bell Tower can hit stealthed enemies, others cannot
+        const canHitStealth = tower.state.type === "bell";
         const enemiesInRange = this.activeEnemies.filter((e) => {
           if (!e.alive) return false;
+          if (e.stealthed && !canHitStealth) return false;
           const dx = e.sprite.x - tower.x;
           const dy = e.sprite.y - tower.y;
           return Math.sqrt(dx * dx + dy * dy) <= range;
@@ -1694,6 +1801,7 @@ export class TowerScene extends Phaser.Scene {
         e.sprite.destroy();
         e.hpBar.destroy();
         e.hpBarBg.destroy();
+        e.shieldSprite?.destroy();
       }
     }
     this.activeEnemies = [];

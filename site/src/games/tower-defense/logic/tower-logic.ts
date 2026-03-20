@@ -4,7 +4,7 @@
  */
 
 export type TowerType = "prayer" | "light" | "bell" | "shield" | "praise" | "shepherd";
-export type EnemyType = "worry" | "doubt" | "fear";
+export type EnemyType = "worry" | "doubt" | "fear" | "temptation" | "pride" | "envy" | "deception";
 
 export interface TowerDef {
   type: TowerType;
@@ -25,6 +25,15 @@ export interface EnemyDef {
   color: number;
   size: number; // radius in px
   label: string;
+  stealth?: boolean; // Temptation: invisible until within 80px of a tower
+  stealthRevealRange?: number;
+  shieldHits?: number; // Pride Golem: absorbs N hits before becoming vulnerable
+  splitsOnDeath?: boolean; // Envy Swarm: splits into mini-swarms on death
+  splitHp?: number;
+  splitSpeed?: number;
+  splitCount?: number;
+  isDecoy?: boolean; // Deception Mirage: draws fire but does no damage
+  alpha?: number; // Rendering alpha (0-1)
 }
 
 export interface TowerState {
@@ -151,6 +160,51 @@ export const ENEMY_DEFS: Record<EnemyType, EnemyDef> = {
     size: 20,
     label: "Fear Giant",
   },
+  temptation: {
+    type: "temptation",
+    hp: 4,
+    speed: 70,
+    villageDamage: 1,
+    color: 0xff66aa,
+    size: 8,
+    label: "Temptation Sprite",
+    stealth: true,
+    stealthRevealRange: 80,
+  },
+  pride: {
+    type: "pride",
+    hp: 20,
+    speed: 25,
+    villageDamage: 3,
+    color: 0xcc8833,
+    size: 24,
+    label: "Pride Golem",
+    shieldHits: 5,
+  },
+  envy: {
+    type: "envy",
+    hp: 8,
+    speed: 45,
+    villageDamage: 1,
+    color: 0x44aa44,
+    size: 16,
+    label: "Envy Swarm",
+    splitsOnDeath: true,
+    splitHp: 3,
+    splitSpeed: 55,
+    splitCount: 2,
+  },
+  deception: {
+    type: "deception",
+    hp: 2,
+    speed: 50,
+    villageDamage: 0,
+    color: 0xaaaaff,
+    size: 14,
+    label: "Deception Mirage",
+    isDecoy: true,
+    alpha: 0.5,
+  },
 };
 
 export const PRAYER_SLOW_FACTOR = [0, 0.4, 0.55, 0.65, 0.75, 0.82]; // index = level (0 unused)
@@ -177,6 +231,12 @@ function generateWaves(difficulty: "little-kids" | "big-kids"): WaveConfig[] {
   // Big-kids acts 2 waves ahead in enemy composition
   const offset = difficulty === "big-kids" ? 2 : 0;
 
+  // Introduction waves for new enemy types
+  const temptationIntro = difficulty === "little-kids" ? 8 : 6;
+  const deceptionIntro = difficulty === "little-kids" ? 10 : 8;
+  const prideIntro = difficulty === "little-kids" ? 12 : 10;
+  const envyIntro = difficulty === "little-kids" ? 15 : 12;
+
   for (let w = 1; w <= WAVE_COUNT; w++) {
     const eff = w + offset;
     const enemies: EnemyType[] = [];
@@ -188,9 +248,22 @@ function generateWaves(difficulty: "little-kids" | "big-kids"): WaveConfig[] {
     // Fear: introduced at effective wave 6, ramps to 8
     const fear = eff >= 6 ? Math.min(8, Math.round((eff - 4) * 0.35)) : 0;
 
+    // Temptation Sprite: fast & stealthy
+    const temptation = w >= temptationIntro ? Math.min(4, Math.round((w - temptationIntro + 1) * 0.5)) : 0;
+    // Deception Mirage: decoys
+    const deception = w >= deceptionIntro ? Math.min(3, Math.round((w - deceptionIntro + 1) * 0.4)) : 0;
+    // Pride Golem: tanky with shield
+    const pride = w >= prideIntro ? Math.min(3, Math.round((w - prideIntro + 1) * 0.3)) : 0;
+    // Envy Swarm: splits on death
+    const envy = w >= envyIntro ? Math.min(3, Math.round((w - envyIntro + 1) * 0.3)) : 0;
+
     for (let i = 0; i < worry; i++) enemies.push("worry");
     for (let i = 0; i < doubt; i++) enemies.push("doubt");
     for (let i = 0; i < fear; i++) enemies.push("fear");
+    for (let i = 0; i < temptation; i++) enemies.push("temptation");
+    for (let i = 0; i < deception; i++) enemies.push("deception");
+    for (let i = 0; i < pride; i++) enemies.push("pride");
+    for (let i = 0; i < envy; i++) enemies.push("envy");
 
     waves.push({ enemies });
   }
