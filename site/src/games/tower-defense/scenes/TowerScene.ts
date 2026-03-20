@@ -20,6 +20,8 @@ import {
   getSellRefund,
   sellTower,
   getBossHp,
+  cycleTowerTargeting,
+  hasPrayerLightSynergy,
   TOWER_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
@@ -191,6 +193,10 @@ export class TowerScene extends Phaser.Scene {
 
   // Intro / Victory / Defeat overlays
   private overlayContainer: Phaser.GameObjects.Container | null = null;
+
+  // Fast forward
+  private fastForward = false;
+  private fastForwardButton: Phaser.GameObjects.Container | null = null;
 
   // Pulsing entrance arrow
   private entranceArrow!: Phaser.GameObjects.Text;
@@ -979,69 +985,119 @@ export class TowerScene extends Phaser.Scene {
     this.towerSelectionGroup = null;
     this.upgradeButton?.destroy();
 
-    if (tower.state.level >= MAX_TOWER_LEVEL) return;
-
     const container = this.add.container(0, 0);
     container.setDepth(90);
 
-    const affordable = canUpgrade(this.gameState, tower.state.id);
     const def = TOWER_DEFS[tower.state.type];
+    const canUpg = tower.state.level < MAX_TOWER_LEVEL && canUpgrade(this.gameState, tower.state.id);
+    const atMax = tower.state.level >= MAX_TOWER_LEVEL;
 
-    const panelBg = this.add.rectangle(tower.x, tower.y - 50, 120, 45, 0x222233, 0.9);
+    // Panel - larger to fit upgrade + sell + targeting
+    const panelH = 80;
+    const panelBg = this.add.rectangle(tower.x, tower.y - 60, 160, panelH, 0x222233, 0.9);
     panelBg.setStrokeStyle(2, 0xaa44ff, 0.6);
     container.add(panelBg);
 
-    const upgCost = getUpgradeCost(tower.state.type, tower.state.level);
+    // -- Upgrade section (top row) --
+    if (!atMax) {
+      const upgCost = getUpgradeCost(tower.state.type, tower.state.level);
+      const affordable = canUpg;
 
-    const label = this.add.text(
-      tower.x,
-      tower.y - 58,
-      `Upgrade L${tower.state.level + 1}`,
-      {
-        fontSize: "13px",
+      const upgBtn = this.add.rectangle(tower.x - 30, tower.y - 80, 90, 22, affordable ? 0x4488ff : 0x333333, 0.8);
+      if (affordable) upgBtn.setInteractive({ useHandCursor: true });
+      container.add(upgBtn);
+
+      const upgText = this.add.text(tower.x - 30, tower.y - 80, `Upg L${tower.state.level + 1} (${upgCost})`, {
+        fontSize: "10px",
         color: affordable ? "#ffffff" : "#666666",
         fontFamily: "'Segoe UI', Arial, sans-serif",
-        fontStyle: "bold",
-      },
-    );
-    label.setOrigin(0.5);
-    container.add(label);
-
-    const costLabel = this.add.text(
-      tower.x,
-      tower.y - 42,
-      `${upgCost} coins`,
-      {
-        fontSize: "11px",
-        color: affordable ? "#ffdd00" : "#666666",
-        fontFamily: "'Segoe UI', Arial, sans-serif",
-      },
-    );
-    costLabel.setOrigin(0.5);
-    container.add(costLabel);
-
-    if (affordable) {
-      panelBg.setInteractive({ useHandCursor: true });
-      panelBg.on("pointerdown", () => {
-        this.gameState = upgradeTower(this.gameState, tower.state.id);
-        // Update tower state reference
-        const updatedState = this.gameState.towers.find(
-          (t) => t.id === tower.state.id,
-        );
-        if (updatedState) {
-          tower.state = updatedState;
-          // Update range circle
-          const range = def.range[updatedState.level - 1];
-          tower.rangeCircle.setRadius(range);
-          // Update label
-          tower.labelText.setText(`${def.label} L${updatedState.level}`);
-        }
-        this.updateHud();
-        this.updateTowerStrip();
-        this.upgradeButton?.destroy();
-        this.upgradeButton = null;
       });
+      upgText.setOrigin(0.5);
+      container.add(upgText);
+
+      if (affordable) {
+        upgBtn.on("pointerdown", () => {
+          this.gameState = upgradeTower(this.gameState, tower.state.id);
+          const updatedState = this.gameState.towers.find((t) => t.id === tower.state.id);
+          if (updatedState) {
+            tower.state = updatedState;
+            const range = def.range[updatedState.level - 1];
+            tower.rangeCircle.setRadius(range);
+            tower.labelText.setText(`${def.label} L${updatedState.level}`);
+          }
+          this.updateHud();
+          this.updateTowerStrip();
+          this.upgradeButton?.destroy();
+          this.upgradeButton = null;
+        });
+      }
+    } else {
+      const maxText = this.add.text(tower.x - 30, tower.y - 80, "MAX LEVEL", {
+        fontSize: "10px",
+        color: "#ffdd00",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      maxText.setOrigin(0.5);
+      container.add(maxText);
     }
+
+    // -- Sell button (top right) --
+    const refund = getSellRefund(tower.state.type, tower.state.level);
+    const sellBtn = this.add.rectangle(tower.x + 50, tower.y - 80, 50, 22, 0xcc3333, 0.8);
+    sellBtn.setInteractive({ useHandCursor: true });
+    container.add(sellBtn);
+
+    const sellText = this.add.text(tower.x + 50, tower.y - 80, `Sell +${refund}`, {
+      fontSize: "9px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+    });
+    sellText.setOrigin(0.5);
+    container.add(sellText);
+
+    sellBtn.on("pointerdown", () => {
+      // Remove tower visuals
+      tower.sprite.destroy();
+      tower.rangeCircle.destroy();
+      tower.labelText.destroy();
+      tower.praiseGlow?.destroy();
+      tower.shieldAura?.destroy();
+
+      this.activeTowers = this.activeTowers.filter((t) => t !== tower);
+      this.gameState = sellTower(this.gameState, tower.state.id);
+      this.updateHud();
+      this.updateTowerStrip();
+      this.updateSpotVisuals();
+      this.spawnFloatingText(tower.x, tower.y - 20, `+${refund}`, "#ffdd00");
+
+      this.upgradeButton?.destroy();
+      this.upgradeButton = null;
+    });
+
+    // -- Targeting priority button (bottom row) --
+    const targetingLabel = tower.state.targeting.charAt(0).toUpperCase() + tower.state.targeting.slice(1);
+    const targetBtn = this.add.rectangle(tower.x, tower.y - 48, 140, 22, 0x336633, 0.8);
+    targetBtn.setInteractive({ useHandCursor: true });
+    container.add(targetBtn);
+
+    const targetText = this.add.text(tower.x, tower.y - 48, `Target: ${targetingLabel}`, {
+      fontSize: "10px",
+      color: "#88ff88",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+    });
+    targetText.setOrigin(0.5);
+    container.add(targetText);
+
+    targetBtn.on("pointerdown", () => {
+      this.gameState = cycleTowerTargeting(this.gameState, tower.state.id);
+      const updatedState = this.gameState.towers.find((t) => t.id === tower.state.id);
+      if (updatedState) {
+        tower.state = updatedState;
+        const newLabel = updatedState.targeting.charAt(0).toUpperCase() + updatedState.targeting.slice(1);
+        targetText.setText(`Target: ${newLabel}`);
+      }
+    });
 
     // Close on click elsewhere after brief delay
     this.time.delayedCall(100, () => {
@@ -1178,6 +1234,37 @@ export class TowerScene extends Phaser.Scene {
     this.prayButton = container;
     this.prayOnCooldown = false;
     this.prayActive = false;
+
+    // Fast forward button
+    this.showFastForwardButton();
+  }
+
+  private showFastForwardButton(): void {
+    this.fastForwardButton?.destroy();
+    this.fastForward = false;
+
+    const container = this.add.container(0, 0);
+    container.setDepth(85);
+
+    const btnBg = this.add.rectangle(GAME_W - 80, HUD_HEIGHT + 70, 80, 30, 0x444444, 0.8);
+    btnBg.setInteractive({ useHandCursor: true });
+    const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 70, "1x", {
+      fontSize: "14px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    btnText.setOrigin(0.5);
+    container.add(btnBg);
+    container.add(btnText);
+
+    btnBg.on("pointerdown", () => {
+      this.fastForward = !this.fastForward;
+      btnText.setText(this.fastForward ? "2x" : "1x");
+      btnBg.setFillStyle(this.fastForward ? 0x886600 : 0x444444, 0.8);
+    });
+
+    this.fastForwardButton = container;
   }
 
   private activatePrayBoost(): void {
@@ -1615,13 +1702,24 @@ export class TowerScene extends Phaser.Scene {
     }
   }
 
-  private lightTowerAttack(
-    tower: ActiveTower,
-    enemies: ActiveEnemy[],
-    damage: number,
-  ): void {
-    // Target nearest enemy
-    let nearest = enemies[0];
+  private selectTarget(tower: ActiveTower, enemies: ActiveEnemy[]): ActiveEnemy {
+    const targeting = tower.state.targeting;
+    if (targeting === "strongest") {
+      let best = enemies[0];
+      for (const e of enemies) {
+        if (e.hp > best.hp) best = e;
+      }
+      return best;
+    }
+    if (targeting === "fastest") {
+      let best = enemies[0];
+      for (const e of enemies) {
+        if (e.speed > best.speed) best = e;
+      }
+      return best;
+    }
+    // Default: nearest
+    let best = enemies[0];
     let minDist = Infinity;
     for (const e of enemies) {
       const dx = e.sprite.x - tower.x;
@@ -1629,9 +1727,18 @@ export class TowerScene extends Phaser.Scene {
       const d = dx * dx + dy * dy;
       if (d < minDist) {
         minDist = d;
-        nearest = e;
+        best = e;
       }
     }
+    return best;
+  }
+
+  private lightTowerAttack(
+    tower: ActiveTower,
+    enemies: ActiveEnemy[],
+    damage: number,
+  ): void {
+    const nearest = this.selectTarget(tower, enemies);
 
     // Draw yellow beam
     const beam = this.add.graphics();
@@ -1645,6 +1752,12 @@ export class TowerScene extends Phaser.Scene {
     this.time.delayedCall(150, () => beam.destroy());
 
     this.damageEnemy(nearest, damage, true); // single-target
+
+    // Tower Synergy: Prayer + Light adjacency applies slow
+    if (hasPrayerLightSynergy(tower.state.spotIndex, this.gameState.towers, PLACEMENT_SPOTS)) {
+      nearest.slowFactor = 0.3;
+      nearest.slowTimer = 1000; // 1-second slow
+    }
   }
 
   private bellTowerAttack(
@@ -1758,19 +1871,7 @@ export class TowerScene extends Phaser.Scene {
     const level = tower.state.level;
     const pushback = SHEPHERD_PUSHBACK[level];
 
-    // Find nearest enemy
-    let nearest = enemies[0];
-    let minDist = Infinity;
-    for (const e of enemies) {
-      const dx = e.sprite.x - tower.x;
-      const dy = e.sprite.y - tower.y;
-      const d = dx * dx + dy * dy;
-      if (d < minDist) {
-        minDist = d;
-        nearest = e;
-      }
-    }
-
+    const nearest = this.selectTarget(tower, enemies);
     if (!nearest) return;
 
     // Push enemy backward along the path
@@ -1847,6 +1948,9 @@ export class TowerScene extends Phaser.Scene {
     this.prayButton = null;
     this.prayActive = false;
     this.prayOnCooldown = false;
+    this.fastForwardButton?.destroy();
+    this.fastForwardButton = null;
+    this.fastForward = false;
 
     // Clean up remaining enemy sprites
     for (const e of this.activeEnemies) {
@@ -2170,6 +2274,16 @@ export class TowerScene extends Phaser.Scene {
           }
         }
       }
+
+      // Prayer-Light synergy: blue tint on Light towers adjacent to Prayer towers
+      if (tower.state.type === "light") {
+        if (hasPrayerLightSynergy(tower.state.spotIndex, this.gameState.towers, PLACEMENT_SPOTS)) {
+          this.effectsGraphics.lineStyle(2, 0x4488ff, 0.25 + 0.1 * Math.sin(this.time.now / 500));
+          this.effectsGraphics.strokeCircle(tower.x, tower.y, 20);
+          this.effectsGraphics.fillStyle(0x4488ff, 0.05);
+          this.effectsGraphics.fillCircle(tower.x, tower.y, 20);
+        }
+      }
     }
   }
 
@@ -2226,10 +2340,13 @@ export class TowerScene extends Phaser.Scene {
         this.updateTowerStrip();
         break;
 
-      case "wave":
+      case "wave": {
+        // Apply fast forward multiplier
+        const effectiveDelta = this.fastForward ? delta * 2 : delta;
+
         // Spawn enemies
         if (this.enemiesToSpawn.length > 0) {
-          this.spawnTimer += delta;
+          this.spawnTimer += effectiveDelta;
           if (this.spawnTimer >= ENEMY_SPAWN_INTERVAL) {
             this.spawnTimer -= ENEMY_SPAWN_INTERVAL;
             const nextType = this.enemiesToSpawn.shift()!;
@@ -2238,14 +2355,15 @@ export class TowerScene extends Phaser.Scene {
         }
 
         // Move enemies
-        this.moveEnemies(delta);
+        this.moveEnemies(effectiveDelta);
 
         // Tower attacks
-        this.updateTowerAttacks(delta);
+        this.updateTowerAttacks(effectiveDelta);
 
         // Check wave completion
         this.checkWaveComplete();
         break;
+      }
 
       case "victory":
       case "defeat":

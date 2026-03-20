@@ -42,11 +42,14 @@ export interface EnemyDef {
   regenPerSecond?: number; // Serpent: HP regen per second
 }
 
+export type TargetingPriority = "nearest" | "strongest" | "fastest";
+
 export interface TowerState {
   id: number;
   type: TowerType;
   level: number; // 1 through MAX_TOWER_LEVEL
   spotIndex: number;
+  targeting: TargetingPriority;
 }
 
 export interface GameState {
@@ -394,6 +397,7 @@ export function placeTower(
     type: towerType,
     level: 1,
     spotIndex,
+    targeting: "nearest",
   };
   return {
     ...state,
@@ -548,6 +552,46 @@ export function getSellRefund(towerType: TowerType, currentLevel: number): numbe
     totalInvestment += getUpgradeCost(towerType, l);
   }
   return Math.floor(totalInvestment * 0.5);
+}
+
+/** Cycle tower targeting priority: nearest -> strongest -> fastest -> nearest */
+export function cycleTowerTargeting(state: GameState, towerId: number): GameState {
+  const tower = state.towers.find((t) => t.id === towerId);
+  if (!tower) return state;
+
+  const order: TargetingPriority[] = ["nearest", "strongest", "fastest"];
+  const currentIdx = order.indexOf(tower.targeting);
+  const nextTargeting = order[(currentIdx + 1) % order.length];
+
+  return {
+    ...state,
+    towers: state.towers.map((t) =>
+      t.id === towerId ? { ...t, targeting: nextTargeting } : t,
+    ),
+  };
+}
+
+/**
+ * Check if a Prayer Tower and Light Tower are adjacent (within 80px),
+ * creating a synergy that makes Light Tower shots apply a slow.
+ */
+export function hasPrayerLightSynergy(
+  lightTowerSpotIndex: number,
+  towers: TowerState[],
+  spotPositions: { x: number; y: number }[],
+): boolean {
+  const lightSpot = spotPositions[lightTowerSpotIndex];
+  if (!lightSpot) return false;
+
+  for (const t of towers) {
+    if (t.type !== "prayer") continue;
+    const prayerSpot = spotPositions[t.spotIndex];
+    if (!prayerSpot) continue;
+    const dx = lightSpot.x - prayerSpot.x;
+    const dy = lightSpot.y - prayerSpot.y;
+    if (Math.sqrt(dx * dx + dy * dy) <= 80) return true;
+  }
+  return false;
 }
 
 /** Sell an existing tower. Returns new state with tower removed and refund added. */
