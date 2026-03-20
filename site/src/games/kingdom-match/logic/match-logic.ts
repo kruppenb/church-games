@@ -256,15 +256,7 @@ export function findMatches(grid: (Tile | null)[][]): MatchResult[] {
     for (let c = 1; c <= cols; c++) {
       const current = c < cols ? grid[r][c] : null;
       const prev = grid[r][runStart];
-      if (
-        current &&
-        prev &&
-        current.type === prev.type &&
-        current.special === SpecialType.None &&
-        prev.special === SpecialType.None
-          ? current.type === prev.type
-          : current && prev && current.type === prev.type
-      ) {
+      if (current && prev && current.type === prev.type) {
         // Continue run
       } else {
         const runLength = c - runStart;

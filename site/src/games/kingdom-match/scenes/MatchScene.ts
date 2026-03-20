@@ -603,15 +603,17 @@ export class MatchScene extends Phaser.Scene {
         this.tileSize - 2,
         this.tileSize - 2,
         0xffffff,
-        0.3,
+        0.35,
       )
-      .setStrokeStyle(3, 0xffd700)
+      .setStrokeStyle(4, 0xffd700)
       .setDepth(15);
 
-    // Pulse animation
+    // Pulse animation - more visible range
     this.tweens.add({
       targets: this.selectedHighlight,
-      alpha: { from: 0.3, to: 0.1 },
+      alpha: { from: 0.45, to: 0.2 },
+      scaleX: { from: 1.0, to: 1.06 },
+      scaleY: { from: 1.0, to: 1.06 },
       duration: 500,
       yoyo: true,
       repeat: -1,
