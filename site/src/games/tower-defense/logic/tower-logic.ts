@@ -52,6 +52,17 @@ export interface TowerState {
   targeting: TargetingPriority;
 }
 
+export type HeroType = "david" | "moses" | "esther";
+
+export interface HeroDef {
+  type: HeroType;
+  label: string;
+  abilityName: string;
+  abilityDesc: string;
+  cooldown: number; // ms
+  color: number;
+}
+
 export interface GameState {
   coins: number;
   villageHp: number;
@@ -61,9 +72,10 @@ export interface GameState {
   towers: TowerState[];
   questionsCorrect: number;
   questionsTotal: number;
-  phase: "intro" | "question" | "placement" | "wave" | "victory" | "defeat";
+  phase: "intro" | "hero-select" | "question" | "placement" | "wave" | "victory" | "defeat";
   difficulty: "little-kids" | "big-kids";
   nextTowerId: number;
+  hero: HeroType | null;
 }
 
 export interface WaveConfig {
@@ -261,6 +273,33 @@ export const SHIELD_BUFF_FACTOR = [0, 0.25, 0.30, 0.35, 0.40, 0.50];
 /** Shepherd Tower pushback distance per level. index = level (0 unused) */
 export const SHEPHERD_PUSHBACK = [0, 30, 40, 50, 60, 80];
 
+export const HERO_DEFS: Record<HeroType, HeroDef> = {
+  david: {
+    type: "david",
+    label: "David",
+    abilityName: "Slingshot",
+    abilityDesc: "Deal 50 damage to the strongest enemy",
+    cooldown: 30000,
+    color: 0xaa8844,
+  },
+  moses: {
+    type: "moses",
+    label: "Moses",
+    abilityName: "Part the Waters",
+    abilityDesc: "All enemies freeze for 3 seconds",
+    cooldown: 45000,
+    color: 0x4488cc,
+  },
+  esther: {
+    type: "esther",
+    label: "Esther",
+    abilityName: "Brave Petition",
+    abilityDesc: "All towers attack 3x faster for 5 seconds",
+    cooldown: 40000,
+    color: 0xcc44aa,
+  },
+};
+
 /** Starting coins by difficulty. */
 const STARTING_COINS: Record<"little-kids" | "big-kids", number> = {
   "little-kids": 200,
@@ -351,6 +390,16 @@ export function createInitialState(
     phase: "intro",
     difficulty,
     nextTowerId: 1,
+    hero: null,
+  };
+}
+
+/** Select a hero for the game. */
+export function selectHero(state: GameState, hero: HeroType): GameState {
+  return {
+    ...state,
+    hero,
+    phase: "question",
   };
 }
 

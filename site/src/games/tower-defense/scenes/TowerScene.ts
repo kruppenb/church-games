@@ -22,7 +22,9 @@ import {
   getBossHp,
   cycleTowerTargeting,
   hasPrayerLightSynergy,
+  selectHero,
   TOWER_DEFS,
+  HERO_DEFS,
   ENEMY_DEFS,
   PRAYER_SLOW_FACTOR,
   SHIELD_BUFF_FACTOR,
@@ -33,6 +35,7 @@ import {
   type EnemyType,
   type WaveConfig,
   type TowerState,
+  type HeroType,
 } from "../logic/tower-logic";
 
 // ---------------------------------------------------------------------------
@@ -197,6 +200,12 @@ export class TowerScene extends Phaser.Scene {
   // Fast forward
   private fastForward = false;
   private fastForwardButton: Phaser.GameObjects.Container | null = null;
+
+  // Hero ability
+  private heroAbilityButton: Phaser.GameObjects.Container | null = null;
+  private heroAbilityCooldown = 0; // ms remaining
+  private heroAbilityActive = false;
+  private estherBoostActive = false;
 
   // Pulsing entrance arrow
   private entranceArrow!: Phaser.GameObjects.Text;
@@ -581,8 +590,125 @@ export class TowerScene extends Phaser.Scene {
     btnBg.on("pointerdown", () => {
       container.destroy();
       this.overlayContainer = null;
-      this.transitionToQuestion();
+      this.showHeroSelectOverlay();
     });
+
+    this.overlayContainer = container;
+  }
+
+  // =========================================================================
+  // HERO SELECTION
+  // =========================================================================
+
+  private showHeroSelectOverlay(): void {
+    this.overlayContainer?.destroy();
+    this.gameState = { ...this.gameState, phase: "hero-select" };
+
+    const container = this.add.container(0, 0);
+    container.setDepth(100);
+
+    const bg = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.95);
+    container.add(bg);
+
+    const title = this.add.text(GAME_W / 2, 80, "Choose Your Hero", {
+      fontSize: "28px",
+      color: "#ffdd00",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    title.setOrigin(0.5);
+    container.add(title);
+
+    const heroTypes: HeroType[] = ["david", "moses", "esther"];
+    const cardW = 200;
+    const spacing = 220;
+    const startX = GAME_W / 2 - spacing;
+
+    for (let i = 0; i < heroTypes.length; i++) {
+      const heroDef = HERO_DEFS[heroTypes[i]];
+      const cx = startX + i * spacing;
+      const cy = 300;
+
+      // Card background
+      const cardBg = this.add.rectangle(cx, cy, cardW, 250, 0x222244, 0.9);
+      cardBg.setStrokeStyle(2, heroDef.color, 0.8);
+      cardBg.setInteractive({ useHandCursor: true });
+      container.add(cardBg);
+
+      // Hero icon (colored circle)
+      const icon = this.add.circle(cx, cy - 70, 30, heroDef.color, 0.9);
+      icon.setStrokeStyle(2, 0xffffff, 0.5);
+      container.add(icon);
+
+      // Hero name
+      const name = this.add.text(cx, cy - 25, heroDef.label, {
+        fontSize: "18px",
+        color: "#ffffff",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      name.setOrigin(0.5);
+      container.add(name);
+
+      // Ability name
+      const abilName = this.add.text(cx, cy + 5, heroDef.abilityName, {
+        fontSize: "14px",
+        color: "#ffaa00",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      abilName.setOrigin(0.5);
+      container.add(abilName);
+
+      // Ability description
+      const abilDesc = this.add.text(cx, cy + 35, heroDef.abilityDesc, {
+        fontSize: "11px",
+        color: "#cccccc",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        wordWrap: { width: cardW - 20 },
+        align: "center",
+      });
+      abilDesc.setOrigin(0.5);
+      container.add(abilDesc);
+
+      // Cooldown info
+      const cdText = this.add.text(cx, cy + 75, `Cooldown: ${heroDef.cooldown / 1000}s`, {
+        fontSize: "10px",
+        color: "#888888",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+      });
+      cdText.setOrigin(0.5);
+      container.add(cdText);
+
+      // Select button
+      const selectBg = this.add.rectangle(cx, cy + 105, 100, 30, heroDef.color, 0.8);
+      selectBg.setInteractive({ useHandCursor: true });
+      container.add(selectBg);
+
+      const selectText = this.add.text(cx, cy + 105, "Select", {
+        fontSize: "14px",
+        color: "#ffffff",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      selectText.setOrigin(0.5);
+      container.add(selectText);
+
+      const heroType = heroTypes[i];
+      selectBg.on("pointerdown", () => {
+        this.gameState = selectHero(this.gameState, heroType);
+        container.destroy();
+        this.overlayContainer = null;
+        this.transitionToQuestion();
+      });
+
+      cardBg.on("pointerdown", () => {
+        this.gameState = selectHero(this.gameState, heroType);
+        container.destroy();
+        this.overlayContainer = null;
+        this.transitionToQuestion();
+      });
+    }
 
     this.overlayContainer = container;
   }
@@ -1237,6 +1363,9 @@ export class TowerScene extends Phaser.Scene {
 
     // Fast forward button
     this.showFastForwardButton();
+
+    // Hero ability button
+    this.showHeroAbilityButton();
   }
 
   private showFastForwardButton(): void {
@@ -1265,6 +1394,135 @@ export class TowerScene extends Phaser.Scene {
     });
 
     this.fastForwardButton = container;
+  }
+
+  private showHeroAbilityButton(): void {
+    this.heroAbilityButton?.destroy();
+    if (!this.gameState.hero) return;
+
+    const heroDef = HERO_DEFS[this.gameState.hero];
+    const container = this.add.container(0, 0);
+    container.setDepth(85);
+
+    const btnX = 80;
+    const btnY = HUD_HEIGHT + 30;
+
+    const btnBg = this.add.rectangle(btnX, btnY, 130, 36, heroDef.color, 0.8);
+    btnBg.setInteractive({ useHandCursor: true });
+    container.add(btnBg);
+
+    const btnText = this.add.text(btnX, btnY - 6, heroDef.abilityName, {
+      fontSize: "12px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    btnText.setOrigin(0.5);
+    container.add(btnText);
+
+    const cdText = this.add.text(btnX, btnY + 10, "Ready!", {
+      fontSize: "10px",
+      color: "#88ff88",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+    });
+    cdText.setOrigin(0.5);
+    container.add(cdText);
+
+    btnBg.on("pointerdown", () => {
+      if (this.heroAbilityCooldown <= 0) {
+        this.activateHeroAbility();
+        this.heroAbilityCooldown = heroDef.cooldown;
+      }
+    });
+
+    // Store references for cooldown display updates
+    (container as unknown as { cdText: Phaser.GameObjects.Text; btnBg: Phaser.GameObjects.Rectangle }).cdText = cdText;
+    (container as unknown as { btnBg: Phaser.GameObjects.Rectangle }).btnBg = btnBg;
+
+    this.heroAbilityButton = container;
+  }
+
+  private activateHeroAbility(): void {
+    if (!this.gameState.hero) return;
+
+    switch (this.gameState.hero) {
+      case "david":
+        this.activateDavidAbility();
+        break;
+      case "moses":
+        this.activateMosesAbility();
+        break;
+      case "esther":
+        this.activateEstherAbility();
+        break;
+    }
+  }
+
+  private activateDavidAbility(): void {
+    // Deal 50 damage to strongest enemy
+    const aliveEnemies = this.activeEnemies.filter((e) => e.alive);
+    if (aliveEnemies.length === 0) return;
+
+    let strongest = aliveEnemies[0];
+    for (const e of aliveEnemies) {
+      if (e.hp > strongest.hp) strongest = e;
+    }
+
+    this.damageEnemy(strongest, 50);
+    this.spawnFloatingText(strongest.sprite.x, strongest.sprite.y - 30, "Slingshot! -50", "#aa8844");
+
+    // Visual: projectile arc
+    const proj = this.add.circle(GAME_W / 2, GAME_H, 6, 0xaa8844, 1);
+    proj.setDepth(35);
+    this.tweens.add({
+      targets: proj,
+      x: strongest.sprite.x,
+      y: strongest.sprite.y,
+      duration: 300,
+      ease: "Quad.easeOut",
+      onComplete: () => proj.destroy(),
+    });
+  }
+
+  private activateMosesAbility(): void {
+    // Freeze all enemies for 3 seconds
+    for (const e of this.activeEnemies) {
+      if (!e.alive) continue;
+      e.slowFactor = 1; // Complete freeze
+      e.slowTimer = 3000;
+    }
+    this.spawnFloatingText(GAME_W / 2, GAME_H / 2, "Part the Waters!", "#4488cc");
+
+    // Visual: blue wave across screen
+    const wave = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, 40, 0x4488cc, 0.3);
+    wave.setDepth(35);
+    this.tweens.add({
+      targets: wave,
+      height: GAME_H,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => wave.destroy(),
+    });
+  }
+
+  private activateEstherAbility(): void {
+    // All towers 3x faster for 5 seconds
+    this.estherBoostActive = true;
+    this.spawnFloatingText(GAME_W / 2, GAME_H / 2, "Brave Petition!", "#cc44aa");
+
+    // Visual: pink glow on all towers
+    for (const tower of this.activeTowers) {
+      tower.sprite.setStrokeStyle(3, 0xcc44aa, 1);
+    }
+
+    this.time.delayedCall(5000, () => {
+      this.estherBoostActive = false;
+      for (const tower of this.activeTowers) {
+        if (!tower.glowing) {
+          tower.sprite.setStrokeStyle(2, 0xffffff, 0.5);
+        }
+      }
+    });
   }
 
   private activatePrayBoost(): void {
@@ -1656,6 +1914,10 @@ export class TowerScene extends Phaser.Scene {
       if (this.prayActive) {
         attackSpeed = attackSpeed / 2;
       }
+      // Esther boost: triple attack rate
+      if (this.estherBoostActive) {
+        attackSpeed = attackSpeed / 3;
+      }
 
       tower.attackTimer -= delta;
       if (tower.attackTimer <= 0) {
@@ -1951,6 +2213,9 @@ export class TowerScene extends Phaser.Scene {
     this.fastForwardButton?.destroy();
     this.fastForwardButton = null;
     this.fastForward = false;
+    this.heroAbilityButton?.destroy();
+    this.heroAbilityButton = null;
+    this.estherBoostActive = false;
 
     // Clean up remaining enemy sprites
     for (const e of this.activeEnemies) {
@@ -2359,6 +2624,28 @@ export class TowerScene extends Phaser.Scene {
 
         // Tower attacks
         this.updateTowerAttacks(effectiveDelta);
+
+        // Hero ability cooldown
+        if (this.heroAbilityCooldown > 0) {
+          this.heroAbilityCooldown -= effectiveDelta;
+          if (this.heroAbilityCooldown < 0) this.heroAbilityCooldown = 0;
+        }
+        // Update hero ability button display
+        if (this.heroAbilityButton && this.gameState.hero) {
+          const btnRef = this.heroAbilityButton as unknown as { cdText?: Phaser.GameObjects.Text; btnBg?: Phaser.GameObjects.Rectangle };
+          if (btnRef.cdText) {
+            if (this.heroAbilityCooldown > 0) {
+              btnRef.cdText.setText(`${Math.ceil(this.heroAbilityCooldown / 1000)}s`);
+              btnRef.cdText.setColor("#ff6666");
+            } else {
+              btnRef.cdText.setText("Ready!");
+              btnRef.cdText.setColor("#88ff88");
+            }
+          }
+          if (btnRef.btnBg) {
+            btnRef.btnBg.setAlpha(this.heroAbilityCooldown > 0 ? 0.4 : 0.8);
+          }
+        }
 
         // Check wave completion
         this.checkWaveComplete();
