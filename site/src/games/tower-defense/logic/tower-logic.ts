@@ -3,7 +3,7 @@
  * No Phaser or DOM dependencies -- extracted for testability.
  */
 
-export type TowerType = "prayer" | "light" | "bell" | "shield" | "praise" | "shepherd";
+export type TowerType = "prayer" | "light" | "bell" | "shield" | "praise" | "shepherd" | "holy-beam" | "cathedral" | "revival";
 export type EnemyType = "worry" | "doubt" | "fear" | "temptation" | "pride" | "envy" | "deception" | "goliath" | "pharaoh" | "serpent";
 
 export interface TowerDef {
@@ -63,6 +63,25 @@ export interface HeroDef {
   color: number;
 }
 
+export type BlessingType = "armor" | "walls" | "burning-bush" | "manna" | "wings" | "ark";
+
+export interface BlessingDef {
+  type: BlessingType;
+  cost: number;
+  label: string;
+  description: string;
+  color: number;
+}
+
+export interface FusionRecipe {
+  source1: TowerType;
+  source2: TowerType;
+  result: TowerType;
+  cost: number;
+  label: string;
+  description: string;
+}
+
 export interface GameState {
   coins: number;
   villageHp: number;
@@ -76,6 +95,7 @@ export interface GameState {
   difficulty: "little-kids" | "big-kids";
   nextTowerId: number;
   hero: HeroType | null;
+  blessings: BlessingType[];
 }
 
 export interface WaveConfig {
@@ -152,6 +172,37 @@ export const TOWER_DEFS: Record<TowerType, TowerDef> = {
     upgradeCost: 75,
     color: 0xffffff,
     label: "Shepherd",
+  },
+  // --- Combo towers (created via fusion, not directly placed) ---
+  "holy-beam": {
+    type: "holy-beam",
+    cost: 0,
+    range: [250, 250, 250, 250, 250],
+    damage: [15, 15, 15, 15, 15],
+    attackSpeed: [600, 600, 600, 600, 600],
+    upgradeCost: 9999,
+    color: 0x66bbff,
+    label: "Holy Beam",
+  },
+  cathedral: {
+    type: "cathedral",
+    cost: 0,
+    range: [200, 200, 200, 200, 200],
+    damage: [10, 10, 10, 10, 10],
+    attackSpeed: [1500, 1500, 1500, 1500, 1500],
+    upgradeCost: 9999,
+    color: 0x88cc88,
+    label: "Cathedral",
+  },
+  revival: {
+    type: "revival",
+    cost: 0,
+    range: [9999, 9999, 9999, 9999, 9999],
+    damage: [35, 35, 35, 35, 35],
+    attackSpeed: [7000, 7000, 7000, 7000, 7000],
+    upgradeCost: 9999,
+    color: 0xffcc44,
+    label: "Revival",
   },
 };
 
@@ -300,6 +351,63 @@ export const HERO_DEFS: Record<HeroType, HeroDef> = {
   },
 };
 
+export const BLESSING_DEFS: Record<BlessingType, BlessingDef> = {
+  armor: {
+    type: "armor",
+    cost: 400,
+    label: "Armor of God",
+    description: "All towers deal +25% damage",
+    color: 0xccaa44,
+  },
+  walls: {
+    type: "walls",
+    cost: 350,
+    label: "Walls of Jericho",
+    description: "+5 max village HP and full heal",
+    color: 0x8888aa,
+  },
+  "burning-bush": {
+    type: "burning-bush",
+    cost: 500,
+    label: "Burning Bush",
+    description: "20% chance for double damage",
+    color: 0xff6622,
+  },
+  manna: {
+    type: "manna",
+    cost: 500,
+    label: "Manna from Heaven",
+    description: "Wave bonus: +75 coins (was +25)",
+    color: 0xffffaa,
+  },
+  wings: {
+    type: "wings",
+    cost: 450,
+    label: "Angel's Wings",
+    description: "All tower range +30%",
+    color: 0xaaddff,
+  },
+  ark: {
+    type: "ark",
+    cost: 1000,
+    label: "Ark of the Covenant",
+    description: "10% smite chance (+20 dmg). Hero cooldown halved.",
+    color: 0xffdd00,
+  },
+};
+
+export const FUSION_RECIPES: FusionRecipe[] = [
+  { source1: "prayer", source2: "light", result: "holy-beam", cost: 500, label: "Holy Beam", description: "Chain beam + strong slow" },
+  { source1: "bell", source2: "shield", result: "cathedral", cost: 500, label: "Cathedral", description: "AoE damage + global buff" },
+  { source1: "praise", source2: "shepherd", result: "revival", cost: 750, label: "Revival", description: "Screen blast + pushback + heal" },
+];
+
+/** Base tower types that can be placed by the player (excludes combo towers). */
+export const BASE_TOWER_TYPES: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
+
+/** Cathedral Tower global damage buff. */
+export const CATHEDRAL_BUFF = 0.35;
+
 /** Starting coins by difficulty. */
 const STARTING_COINS: Record<"little-kids" | "big-kids", number> = {
   "little-kids": 200,
@@ -391,6 +499,7 @@ export function createInitialState(
     difficulty,
     nextTowerId: 1,
     hero: null,
+    blessings: [],
   };
 }
 
@@ -530,12 +639,13 @@ export function startWave(state: GameState): GameState {
   };
 }
 
-/** Mark wave complete, add passive income +25. */
+/** Mark wave complete, add passive income (+75 with Manna blessing, +25 otherwise). */
 export function completeWave(state: GameState): GameState {
   const isLastWave = state.wave >= state.totalWaves;
+  const waveBonus = state.blessings.includes("manna") ? 75 : 25;
   return {
     ...state,
-    coins: state.coins + 25,
+    coins: state.coins + waveBonus,
     phase: isLastWave ? "victory" : "question",
   };
 }
@@ -652,5 +762,131 @@ export function sellTower(state: GameState, towerId: number): GameState {
     ...state,
     coins: state.coins + refund,
     towers: state.towers.filter((t) => t.id !== towerId),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Blessings
+// ---------------------------------------------------------------------------
+
+/** Purchase a blessing. Returns new state with blessing added and coins deducted. */
+export function purchaseBlessing(state: GameState, blessing: BlessingType): GameState {
+  const def = BLESSING_DEFS[blessing];
+  if (state.coins < def.cost) return state;
+  if (state.blessings.includes(blessing)) return state;
+
+  let newState = {
+    ...state,
+    coins: state.coins - def.cost,
+    blessings: [...state.blessings, blessing],
+  };
+
+  // Walls of Jericho: immediately boost max HP and heal
+  if (blessing === "walls") {
+    newState = {
+      ...newState,
+      maxVillageHp: newState.maxVillageHp + 5,
+      villageHp: newState.maxVillageHp + 5,
+    };
+  }
+
+  return newState;
+}
+
+/** Whether the player can afford a blessing (and hasn't bought it yet). */
+export function canAffordBlessing(state: GameState, blessing: BlessingType): boolean {
+  if (state.blessings.includes(blessing)) return false;
+  return state.coins >= BLESSING_DEFS[blessing].cost;
+}
+
+/** Check if a blessing is active. */
+export function hasBlessing(state: GameState, blessing: BlessingType): boolean {
+  return state.blessings.includes(blessing);
+}
+
+/** Check if any cathedral tower exists (global buff). */
+export function hasCathedralBuff(towers: TowerState[]): boolean {
+  return towers.some((t) => t.type === "cathedral");
+}
+
+// ---------------------------------------------------------------------------
+// Tower Fusion (Combo Towers)
+// ---------------------------------------------------------------------------
+
+/**
+ * Find available fusion options for a tower.
+ * Requires both towers to be at max level and within 120px of each other.
+ */
+export function getAvailableFusions(
+  state: GameState,
+  towerId: number,
+  spotPositions: { x: number; y: number }[],
+): { recipe: FusionRecipe; partnerId: number }[] {
+  const tower = state.towers.find((t) => t.id === towerId);
+  if (!tower || tower.level < MAX_TOWER_LEVEL) return [];
+
+  const towerSpot = spotPositions[tower.spotIndex];
+  if (!towerSpot) return [];
+
+  const results: { recipe: FusionRecipe; partnerId: number }[] = [];
+
+  for (const recipe of FUSION_RECIPES) {
+    let partnerType: TowerType | null = null;
+
+    if (tower.type === recipe.source1) {
+      partnerType = recipe.source2;
+    } else if (tower.type === recipe.source2) {
+      partnerType = recipe.source1;
+    }
+
+    if (!partnerType) continue;
+
+    for (const other of state.towers) {
+      if (other.id === tower.id) continue;
+      if (other.type !== partnerType) continue;
+      if (other.level < MAX_TOWER_LEVEL) continue;
+
+      const otherSpot = spotPositions[other.spotIndex];
+      if (!otherSpot) continue;
+
+      const dx = towerSpot.x - otherSpot.x;
+      const dy = towerSpot.y - otherSpot.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= 120) {
+        results.push({ recipe, partnerId: other.id });
+      }
+    }
+  }
+
+  return results;
+}
+
+/** Fuse two towers into a combo tower. */
+export function fuseTowers(
+  state: GameState,
+  towerId: number,
+  partnerId: number,
+  comboType: TowerType,
+  cost: number,
+): GameState {
+  const tower = state.towers.find((t) => t.id === towerId);
+  if (!tower) return state;
+  if (state.coins < cost) return state;
+
+  const comboTower: TowerState = {
+    id: state.nextTowerId,
+    type: comboType,
+    level: MAX_TOWER_LEVEL,
+    spotIndex: tower.spotIndex,
+    targeting: tower.targeting,
+  };
+
+  return {
+    ...state,
+    coins: state.coins - cost,
+    towers: [
+      ...state.towers.filter((t) => t.id !== towerId && t.id !== partnerId),
+      comboTower,
+    ],
+    nextTowerId: state.nextTowerId + 1,
   };
 }

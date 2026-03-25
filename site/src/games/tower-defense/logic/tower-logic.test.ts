@@ -608,15 +608,18 @@ describe("tower-logic", () => {
   // TOWER_DEFS constants
   // -----------------------------------------------------------------------
   describe("TOWER_DEFS", () => {
-    it("has 6 tower types", () => {
+    it("has 6 base tower types + 3 combo towers", () => {
       const types = Object.keys(TOWER_DEFS);
-      expect(types).toHaveLength(6);
+      expect(types).toHaveLength(9);
       expect(types).toContain("prayer");
       expect(types).toContain("light");
       expect(types).toContain("bell");
       expect(types).toContain("shield");
       expect(types).toContain("praise");
       expect(types).toContain("shepherd");
+      expect(types).toContain("holy-beam");
+      expect(types).toContain("cathedral");
+      expect(types).toContain("revival");
     });
 
     it("prayer tower has correct base stats", () => {
@@ -1297,7 +1300,7 @@ describe("tower-logic", () => {
   // New tower definitions completeness (all 6 towers)
   // -----------------------------------------------------------------------
   describe("all tower stat arrays valid", () => {
-    it("all 6 towers have stat arrays of length MAX_TOWER_LEVEL", () => {
+    it("all 9 towers have stat arrays of length MAX_TOWER_LEVEL", () => {
       for (const def of Object.values(TOWER_DEFS)) {
         expect(def.range).toHaveLength(MAX_TOWER_LEVEL);
         expect(def.damage).toHaveLength(MAX_TOWER_LEVEL);

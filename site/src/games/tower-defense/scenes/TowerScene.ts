@@ -23,6 +23,12 @@ import {
   cycleTowerTargeting,
   hasPrayerLightSynergy,
   selectHero,
+  purchaseBlessing,
+  canAffordBlessing,
+  hasBlessing,
+  getAvailableFusions,
+  fuseTowers,
+  hasCathedralBuff,
   TOWER_DEFS,
   HERO_DEFS,
   ENEMY_DEFS,
@@ -30,12 +36,18 @@ import {
   SHIELD_BUFF_FACTOR,
   SHEPHERD_PUSHBACK,
   MAX_TOWER_LEVEL,
+  BLESSING_DEFS,
+  FUSION_RECIPES,
+  CATHEDRAL_BUFF,
+  BASE_TOWER_TYPES,
   type GameState,
   type TowerType,
   type EnemyType,
   type WaveConfig,
   type TowerState,
   type HeroType,
+  type BlessingType,
+  type FusionRecipe,
 } from "../logic/tower-logic";
 
 // ---------------------------------------------------------------------------
@@ -197,6 +209,11 @@ export class TowerScene extends Phaser.Scene {
 
   // Intro / Victory / Defeat overlays
   private overlayContainer: Phaser.GameObjects.Container | null = null;
+
+  // Blessings shop
+  private blessingsButton: Phaser.GameObjects.Container | null = null;
+  private blessingsOverlay: Phaser.GameObjects.Container | null = null;
+  private blessingsHudIcons: Phaser.GameObjects.Arc[] = [];
 
   // Fast forward
   private fastForward = false;
@@ -405,7 +422,7 @@ export class TowerScene extends Phaser.Scene {
     );
     this.towerStripBg.setDepth(80);
 
-    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
+    const towerTypes = BASE_TOWER_TYPES;
     const spacing = 125;
     const totalWidth = (towerTypes.length - 1) * spacing;
     const startX = (GAME_W - totalWidth) / 2;
@@ -454,7 +471,7 @@ export class TowerScene extends Phaser.Scene {
   }
 
   private updateTowerStrip(): void {
-    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
+    const towerTypes = BASE_TOWER_TYPES;
     for (let i = 0; i < towerTypes.length; i++) {
       const affordable = canAfford(this.gameState, towerTypes[i]);
       // On wave 1 (tutorial), only Light tower available
@@ -529,6 +546,8 @@ export class TowerScene extends Phaser.Scene {
     for (const l of this.towerStripLabels) l.setVisible(visible);
     for (const c of this.towerStripCosts) c.setVisible(visible);
     for (const l of this.towerStripLocks) l.setVisible(visible);
+    // Blessings button
+    if (this.blessingsButton) this.blessingsButton.setVisible(visible);
     // Village
     this.villageGraphics.setVisible(visible);
     this.villageGlow.setVisible(visible);
@@ -999,6 +1018,7 @@ export class TowerScene extends Phaser.Scene {
     this.updateSpotVisuals();
     this.showRangeCircles(true);
     this.showStartWaveButton();
+    this.showBlessingsButton();
 
     // Show hint text for early waves
     if (this.gameState.wave <= 1) {
@@ -1066,6 +1086,184 @@ export class TowerScene extends Phaser.Scene {
     this.startWaveButton = container;
   }
 
+  private showBlessingsButton(): void {
+    this.blessingsButton?.destroy();
+    const container = this.add.container(0, 0);
+    container.setDepth(90);
+
+    const btnBg = this.add.rectangle(GAME_W - 100, HUD_HEIGHT + 75, 150, 36, 0xcc8800, 1);
+    btnBg.setInteractive({ useHandCursor: true });
+    const btnText = this.add.text(GAME_W - 100, HUD_HEIGHT + 75, "Blessings Shop", {
+      fontSize: "13px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    btnText.setOrigin(0.5);
+    container.add(btnBg);
+    container.add(btnText);
+
+    // Show count of purchased blessings
+    if (this.gameState.blessings.length > 0) {
+      const countBadge = this.add.circle(GAME_W - 30, HUD_HEIGHT + 58, 10, 0x44aa44, 1);
+      container.add(countBadge);
+      const countText = this.add.text(GAME_W - 30, HUD_HEIGHT + 58, `${this.gameState.blessings.length}`, {
+        fontSize: "11px",
+        color: "#ffffff",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      countText.setOrigin(0.5);
+      container.add(countText);
+    }
+
+    btnBg.on("pointerdown", () => {
+      this.showBlessingsShop();
+    });
+
+    this.blessingsButton = container;
+  }
+
+  private showBlessingsShop(): void {
+    this.blessingsOverlay?.destroy();
+    this.towerSelectionGroup?.destroy();
+    this.towerSelectionGroup = null;
+    this.upgradeButton?.destroy();
+    this.upgradeButton = null;
+
+    const container = this.add.container(0, 0);
+    container.setDepth(100);
+
+    // Dim background
+    const bg = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 0x000000, 0.9);
+    bg.setInteractive(); // Block clicks through
+    container.add(bg);
+
+    const title = this.add.text(GAME_W / 2, 40, "Blessings Shop", {
+      fontSize: "26px",
+      color: "#ffdd00",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    title.setOrigin(0.5);
+    container.add(title);
+
+    const subtitle = this.add.text(GAME_W / 2, 70, `Coins: ${this.gameState.coins}`, {
+      fontSize: "14px",
+      color: "#ffdd00",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+    });
+    subtitle.setOrigin(0.5);
+    container.add(subtitle);
+
+    // 3x2 grid of blessings
+    const blessingTypes: BlessingType[] = ["armor", "walls", "burning-bush", "manna", "wings", "ark"];
+    const cardW = 230;
+    const cardH = 120;
+    const cols = 3;
+    const gapX = 15;
+    const gapY = 15;
+    const gridW = cols * cardW + (cols - 1) * gapX;
+    const gridStartX = (GAME_W - gridW) / 2 + cardW / 2;
+    const gridStartY = 150;
+
+    for (let i = 0; i < blessingTypes.length; i++) {
+      const bType = blessingTypes[i];
+      const def = BLESSING_DEFS[bType];
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = gridStartX + col * (cardW + gapX);
+      const cy = gridStartY + row * (cardH + gapY);
+
+      const owned = this.gameState.blessings.includes(bType);
+      const affordable = canAffordBlessing(this.gameState, bType);
+
+      // Card background
+      const cardBg = this.add.rectangle(cx, cy, cardW, cardH, owned ? 0x224422 : 0x222244, 0.95);
+      cardBg.setStrokeStyle(2, owned ? 0x44cc44 : (affordable ? def.color : 0x444444), 0.8);
+      container.add(cardBg);
+
+      // Blessing icon
+      const icon = this.add.circle(cx - cardW / 2 + 25, cy - 20, 12, def.color, owned ? 0.5 : 1);
+      container.add(icon);
+
+      // Name
+      const nameText = this.add.text(cx - cardW / 2 + 45, cy - 32, def.label, {
+        fontSize: "13px",
+        color: owned ? "#88ff88" : "#ffffff",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      container.add(nameText);
+
+      // Description
+      const descText = this.add.text(cx - cardW / 2 + 45, cy - 14, def.description, {
+        fontSize: "10px",
+        color: "#bbbbbb",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        wordWrap: { width: cardW - 55 },
+      });
+      container.add(descText);
+
+      if (owned) {
+        const ownedText = this.add.text(cx, cy + 35, "OWNED", {
+          fontSize: "14px",
+          color: "#44ff44",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
+          fontStyle: "bold",
+        });
+        ownedText.setOrigin(0.5);
+        container.add(ownedText);
+      } else {
+        // Buy button
+        const buyBg = this.add.rectangle(cx, cy + 35, 120, 28, affordable ? 0x44aa44 : 0x444444, 0.9);
+        if (affordable) buyBg.setInteractive({ useHandCursor: true });
+        container.add(buyBg);
+
+        const buyText = this.add.text(cx, cy + 35, `Buy - ${def.cost}`, {
+          fontSize: "12px",
+          color: affordable ? "#ffffff" : "#666666",
+          fontFamily: "'Segoe UI', Arial, sans-serif",
+          fontStyle: "bold",
+        });
+        buyText.setOrigin(0.5);
+        container.add(buyText);
+
+        if (affordable) {
+          buyBg.on("pointerdown", () => {
+            this.gameState = purchaseBlessing(this.gameState, bType);
+            this.updateHud();
+            // Refresh shop
+            this.showBlessingsShop();
+            this.spawnFloatingText(GAME_W / 2, GAME_H / 2, def.label + "!", `#${def.color.toString(16).padStart(6, "0")}`);
+          });
+        }
+      }
+    }
+
+    // Close button
+    const closeBg = this.add.rectangle(GAME_W / 2, GAME_H - 50, 150, 40, 0x4466aa, 1);
+    closeBg.setInteractive({ useHandCursor: true });
+    const closeText = this.add.text(GAME_W / 2, GAME_H - 50, "Close", {
+      fontSize: "16px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    closeText.setOrigin(0.5);
+    container.add(closeBg);
+    container.add(closeText);
+
+    closeBg.on("pointerdown", () => {
+      container.destroy();
+      this.blessingsOverlay = null;
+      this.updateTowerStrip();
+      this.showBlessingsButton(); // Refresh button with badge
+    });
+
+    this.blessingsOverlay = container;
+  }
+
   private onSpotClicked(spotIndex: number): void {
     if (this.gameState.phase !== "placement") return;
 
@@ -1092,12 +1290,11 @@ export class TowerScene extends Phaser.Scene {
     const container = this.add.container(0, 0);
     container.setDepth(90);
 
-    const towerTypes: TowerType[] = ["prayer", "light", "bell", "shield", "praise", "shepherd"];
     // On tutorial wave (wave 0 for little-kids), only allow Light
     const available =
       this.gameState.wave <= 0 && this.gameState.difficulty === "little-kids"
         ? (["light"] as TowerType[])
-        : towerTypes;
+        : BASE_TOWER_TYPES;
 
     const count = available.length;
     const spacing = 50;
@@ -1191,12 +1388,16 @@ export class TowerScene extends Phaser.Scene {
     container.setDepth(90);
 
     const def = TOWER_DEFS[tower.state.type];
-    const canUpg = tower.state.level < MAX_TOWER_LEVEL && canUpgrade(this.gameState, tower.state.id);
-    const atMax = tower.state.level >= MAX_TOWER_LEVEL;
+    const isCombo = (["holy-beam", "cathedral", "revival"] as TowerType[]).includes(tower.state.type);
+    const canUpg = !isCombo && tower.state.level < MAX_TOWER_LEVEL && canUpgrade(this.gameState, tower.state.id);
+    const atMax = isCombo || tower.state.level >= MAX_TOWER_LEVEL;
+
+    // Check for available fusions (only for non-combo max-level towers)
+    const fusions = !isCombo ? getAvailableFusions(this.gameState, tower.state.id, PLACEMENT_SPOTS) : [];
 
     // Clamp panel position to stay within screen bounds
     const panelW = 160;
-    const panelH = 80;
+    const panelH = fusions.length > 0 ? 115 : 80;
     const margin = 5;
     let panelX = tower.x;
     const panelY = tower.y - 60;
@@ -1245,9 +1446,10 @@ export class TowerScene extends Phaser.Scene {
         });
       }
     } else {
-      const maxText = this.add.text(panelX - 30, panelY - 20, "MAX LEVEL", {
+      const maxLabel = isCombo ? "COMBO" : "MAX LEVEL";
+      const maxText = this.add.text(panelX - 30, panelY - 20, maxLabel, {
         fontSize: "10px",
-        color: "#ffdd00",
+        color: isCombo ? "#ffaa00" : "#ffdd00",
         fontFamily: "'Segoe UI', Arial, sans-serif",
         fontStyle: "bold",
       });
@@ -1312,6 +1514,34 @@ export class TowerScene extends Phaser.Scene {
       }
     });
 
+    // -- Fusion button (for max-level towers with eligible partner) --
+    if (fusions.length > 0) {
+      const fusion = fusions[0];
+      const canAffordFusion = this.gameState.coins >= fusion.recipe.cost;
+
+      const fuseBtn = this.add.rectangle(panelX, panelY + 38, 140, 24, canAffordFusion ? 0xcc8800 : 0x444444, 0.9);
+      if (canAffordFusion) fuseBtn.setInteractive({ useHandCursor: true });
+      container.add(fuseBtn);
+
+      const fuseLabel = `FUSE: ${fusion.recipe.label} (${fusion.recipe.cost})`;
+      const fuseText = this.add.text(panelX, panelY + 38, fuseLabel, {
+        fontSize: "9px",
+        color: canAffordFusion ? "#ffffff" : "#666666",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      fuseText.setOrigin(0.5);
+      container.add(fuseText);
+
+      if (canAffordFusion) {
+        fuseBtn.on("pointerdown", () => {
+          this.handleFuseTowers(tower, fusion.partnerId, fusion.recipe);
+          this.upgradeButton?.destroy();
+          this.upgradeButton = null;
+        });
+      }
+    }
+
     // Close on click elsewhere after brief delay
     this.time.delayedCall(100, () => {
       this.input.once("pointerdown", () => {
@@ -1335,13 +1565,67 @@ export class TowerScene extends Phaser.Scene {
     this.tutorialPlaced = true;
   }
 
+  private handleFuseTowers(tower: ActiveTower, partnerId: number, recipe: FusionRecipe): void {
+    const partner = this.activeTowers.find((t) => t.state.id === partnerId);
+    if (!partner) return;
+
+    // Update game state
+    this.gameState = fuseTowers(
+      this.gameState,
+      tower.state.id,
+      partnerId,
+      recipe.result,
+      recipe.cost,
+    );
+
+    // Remove both tower visuals
+    tower.sprite.destroy();
+    tower.rangeCircle.destroy();
+    tower.labelText.destroy();
+    tower.praiseGlow?.destroy();
+    tower.shieldAura?.destroy();
+
+    partner.sprite.destroy();
+    partner.rangeCircle.destroy();
+    partner.labelText.destroy();
+    partner.praiseGlow?.destroy();
+    partner.shieldAura?.destroy();
+
+    this.activeTowers = this.activeTowers.filter(
+      (t) => t !== tower && t !== partner,
+    );
+
+    // Create the combo tower visual
+    const newTowerState = this.gameState.towers[this.gameState.towers.length - 1];
+    this.createTowerVisual(newTowerState);
+
+    this.updateHud();
+    this.updateTowerStrip();
+    this.updateSpotVisuals();
+
+    // Fusion flash effect
+    const spot = PLACEMENT_SPOTS[newTowerState.spotIndex];
+    const flash = this.add.circle(spot.x, spot.y, 40, TOWER_DEFS[recipe.result].color, 0.6);
+    flash.setDepth(35);
+    this.tweens.add({
+      targets: flash,
+      radius: 80,
+      alpha: 0,
+      duration: 500,
+      onComplete: () => flash.destroy(),
+    });
+    this.spawnFloatingText(spot.x, spot.y - 30, `${recipe.label}!`, "#ffaa00");
+  }
+
   private createTowerVisual(towerState: TowerState): void {
     const spot = PLACEMENT_SPOTS[towerState.spotIndex];
     const def = TOWER_DEFS[towerState.type];
     const range = def.range[towerState.level - 1];
+    const isCombo = (["holy-beam", "cathedral", "revival"] as TowerType[]).includes(towerState.type);
 
-    const sprite = this.add.circle(spot.x, spot.y, 14, def.color, 1);
-    sprite.setStrokeStyle(2, 0xffffff, 0.5);
+    const spriteRadius = isCombo ? 18 : 14;
+    const sprite = this.add.circle(spot.x, spot.y, spriteRadius, def.color, 1);
+    sprite.setStrokeStyle(isCombo ? 3 : 2, isCombo ? def.color : 0xffffff, isCombo ? 1 : 0.5);
     sprite.setDepth(10);
     sprite.setInteractive({ useHandCursor: true });
 
@@ -1350,14 +1634,16 @@ export class TowerScene extends Phaser.Scene {
     rangeCircle.setDepth(4);
     rangeCircle.setVisible(this.gameState.phase === "placement");
 
+    const labelStr = isCombo ? def.label : `${def.label} L${towerState.level}`;
     const labelText = this.add.text(
       spot.x,
-      spot.y + 20,
-      `${def.label} L${towerState.level}`,
+      spot.y + (isCombo ? 24 : 20),
+      labelStr,
       {
-        fontSize: "10px",
-        color: "#ffffff",
+        fontSize: isCombo ? "9px" : "10px",
+        color: isCombo ? "#ffcc44" : "#ffffff",
         fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: isCombo ? "bold" : "normal",
       },
     );
     labelText.setOrigin(0.5);
@@ -1392,6 +1678,10 @@ export class TowerScene extends Phaser.Scene {
     this.towerSelectionGroup = null;
     this.upgradeButton?.destroy();
     this.upgradeButton = null;
+    this.blessingsButton?.destroy();
+    this.blessingsButton = null;
+    this.blessingsOverlay?.destroy();
+    this.blessingsOverlay = null;
 
     this.gameState = startWave(this.gameState);
     this.updateHud();
@@ -1906,6 +2196,12 @@ export class TowerScene extends Phaser.Scene {
       actualDamage = Math.max(1, Math.round(damage * (1 - def.singleTargetReduction)));
     }
 
+    // Ark of the Covenant: 10% chance to smite for +20 bonus damage
+    if (hasBlessing(this.gameState, "ark") && Math.random() < 0.1) {
+      actualDamage += 20;
+      this.spawnFloatingText(enemy.sprite.x, enemy.sprite.y - 35, "SMITE!", "#ffff44");
+    }
+
     enemy.hp -= actualDamage;
 
     // White flash effect
@@ -1982,19 +2278,46 @@ export class TowerScene extends Phaser.Scene {
   // Tower attacks
   // =========================================================================
 
+  /** Apply Armor of God and Burning Bush blessings to base damage. */
+  private applyDamageBlessings(baseDamage: number): number {
+    let damage = baseDamage;
+    if (hasBlessing(this.gameState, "armor")) {
+      damage = Math.round(damage * 1.25);
+    }
+    // Cathedral global buff
+    if (hasCathedralBuff(this.gameState.towers)) {
+      damage = Math.round(damage * (1 + CATHEDRAL_BUFF));
+    }
+    if (hasBlessing(this.gameState, "burning-bush") && Math.random() < 0.2) {
+      damage *= 2;
+      // Visual handled in damageEnemy via floating text
+    }
+    return Math.max(1, damage);
+  }
+
   private updateTowerAttacks(delta: number): void {
     for (const tower of this.activeTowers) {
       const def = TOWER_DEFS[tower.state.type];
       const level = tower.state.level;
-      const range = def.range[level - 1];
+
+      // Apply Angel's Wings range bonus
+      let range = def.range[level - 1];
+      if (hasBlessing(this.gameState, "wings")) {
+        range = Math.round(range * 1.3);
+      }
+
       let attackSpeed = def.attackSpeed[level - 1];
 
       // Shield tower doesn't attack
       if (tower.state.type === "shield") continue;
 
-      // Praise tower uses its own charge mechanic
+      // Charge-based towers (Praise + Revival) use their own mechanic
       if (tower.state.type === "praise") {
         this.updatePraiseTower(tower, delta);
+        continue;
+      }
+      if (tower.state.type === "revival") {
+        this.updateRevivalTower(tower, delta);
         continue;
       }
 
@@ -2012,8 +2335,8 @@ export class TowerScene extends Phaser.Scene {
         tower.attackTimer = attackSpeed;
 
         // Find enemies in range
-        // Bell Tower can hit stealthed enemies, others cannot
-        const canHitStealth = tower.state.type === "bell";
+        // Bell Tower and Cathedral can hit stealthed enemies, others cannot
+        const canHitStealth = tower.state.type === "bell" || tower.state.type === "cathedral";
         const enemiesInRange = this.activeEnemies.filter((e) => {
           if (!e.alive) return false;
           if (e.stealthed && !canHitStealth) return false;
@@ -2034,18 +2357,26 @@ export class TowerScene extends Phaser.Scene {
           PLACEMENT_SPOTS,
         );
 
+        const baseDmg = Math.round(def.damage[level - 1] * (1 + shieldBuff));
+
         switch (tower.state.type) {
           case "light":
-            this.lightTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)));
+            this.lightTowerAttack(tower, enemiesInRange, this.applyDamageBlessings(baseDmg));
             break;
           case "bell":
-            this.bellTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)));
+            this.bellTowerAttack(tower, enemiesInRange, this.applyDamageBlessings(baseDmg));
             break;
           case "prayer":
-            this.prayerTowerAttack(tower, enemiesInRange, Math.round(def.damage[level - 1] * (1 + shieldBuff)), level);
+            this.prayerTowerAttack(tower, enemiesInRange, this.applyDamageBlessings(baseDmg), level);
             break;
           case "shepherd":
             this.shepherdTowerAttack(tower, enemiesInRange);
+            break;
+          case "holy-beam":
+            this.holyBeamAttack(tower, enemiesInRange, this.applyDamageBlessings(baseDmg));
+            break;
+          case "cathedral":
+            this.cathedralAttack(tower, enemiesInRange, this.applyDamageBlessings(baseDmg));
             break;
         }
       }
@@ -2261,6 +2592,176 @@ export class TowerScene extends Phaser.Scene {
   }
 
   // =========================================================================
+  // Combo tower attacks
+  // =========================================================================
+
+  /** Holy Beam: high damage chain beam + strong slow. Chains to 2 extra enemies. */
+  private holyBeamAttack(
+    tower: ActiveTower,
+    enemies: ActiveEnemy[],
+    damage: number,
+  ): void {
+    const primary = this.selectTarget(tower, enemies);
+
+    // Draw blue-gold beam to primary target
+    const beam = this.add.graphics();
+    beam.setDepth(30);
+    beam.lineStyle(4, 0x66bbff, 0.9);
+    beam.beginPath();
+    beam.moveTo(tower.x, tower.y);
+    beam.lineTo(primary.sprite.x, primary.sprite.y);
+    beam.strokePath();
+    this.time.delayedCall(200, () => beam.destroy());
+
+    this.damageEnemy(primary, damage, true);
+
+    // Apply strong slow to primary
+    primary.slowFactor = 0.7;
+    primary.slowTimer = 2500;
+
+    // Chain to up to 2 additional enemies near the primary target
+    const chainTargets = enemies
+      .filter((e) => e !== primary && e.alive)
+      .sort((a, b) => {
+        const da = Math.hypot(a.sprite.x - primary.sprite.x, a.sprite.y - primary.sprite.y);
+        const db = Math.hypot(b.sprite.x - primary.sprite.x, b.sprite.y - primary.sprite.y);
+        return da - db;
+      })
+      .slice(0, 2);
+
+    let lastX = primary.sprite.x;
+    let lastY = primary.sprite.y;
+    for (const chainTarget of chainTargets) {
+      const chainBeam = this.add.graphics();
+      chainBeam.setDepth(30);
+      chainBeam.lineStyle(2, 0x4488ff, 0.6);
+      chainBeam.beginPath();
+      chainBeam.moveTo(lastX, lastY);
+      chainBeam.lineTo(chainTarget.sprite.x, chainTarget.sprite.y);
+      chainBeam.strokePath();
+      this.time.delayedCall(250, () => chainBeam.destroy());
+
+      this.damageEnemy(chainTarget, Math.round(damage * 0.5));
+      chainTarget.slowFactor = 0.5;
+      chainTarget.slowTimer = 1500;
+      lastX = chainTarget.sprite.x;
+      lastY = chainTarget.sprite.y;
+    }
+  }
+
+  /** Cathedral: AoE damage to all in range (like an upgraded Bell tower). */
+  private cathedralAttack(
+    tower: ActiveTower,
+    enemies: ActiveEnemy[],
+    damage: number,
+  ): void {
+    for (const e of enemies) {
+      this.damageEnemy(e, damage);
+    }
+
+    // Expanding green-purple ring visual
+    const ring = this.add.circle(tower.x, tower.y, 10, 0x88cc88, 0);
+    ring.setStrokeStyle(3, 0x88cc88, 0.7);
+    ring.setDepth(30);
+
+    const range = TOWER_DEFS.cathedral.range[tower.state.level - 1];
+    this.tweens.add({
+      targets: ring,
+      radius: range,
+      alpha: 0,
+      duration: 300,
+      onUpdate: () => {
+        ring.setStrokeStyle(3, 0x88cc88, ring.alpha * 0.7);
+      },
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  /** Revival: charge-based screen-wide blast + pushback + village heal. */
+  private updateRevivalTower(tower: ActiveTower, delta: number): void {
+    const level = tower.state.level;
+    const chargeTime = TOWER_DEFS.revival.attackSpeed[level - 1];
+
+    if (tower.praiseChargeTimer === undefined) {
+      tower.praiseChargeTimer = 0;
+    }
+
+    tower.praiseChargeTimer += delta;
+
+    // Visual: growing golden glow
+    const chargePct = Math.min(tower.praiseChargeTimer / chargeTime, 1);
+    if (!tower.praiseGlow) {
+      tower.praiseGlow = this.add.circle(tower.x, tower.y, 5, 0xffcc44, 0);
+      tower.praiseGlow.setDepth(9);
+    }
+    tower.praiseGlow.setRadius(5 + chargePct * 30);
+    tower.praiseGlow.setAlpha(chargePct * 0.5);
+
+    if (tower.praiseChargeTimer >= chargeTime) {
+      tower.praiseChargeTimer = 0;
+
+      const damage = this.applyDamageBlessings(TOWER_DEFS.revival.damage[level - 1]);
+
+      // Hit ALL alive enemies with damage + pushback
+      const aliveEnemies = this.activeEnemies.filter((e) => e.alive);
+      for (const e of aliveEnemies) {
+        this.damageEnemy(e, damage);
+        // Pushback
+        const wpIdx = e.waypointIndex;
+        if (wpIdx > 0 && wpIdx < PATH_WAYPOINTS.length) {
+          const prev = PATH_WAYPOINTS[wpIdx - 1];
+          const curr = PATH_WAYPOINTS[wpIdx];
+          const dx = curr.x - prev.x;
+          const dy = curr.y - prev.y;
+          const segLen = Math.sqrt(dx * dx + dy * dy);
+          if (segLen > 0) {
+            e.sprite.x -= (dx / segLen) * 40;
+            e.sprite.y -= (dy / segLen) * 40;
+          }
+        }
+        // Also slow all enemies
+        e.slowFactor = 0.5;
+        e.slowTimer = 2000;
+      }
+
+      // Heal village 1 HP
+      this.gameState = {
+        ...this.gameState,
+        villageHp: Math.min(this.gameState.villageHp + 1, this.gameState.maxVillageHp),
+      };
+      this.updateHud();
+
+      // Burst visual: expanding golden shockwave
+      const ring = this.add.circle(tower.x, tower.y, 10, 0xffcc44, 0);
+      ring.setStrokeStyle(4, 0xffcc44, 0.9);
+      ring.setDepth(30);
+      this.tweens.add({
+        targets: ring,
+        radius: 400,
+        alpha: 0,
+        duration: 600,
+        onUpdate: () => {
+          ring.setStrokeStyle(4, 0xffcc44, ring.alpha * 0.9);
+        },
+        onComplete: () => ring.destroy(),
+      });
+
+      if (tower.praiseGlow) {
+        tower.praiseGlow.setAlpha(0.9);
+        tower.praiseGlow.setRadius(35);
+      }
+
+      this.spawnFloatingText(tower.x, tower.y - 30, "REVIVAL!", "#ffcc44");
+      this.spawnFloatingText(
+        PATH_WAYPOINTS[PATH_WAYPOINTS.length - 1].x - 30,
+        PATH_WAYPOINTS[PATH_WAYPOINTS.length - 1].y - 50,
+        "+1 HP",
+        "#44ff44",
+      );
+    }
+  }
+
+  // =========================================================================
   // Wave completion check
   // =========================================================================
 
@@ -2279,8 +2780,9 @@ export class TowerScene extends Phaser.Scene {
       this.gameState = completeWave(this.gameState);
       this.updateHud();
 
-      // +25 passive floating text
-      this.spawnFloatingText(100, 50, "+25", "#88ff88");
+      // Wave bonus floating text (Manna blessing: +75, otherwise +25)
+      const waveBonus = hasBlessing(this.gameState, "manna") ? 75 : 25;
+      this.spawnFloatingText(100, 50, `+${waveBonus}`, "#88ff88");
 
       if (this.gameState.phase === "victory") {
         this.showVictoryOverlay();
@@ -2639,6 +3141,38 @@ export class TowerScene extends Phaser.Scene {
           this.effectsGraphics.fillCircle(tower.x, tower.y, 20);
         }
       }
+
+      // Cathedral: golden-green pulsing aura (global buff indicator)
+      if (tower.state.type === "cathedral") {
+        const range = TOWER_DEFS.cathedral.range[tower.state.level - 1];
+        const pulse = 0.08 + 0.04 * Math.sin(this.time.now / 400);
+        this.effectsGraphics.lineStyle(2, 0x88cc88, pulse * 3);
+        this.effectsGraphics.strokeCircle(tower.x, tower.y, range);
+        this.effectsGraphics.fillStyle(0x88cc88, pulse);
+        this.effectsGraphics.fillCircle(tower.x, tower.y, range);
+        // Green buff glow on ALL other towers (global)
+        for (const other of this.activeTowers) {
+          if (other === tower) continue;
+          this.effectsGraphics.lineStyle(2, 0x88cc88, 0.2 + 0.1 * Math.sin(this.time.now / 350));
+          this.effectsGraphics.strokeCircle(other.x, other.y, 18);
+        }
+      }
+
+      // Holy Beam: blue pulsing glow
+      if (tower.state.type === "holy-beam") {
+        const pulse = 0.06 + 0.03 * Math.sin(this.time.now / 500);
+        this.effectsGraphics.lineStyle(2, 0x66bbff, pulse * 3);
+        this.effectsGraphics.strokeCircle(tower.x, tower.y, 24);
+        this.effectsGraphics.fillStyle(0x66bbff, pulse);
+        this.effectsGraphics.fillCircle(tower.x, tower.y, 24);
+      }
+
+      // Revival: golden pulsing glow (charge indicator handled in update method)
+      if (tower.state.type === "revival") {
+        const pulse = 0.05 + 0.03 * Math.sin(this.time.now / 600);
+        this.effectsGraphics.lineStyle(2, 0xffcc44, pulse * 3);
+        this.effectsGraphics.strokeCircle(tower.x, tower.y, 26);
+      }
     }
   }
 
@@ -2717,7 +3251,9 @@ export class TowerScene extends Phaser.Scene {
 
         // Hero ability cooldown
         if (this.heroAbilityCooldown > 0) {
-          this.heroAbilityCooldown -= effectiveDelta;
+          // Ark of the Covenant: hero cooldown ticks twice as fast
+          const cdDelta = hasBlessing(this.gameState, "ark") ? effectiveDelta * 2 : effectiveDelta;
+          this.heroAbilityCooldown -= cdDelta;
           if (this.heroAbilityCooldown < 0) this.heroAbilityCooldown = 0;
         }
         // Update hero ability button display
