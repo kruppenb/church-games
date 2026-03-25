@@ -194,6 +194,20 @@ export function calculateStars(state: SurvivorsState): number {
   return 1;
 }
 
+/** Records an elite enemy defeat: +100 score bonus. */
+export function defeatElite(state: SurvivorsState): SurvivorsState {
+  return {
+    ...state,
+    enemiesDefeated: state.enemiesDefeated + 1,
+    score: state.score + 100,
+  };
+}
+
+/** Collect a score power-up: +100 score. */
+export function collectScorePowerUp(state: SurvivorsState): SurvivorsState {
+  return { ...state, score: state.score + 100 };
+}
+
 /** Returns true when the game is over (player dead, victory, or time expired). */
 export function isGameOver(state: SurvivorsState): boolean {
   return state.gameOver || state.victory;

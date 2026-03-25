@@ -8,6 +8,8 @@ import {
   addWeapon,
   getWeaponLevel,
   defeatEnemy,
+  defeatElite,
+  collectScorePowerUp,
   takeDamage,
   healPlayer,
   boostMaxHp,
@@ -67,6 +69,16 @@ const AXE_SIZE = 10;
 const BEAM_INTERVAL = [0, 5000, 3500, 2500];
 const BEAM_WIDTH = [0, 20, 30, 40];
 
+/** Elite enemy config */
+const ELITE_HP = 5;
+const ELITE_RADIUS = 22;
+const ELITE_COLOR = 0xffd700; // gold
+const ELITE_SPEED_MULT = 0.7; // slower than normal
+
+/** Power-up config */
+const POWERUP_DROP_CHANCE = 0.04; // 4% from normal enemies
+const POWERUP_LIFETIME = 8000; // ms before fading
+
 const WEAPON_COLOR_MAP: Record<string, number> = {
   "fire-ring": 0xef5350, lightning: 0xffee58, shield: 0x42a5f5,
   orbit: 0xba68c8, "holy-water": 0x4fc3f7, axe: 0xff8a65, beam: 0xffd54f,
@@ -105,6 +117,10 @@ export class SurvivorsScene extends Phaser.Scene {
 
   // Orbit weapon visuals
   private orbitOrbs: Phaser.GameObjects.Arc[] = [];
+
+  // Power-ups
+  private powerUps!: Phaser.GameObjects.Group;
+  private lastEliteWave = 0;
 
   // UI
   private scoreText!: Phaser.GameObjects.Text;
@@ -165,6 +181,8 @@ export class SurvivorsScene extends Phaser.Scene {
     this.enemies = this.add.group();
     this.projectiles = this.add.group();
     this.axeProjectiles = this.add.group();
+    this.powerUps = this.add.group();
+    this.lastEliteWave = 0;
 
     // Collision: projectile hits enemy
     this.physics.add.overlap(
@@ -189,6 +207,15 @@ export class SurvivorsScene extends Phaser.Scene {
       this.player,
       this.enemies,
       this.onEnemyReachPlayer as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    );
+
+    // Collision: player collects power-up
+    this.physics.add.overlap(
+      this.player,
+      this.powerUps,
+      this.onCollectPowerUp as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
       this,
     );
@@ -268,7 +295,8 @@ export class SurvivorsScene extends Phaser.Scene {
         if (!body) continue;
 
         const angle = Phaser.Math.Angle.Between(go.x, go.y, this.player.x, this.player.y);
-        const speed = ENEMY_BASE_SPEED * speedScale;
+        const eliteMult = (go.getData("speedMult") as number) ?? 1;
+        const speed = ENEMY_BASE_SPEED * speedScale * eliteMult;
         body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
       }
     }
@@ -356,6 +384,8 @@ export class SurvivorsScene extends Phaser.Scene {
 
       const enemy = this.add.circle(ex, ey, radius, color);
       enemy.setStrokeStyle(1, 0x000000);
+      enemy.setData("hp", 1);
+      enemy.setData("origColor", color);
       this.physics.add.existing(enemy);
       (enemy.body as Phaser.Physics.Arcade.Body).setCircle(radius);
       this.enemies.add(enemy);
@@ -389,17 +419,45 @@ export class SurvivorsScene extends Phaser.Scene {
 
   // ---- Collision ----
 
+  /** Deal 1 damage to an enemy. Returns true if enemy died. */
+  private hitEnemy(enemy: Phaser.GameObjects.Arc): boolean {
+    const hp = (enemy.getData("hp") as number) ?? 1;
+    const isElite = enemy.getData("isElite") as boolean;
+    if (hp > 1) {
+      enemy.setData("hp", hp - 1);
+      // Flash white briefly
+      const origColor = enemy.getData("origColor") as number ?? 0xffffff;
+      enemy.setFillStyle(0xffffff);
+      this.time.delayedCall(80, () => {
+        if (enemy.active) enemy.setFillStyle(origColor);
+      });
+      return false;
+    }
+    // Enemy dies
+    this.spawnDeathParticles(enemy.x, enemy.y);
+    if (isElite) {
+      this.state = defeatElite(this.state);
+      this.spawnPowerUp(enemy.x, enemy.y, true); // guaranteed drop
+      this.spawnEliteDeathEffect(enemy.x, enemy.y);
+    } else {
+      this.state = defeatEnemy(this.state);
+      // Small chance to drop power-up
+      if (Math.random() < POWERUP_DROP_CHANCE) {
+        this.spawnPowerUp(enemy.x, enemy.y, false);
+      }
+    }
+    enemy.destroy();
+    this.updateHUD();
+    return true;
+  }
+
   private onProjectileHitEnemy(
     projectile: Phaser.Types.Physics.Arcade.GameObjectWithBody,
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ): void {
     if (!(enemy as Phaser.GameObjects.Arc).active) return;
     projectile.destroy();
-    enemy.destroy();
-    this.state = defeatEnemy(this.state);
-    this.updateHUD();
-    const go = enemy as Phaser.GameObjects.Arc;
-    this.spawnDeathParticles(go.x, go.y);
+    this.hitEnemy(enemy as Phaser.GameObjects.Arc);
   }
 
   private onAxeHitEnemy(
@@ -407,11 +465,7 @@ export class SurvivorsScene extends Phaser.Scene {
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ): void {
     if (!(enemy as Phaser.GameObjects.Arc).active) return;
-    const go = enemy as Phaser.GameObjects.Arc;
-    this.spawnDeathParticles(go.x, go.y);
-    enemy.destroy();
-    this.state = defeatEnemy(this.state);
-    this.updateHUD();
+    this.hitEnemy(enemy as Phaser.GameObjects.Arc);
   }
 
   private onEnemyReachPlayer(
@@ -438,6 +492,156 @@ export class SurvivorsScene extends Phaser.Scene {
     }
   }
 
+  // ---- Elite enemies ----
+
+  private spawnElite(): void {
+    const { width, height } = this.scale;
+    // Spawn from random edge
+    const side = Phaser.Math.Between(0, 3);
+    let ex: number, ey: number;
+    switch (side) {
+      case 0: ex = Phaser.Math.Between(0, width); ey = -20; break;
+      case 1: ex = width + 20; ey = Phaser.Math.Between(0, height); break;
+      case 2: ex = Phaser.Math.Between(0, width); ey = height + 20; break;
+      default: ex = -20; ey = Phaser.Math.Between(0, height); break;
+    }
+
+    const elite = this.add.circle(ex, ey, ELITE_RADIUS, ELITE_COLOR);
+    elite.setStrokeStyle(3, 0xffffff);
+    elite.setData("hp", ELITE_HP);
+    elite.setData("isElite", true);
+    elite.setData("origColor", ELITE_COLOR);
+    elite.setData("speedMult", ELITE_SPEED_MULT);
+    this.physics.add.existing(elite);
+    (elite.body as Phaser.Physics.Arcade.Body).setCircle(ELITE_RADIUS);
+    this.enemies.add(elite);
+
+    // Announce
+    const { width: w, height: h } = this.scale;
+    const txt = this.add.text(w / 2, h / 2 - 40, "ELITE INCOMING!", {
+      fontSize: "24px",
+      color: "#ffd700",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 3,
+    });
+    txt.setOrigin(0.5);
+    txt.setDepth(60);
+    this.tweens.add({
+      targets: txt,
+      y: txt.y - 30,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => txt.destroy(),
+    });
+  }
+
+  private spawnEliteDeathEffect(x: number, y: number): void {
+    // Big golden burst
+    for (let i = 0; i < 12; i++) {
+      const p = this.add.circle(
+        x + Phaser.Math.Between(-8, 8), y + Phaser.Math.Between(-8, 8), 5, 0xffd700,
+      );
+      p.setDepth(40);
+      this.tweens.add({
+        targets: p,
+        x: p.x + Phaser.Math.Between(-50, 50),
+        y: p.y + Phaser.Math.Between(-50, 50),
+        alpha: 0, scale: 0, duration: 500,
+        onComplete: () => p.destroy(),
+      });
+    }
+
+    const txt = this.add.text(x, y - 20, "+100", {
+      fontSize: "18px",
+      color: "#ffd700",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    txt.setOrigin(0.5);
+    txt.setDepth(60);
+    this.tweens.add({
+      targets: txt, y: txt.y - 30, alpha: 0, duration: 800,
+      onComplete: () => txt.destroy(),
+    });
+  }
+
+  // ---- Power-ups ----
+
+  private spawnPowerUp(x: number, y: number, guaranteed: boolean): void {
+    // Pick type: health (green) or score (gold)
+    const isHealth = guaranteed ? Math.random() < 0.5 : Math.random() < 0.5;
+    const color = isHealth ? 0x43a047 : 0xffd700;
+    const label = isHealth ? "\u2764" : "\u2B50";
+
+    const pu = this.add.circle(x, y, 10, color, 0.9);
+    pu.setStrokeStyle(2, 0xffffff);
+    pu.setDepth(15);
+    pu.setData("puType", isHealth ? "health" : "score");
+    this.physics.add.existing(pu, true); // static body
+    this.powerUps.add(pu);
+
+    // Label
+    const lbl = this.add.text(x, y, label, {
+      fontSize: "12px",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+    });
+    lbl.setOrigin(0.5);
+    lbl.setDepth(16);
+    pu.setData("label", lbl);
+
+    // Pulsing animation
+    this.tweens.add({
+      targets: pu,
+      scaleX: 1.3, scaleY: 1.3,
+      yoyo: true, repeat: -1, duration: 400,
+    });
+
+    // Auto-destroy after timeout
+    this.time.delayedCall(POWERUP_LIFETIME, () => {
+      if (pu.active) {
+        (pu.getData("label") as Phaser.GameObjects.Text)?.destroy();
+        pu.destroy();
+      }
+    });
+  }
+
+  private onCollectPowerUp(
+    _player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    powerUp: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+  ): void {
+    const pu = powerUp as Phaser.GameObjects.Arc;
+    if (!pu.active) return;
+    const puType = pu.getData("puType") as string;
+
+    if (puType === "health") {
+      this.state = healPlayer(this.state, 1);
+      this.showPowerUpText(pu.x, pu.y, "+1 HP", "#43a047");
+    } else {
+      this.state = collectScorePowerUp(this.state);
+      this.showPowerUpText(pu.x, pu.y, "+100", "#ffd700");
+    }
+    this.updateHUD();
+
+    (pu.getData("label") as Phaser.GameObjects.Text)?.destroy();
+    pu.destroy();
+  }
+
+  private showPowerUpText(x: number, y: number, message: string, color: string): void {
+    const txt = this.add.text(x, y - 15, message, {
+      fontSize: "14px", color,
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    txt.setOrigin(0.5);
+    txt.setDepth(60);
+    this.tweens.add({
+      targets: txt, y: txt.y - 25, alpha: 0, duration: 800,
+      onComplete: () => txt.destroy(),
+    });
+  }
+
   // ---- Question system ----
 
   private triggerQuestion(): void {
@@ -455,6 +659,13 @@ export class SurvivorsScene extends Phaser.Scene {
 
     this.isShowingOverlay = true;
     this.waveNumber++;
+
+    // Spawn elite every 5 waves
+    if (this.waveNumber > 0 && this.waveNumber % 5 === 0 && this.waveNumber !== this.lastEliteWave) {
+      this.lastEliteWave = this.waveNumber;
+      // Spawn elite after question resolves (delayed)
+      this.time.delayedCall(500, () => this.spawnElite());
+    }
 
     // Pause enemies
     for (const enemy of this.enemies.getChildren()) {
@@ -788,9 +999,7 @@ export class SurvivorsScene extends Phaser.Scene {
       if (dist <= radius) toDestroy.push(go);
     }
     for (const go of toDestroy) {
-      this.spawnDeathParticles(go.x, go.y);
-      go.destroy();
-      this.state = defeatEnemy(this.state);
+      this.hitEnemy(go);
     }
     this.updateHUD();
 
@@ -820,9 +1029,7 @@ export class SurvivorsScene extends Phaser.Scene {
     for (const { go } of targets) {
       gfx.lineBetween(prevX, prevY, go.x, go.y);
       prevX = go.x; prevY = go.y;
-      this.spawnDeathParticles(go.x, go.y);
-      go.destroy();
-      this.state = defeatEnemy(this.state);
+      this.hitEnemy(go);
     }
     this.updateHUD();
 
@@ -905,9 +1112,7 @@ export class SurvivorsScene extends Phaser.Scene {
     }
 
     for (const go of toDestroy) {
-      this.spawnDeathParticles(go.x, go.y);
-      go.destroy();
-      this.state = defeatEnemy(this.state);
+      this.hitEnemy(go);
     }
     if (toDestroy.length > 0) this.updateHUD();
   }
@@ -950,9 +1155,7 @@ export class SurvivorsScene extends Phaser.Scene {
             if (dist <= poolRadius) toDestroy.push(go);
           }
           for (const go of toDestroy) {
-            this.spawnDeathParticles(go.x, go.y);
-            go.destroy();
-            this.state = defeatEnemy(this.state);
+            this.hitEnemy(go);
           }
           if (toDestroy.length > 0) this.updateHUD();
         },
@@ -1061,9 +1264,7 @@ export class SurvivorsScene extends Phaser.Scene {
     }
 
     for (const go of toDestroy) {
-      this.spawnDeathParticles(go.x, go.y);
-      go.destroy();
-      this.state = defeatEnemy(this.state);
+      this.hitEnemy(go);
     }
     if (toDestroy.length > 0) this.updateHUD();
 

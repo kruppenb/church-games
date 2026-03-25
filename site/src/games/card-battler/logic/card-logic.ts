@@ -470,6 +470,38 @@ export function getAbilityName(ability: AbilityType): string {
   }
 }
 
+/** Full description of what an ability does, for tooltips. */
+export function getAbilityDescription(ability: AbilityType): string {
+  switch (ability) {
+    case "shield":
+      return "Blocks 1 damage when you answer correctly";
+    case "guard":
+      return "Reduces opponent's power by 1 when you answer correctly";
+    case "heal":
+      return "Restores 1 HP when you answer correctly";
+    case "draw":
+      return "Peek at opponent's next card when you answer correctly";
+    case "boost":
+      return "Adds +1 extra power when you answer correctly";
+    case "strike":
+      return "Deals 1 bonus damage to opponent when you answer correctly";
+  }
+}
+
+/** Rarity label for card display. */
+export function getDifficultyLabel(
+  difficulty: "easy" | "medium" | "hard",
+): string {
+  switch (difficulty) {
+    case "easy":
+      return "Common";
+    case "medium":
+      return "Rare";
+    case "hard":
+      return "Epic";
+  }
+}
+
 export function getDifficultyBorder(
   difficulty: "easy" | "medium" | "hard",
 ): string {

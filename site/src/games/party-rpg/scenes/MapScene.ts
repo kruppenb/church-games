@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { LessonConfig, StoryScene } from "@/types/lesson";
 import {
   createEnemy,
+  createBossEnemy,
   rollRandomEvent,
   applyRandomEvent,
   type RPGState,
@@ -293,7 +294,13 @@ export class MapScene extends Phaser.Scene {
   private enterBattle(node: NodeInfo): void {
     const difficulty =
       (this.registry.get("difficulty") as Difficulty) ?? "little-kids";
-    const enemy = createEnemy(node.scene.title, difficulty);
+    // Final location = boss fight
+    const scenes = (this.registry.get("lesson") as LessonConfig)?.story?.scenes ?? [];
+    const isFinalLocation = node.index === scenes.length - 1;
+
+    const enemy = isFinalLocation
+      ? createBossEnemy(difficulty)
+      : createEnemy(node.scene.title, difficulty);
 
     this.registry.set("currentLocationIndex", node.index);
     this.registry.set("battleEnemy", enemy);

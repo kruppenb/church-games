@@ -16,6 +16,7 @@ export interface Enemy {
   maxHp: number;
   hp: number;
   attack: number;
+  isBoss?: boolean;
 }
 
 export interface BattleState {
@@ -166,6 +167,30 @@ export function createEnemy(
   };
 }
 
+const BOSS_NAMES = [
+  "The Serpent of Lies",
+  "Goliath the Giant",
+  "The Pharaoh's Wrath",
+  "The Dragon of Darkness",
+  "The Beast of Babylon",
+];
+
+/** Create a boss enemy for the final location (3x HP, 1.5x attack). */
+export function createBossEnemy(
+  difficulty: "little-kids" | "big-kids",
+): Enemy {
+  const baseHp = difficulty === "little-kids" ? 80 : 150;
+  const baseAttack = difficulty === "little-kids" ? 10 : 20;
+  const name = BOSS_NAMES[Math.floor(Math.random() * BOSS_NAMES.length)];
+  return {
+    name,
+    maxHp: baseHp * 3,
+    hp: baseHp * 3,
+    attack: Math.round(baseAttack * 1.5),
+    isBoss: true,
+  };
+}
+
 /** Create initial battle state. */
 export function createBattleState(
   heroes: Hero[],
@@ -201,6 +226,12 @@ export function createPartyState(heroes: Hero[]): RPGState {
  */
 export function rollLoot(): LootItem | null {
   if (Math.random() >= 0.4) return null;
+  const index = Math.floor(Math.random() * LOOT_TABLE.length);
+  return { ...LOOT_TABLE[index] };
+}
+
+/** Guaranteed loot drop (for boss kills). */
+export function guaranteedLoot(): LootItem {
   const index = Math.floor(Math.random() * LOOT_TABLE.length);
   return { ...LOOT_TABLE[index] };
 }

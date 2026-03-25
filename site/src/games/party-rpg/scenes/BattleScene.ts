@@ -4,6 +4,7 @@ import {
   createBattleState,
   resolvePlayerAnswer,
   rollLoot,
+  guaranteedLoot,
   applyLoot,
   HERO_ABILITIES,
   type BattleState,
@@ -274,15 +275,24 @@ export class BattleScene extends Phaser.Scene {
 
   private drawEnemy(width: number): void {
     const enemy = this.battleState.enemy;
+    const isBoss = enemy.isBoss ?? false;
     const x = width - 90;
-    const y = 120;
-    const radius = 50;
+    const y = isBoss ? 130 : 120;
+    const radius = isBoss ? 65 : 50;
 
     // Create enemy body as an irregular threatening shape using graphics
     const bodyGfx = this.add.graphics();
 
-    // Main body — dark red-purple gradient feel
-    bodyGfx.fillStyle(0x6b1040, 1);
+    // Boss: glowing aura behind
+    if (isBoss) {
+      bodyGfx.fillStyle(0xff4400, 0.15);
+      bodyGfx.fillCircle(0, 0, radius + 20);
+      bodyGfx.fillStyle(0xff2200, 0.1);
+      bodyGfx.fillCircle(0, 0, radius + 35);
+    }
+
+    // Main body — dark red-purple gradient feel (boss is darker/redder)
+    bodyGfx.fillStyle(isBoss ? 0x4a0020 : 0x6b1040, 1);
     bodyGfx.fillCircle(0, 0, radius);
 
     // Spiky protrusions
@@ -348,10 +358,10 @@ export class BattleScene extends Phaser.Scene {
     // Enemy name above in bold
     const nameText = this.add
       .text(0, -(radius + 22), enemy.name, {
-        fontSize: "14px",
+        fontSize: isBoss ? "15px" : "14px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#ff6666",
+        color: isBoss ? "#ff4444" : "#ff6666",
         align: "center",
         wordWrap: { width: 140 },
       })
@@ -382,7 +392,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
 
-    this.enemyContainer = this.add.container(x, y, [
+    const containerChildren: Phaser.GameObjects.GameObject[] = [
       bodyGfx,
       leftEye,
       rightEye,
@@ -394,7 +404,24 @@ export class BattleScene extends Phaser.Scene {
       hpBg,
       hpFill,
       this.enemyHpLabel,
-    ]);
+    ];
+
+    // Boss badge
+    if (isBoss) {
+      const bossBadge = this.add
+        .text(0, -(radius + 40), "BOSS", {
+          fontSize: "12px",
+          fontFamily: "sans-serif",
+          fontStyle: "bold",
+          color: "#ffd700",
+          stroke: "#000000",
+          strokeThickness: 2,
+        })
+        .setOrigin(0.5);
+      containerChildren.push(bossBadge);
+    }
+
+    this.enemyContainer = this.add.container(x, y, containerChildren);
     this.enemyHpBar = { bg: hpBg, fill: hpFill };
 
     // Idle breathing animation
@@ -927,8 +954,9 @@ export class BattleScene extends Phaser.Scene {
       delay: 1200,
     });
 
-    // Roll for loot
-    const loot = rollLoot();
+    // Roll for loot (guaranteed from bosses)
+    const isBoss = this.battleState.enemy.isBoss ?? false;
+    const loot = isBoss ? guaranteedLoot() : rollLoot();
     if (loot) {
       const boostedHeroes = applyLoot(this.battleState.heroes, loot);
       this.registry.set("partyHeroes", boostedHeroes);
@@ -1060,7 +1088,46 @@ export class BattleScene extends Phaser.Scene {
     _height: number,
     delay: number,
   ): void {
-    const cardY = 330;
+    const cardY = 340;
+
+    // "LOOT FOUND!" announcement
+    const lootBanner = this.add
+      .text(width / 2, cardY - 65, "LOOT FOUND!", {
+        fontSize: "18px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#ffd700",
+        stroke: "#000000",
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(33)
+      .setAlpha(0)
+      .setScale(0.5);
+
+    // Gold particles burst
+    this.time.delayedCall(delay, () => {
+      // Scale-in banner
+      this.tweens.add({
+        targets: lootBanner,
+        alpha: 1, scaleX: 1, scaleY: 1,
+        duration: 400,
+        ease: "Back.easeOut",
+      });
+      // Particles
+      for (let i = 0; i < 10; i++) {
+        const px = width / 2 + Phaser.Math.Between(-100, 100);
+        const py = cardY - 20 + Phaser.Math.Between(-30, 30);
+        const p = this.add.circle(px, py, 3, 0xffd700, 1).setDepth(34);
+        this.tweens.add({
+          targets: p,
+          x: px + Phaser.Math.Between(-40, 40),
+          y: py + Phaser.Math.Between(-50, -10),
+          alpha: 0, scale: 0, duration: 600, delay: i * 40,
+          onComplete: () => p.destroy(),
+        });
+      }
+    });
 
     // Card background
     const cardBg = this.add

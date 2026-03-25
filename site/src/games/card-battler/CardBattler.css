@@ -265,6 +265,32 @@
 .card-ability {
   font-size: 0.55rem;
   color: var(--color-text-dim);
+  cursor: help;
+}
+
+/* --- Rarity Badge --- */
+
+.card-rarity-badge {
+  font-size: 0.45rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: right;
+  padding: 0 0.15rem;
+  margin-bottom: 0.1rem;
+}
+
+.card-rarity-badge[data-rarity="bronze"] {
+  color: #cd7f32;
+}
+
+.card-rarity-badge[data-rarity="silver"] {
+  color: #c0c0c0;
+}
+
+.card-rarity-badge[data-rarity="gold"] {
+  color: var(--color-gold, #ffc107);
+  text-shadow: 0 0 4px rgba(255, 193, 7, 0.4);
 }
 
 /* --- Arena (played cards area) --- */
@@ -390,10 +416,27 @@
   color: var(--color-text-dim);
 }
 
+.card-clash-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+}
+
+.clash-detail-win {
+  color: #43a047;
+}
+
+.clash-detail-lose {
+  color: #e53935;
+}
+
 .card-ability-text {
   font-size: 0.75rem;
   color: var(--color-primary);
   margin-top: 0.15rem;
+  font-weight: 600;
 }
 
 /* --- Power Display in Arena --- */

@@ -19,7 +19,9 @@ import {
   calculateStars,
   getAbilityEmoji,
   getAbilityName,
+  getAbilityDescription,
   getDifficultyBorder,
+  getDifficultyLabel,
 } from "./logic/card-logic";
 import type { Card, BattleState, ClashResult } from "./logic/card-logic";
 import "./CardBattler.css";
@@ -78,11 +80,14 @@ function CardVisual({
           : undefined
       }
     >
+      <div className="card-rarity-badge" data-rarity={getDifficultyBorder(card.difficulty)}>
+        {getDifficultyLabel(card.difficulty)}
+      </div>
       <div className="card-name">{card.name}</div>
       <div className="card-description">{card.description}</div>
       <div className="card-stats">
         <span className="card-power">{"\u2694\uFE0F"} {card.power}</span>
-        <span className="card-ability">
+        <span className="card-ability" title={getAbilityDescription(card.ability)}>
           {getAbilityEmoji(card.ability)} {getAbilityName(card.ability)}
         </span>
       </div>
@@ -682,6 +687,18 @@ export function CardBattler() {
               <div className="card-clash-damage">
                 {clashResult.playerEffectivePower} vs{" "}
                 {clashResult.aiEffectivePower}
+              </div>
+              <div className="card-clash-detail">
+                {clashResult.aiDamage > 0 && (
+                  <span className="clash-detail-win">
+                    {"\u2694\uFE0F"} You dealt {clashResult.aiDamage} damage!
+                  </span>
+                )}
+                {clashResult.playerDamage > 0 && (
+                  <span className="clash-detail-lose">
+                    {"\u{1F4A5}"} You took {clashResult.playerDamage} damage!
+                  </span>
+                )}
               </div>
               {clashResult.abilityText && (
                 <div className="card-ability-text">
