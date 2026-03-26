@@ -143,8 +143,8 @@ export class MapScene extends Phaser.Scene {
     const count = scenes.length;
     if (count === 0) return [];
 
-    const marginTop = 100;
-    const marginBottom = 100;
+    const marginTop = 110;
+    const marginBottom = 150;
     const usableHeight = height - marginTop - marginBottom;
     const yStep = count > 1 ? usableHeight / (count - 1) : 0;
 
@@ -195,7 +195,7 @@ export class MapScene extends Phaser.Scene {
 
   private createNode(node: NodeInfo): Phaser.GameObjects.Container {
     const cleared = this.locationsCleared[node.index];
-    const radius = 32;
+    const radius = 28;
 
     const elements: Phaser.GameObjects.GameObject[] = [];
 
@@ -247,13 +247,13 @@ export class MapScene extends Phaser.Scene {
     // Title label below
     const titleColor = cleared ? "#7a6a55" : "#e8d5a8";
     const titleText = this.add
-      .text(0, radius + 14, node.scene.title, {
-        fontSize: "12px",
+      .text(0, radius + 10, node.scene.title, {
+        fontSize: "11px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
         color: titleColor,
         align: "center",
-        wordWrap: { width: 130 },
+        wordWrap: { width: 120 },
       })
       .setOrigin(0.5, 0);
     elements.push(titleText);
@@ -465,10 +465,11 @@ export class MapScene extends Phaser.Scene {
   private drawPartyStatusBar(width: number, height: number): void {
     const barY = height - 50;
 
-    // Background bar
+    // Background bar — depth 5 so it renders above map nodes
     this.add
-      .rectangle(width / 2, barY + 8, width - 16, 40, 0x1a1108, 0.7)
-      .setStrokeStyle(1, 0x5a4430, 0.5);
+      .rectangle(width / 2, barY + 8, width - 16, 40, 0x1a1108, 0.85)
+      .setStrokeStyle(1, 0x5a4430, 0.5)
+      .setDepth(5);
 
     // Party HP
     const partyHp = (this.registry.get("partyHp") as number) ?? 0;
@@ -482,12 +483,13 @@ export class MapScene extends Phaser.Scene {
         fontStyle: "bold",
         color: "#d4a847",
       })
-      .setOrigin(0, 0);
+      .setOrigin(0, 0)
+      .setDepth(5);
 
     // Mini HP bar
     const hpBarW = 80;
     const hpBarH = 8;
-    this.add.rectangle(20 + 24 + hpBarW / 2, barY + 8, hpBarW, hpBarH, 0x3d2e1a);
+    this.add.rectangle(20 + 24 + hpBarW / 2, barY + 8, hpBarW, hpBarH, 0x3d2e1a).setDepth(5);
     const hpRatio = Math.max(0, partyHp / maxPartyHp);
     this.add.rectangle(
       20 + 24 + (hpBarW * hpRatio) / 2,
@@ -495,14 +497,15 @@ export class MapScene extends Phaser.Scene {
       hpBarW * hpRatio,
       hpBarH,
       0x4caf50,
-    );
+    ).setDepth(5);
     this.add
       .text(20 + 24 + hpBarW + 6, barY + 8, `${partyHp}/${maxPartyHp}`, {
         fontSize: "9px",
         fontFamily: "sans-serif",
         color: "#b8943e",
       })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setDepth(5);
 
     // Collected loot icons on the right side
     const collectedLoot =
@@ -513,7 +516,8 @@ export class MapScene extends Phaser.Scene {
       // Small loot badge
       this.add
         .circle(lx, barY + 8, 10, 0xd4a847, 0.4)
-        .setStrokeStyle(1, 0xffd700, 0.6);
+        .setStrokeStyle(1, 0xffd700, 0.6)
+        .setDepth(5);
       this.add
         .text(lx, barY + 8, loot.name.charAt(0), {
           fontSize: "10px",
@@ -521,7 +525,8 @@ export class MapScene extends Phaser.Scene {
           fontStyle: "bold",
           color: "#ffd700",
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setDepth(5);
     });
   }
 
