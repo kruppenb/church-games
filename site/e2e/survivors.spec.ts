@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Survivors", () => {
   test.beforeEach(async ({ page }) => {
+    // Disable entrance animations on landing page (for back-navigation tests)
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/#/games/survivors");
   });
 

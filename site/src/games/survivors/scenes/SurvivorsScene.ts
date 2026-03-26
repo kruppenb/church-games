@@ -136,6 +136,12 @@ export class SurvivorsScene extends Phaser.Scene {
   private isShowingOverlay = false;
   private isComplete = false;
 
+  // Kill combo tracking
+  private comboCount = 0;
+  private comboTimer: Phaser.Time.TimerEvent | null = null;
+  private comboText: Phaser.GameObjects.Text | null = null;
+  private bestCombo = 0;
+
   constructor() {
     super({ key: "SurvivorsScene" });
   }
@@ -162,6 +168,10 @@ export class SurvivorsScene extends Phaser.Scene {
     this.holyWaterTimer = null;
     this.axeTimer = null;
     this.beamTimer = null;
+    this.comboCount = 0;
+    this.comboTimer = null;
+    this.comboText = null;
+    this.bestCombo = 0;
     this.orbitOrbs = [];
     this.nextQuestionAt = QUESTION_INTERVAL_SEC;
 
@@ -299,6 +309,10 @@ export class SurvivorsScene extends Phaser.Scene {
         const eliteMult = (go.getData("speedMult") as number) ?? 1;
         const speed = ENEMY_BASE_SPEED * speedScale * eliteMult;
         body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+        // Keep elite glow following
+        const glow = go.getData("glow") as Phaser.GameObjects.Arc | undefined;
+        if (glow && glow.active) { glow.x = go.x; glow.y = go.y; }
       }
     }
   }
@@ -434,7 +448,10 @@ export class SurvivorsScene extends Phaser.Scene {
       });
       return false;
     }
-    // Enemy dies
+    // Enemy dies — destroy glow if elite
+    const glow = enemy.getData("glow") as Phaser.GameObjects.Arc | undefined;
+    if (glow && glow.active) glow.destroy();
+
     this.spawnDeathParticles(enemy.x, enemy.y);
     if (isElite) {
       this.state = defeatElite(this.state);
@@ -448,8 +465,61 @@ export class SurvivorsScene extends Phaser.Scene {
       }
     }
     enemy.destroy();
+    this.trackCombo();
     this.updateHUD();
     return true;
+  }
+
+  /** Track rapid kills for combo counter. */
+  private trackCombo(): void {
+    this.comboCount++;
+    if (this.comboCount > this.bestCombo) this.bestCombo = this.comboCount;
+
+    // Reset combo timer — combo breaks after 2s of no kills
+    if (this.comboTimer) this.comboTimer.remove();
+    this.comboTimer = this.time.delayedCall(2000, () => {
+      this.comboCount = 0;
+      this.updateComboDisplay();
+    });
+
+    this.updateComboDisplay();
+  }
+
+  /** Show/update/hide the combo counter in the top-right corner. */
+  private updateComboDisplay(): void {
+    if (this.comboCount < 3) {
+      if (this.comboText) {
+        this.comboText.destroy();
+        this.comboText = null;
+      }
+      return;
+    }
+
+    const { width } = this.scale;
+    const label = `${this.comboCount}x`;
+    const color = this.comboCount >= 10 ? "#ff2d78" : this.comboCount >= 5 ? "#ffd700" : "#00d4ff";
+
+    if (!this.comboText) {
+      this.comboText = this.add.text(width - 16, 70, label, {
+        fontSize: "20px",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+        color,
+        stroke: "#000000",
+        strokeThickness: 3,
+      }).setOrigin(1, 0).setDepth(80);
+    } else {
+      this.comboText.setText(label);
+      this.comboText.setColor(color);
+    }
+
+    // Pop animation on each increment
+    this.tweens.add({
+      targets: this.comboText,
+      scaleX: 1.3, scaleY: 1.3,
+      duration: 100,
+      yoyo: true,
+    });
   }
 
   private onProjectileHitEnemy(
@@ -474,6 +544,8 @@ export class SurvivorsScene extends Phaser.Scene {
     enemy: Phaser.Types.Physics.Arcade.GameObjectWithBody,
   ): void {
     if (!(enemy as Phaser.GameObjects.Arc).active) return;
+    const enemyGlow = (enemy as Phaser.GameObjects.Arc).getData("glow") as Phaser.GameObjects.Arc | undefined;
+    if (enemyGlow && enemyGlow.active) enemyGlow.destroy();
     enemy.destroy();
     this.state = takeDamage(this.state, 1);
     this.updateHUD();
@@ -507,15 +579,32 @@ export class SurvivorsScene extends Phaser.Scene {
       default: ex = -20; ey = Phaser.Math.Between(0, height); break;
     }
 
+    // Outer glow aura for elite
+    const eliteGlow = this.add.circle(ex, ey, ELITE_RADIUS + 10, 0xffd700, 0.15);
+    eliteGlow.setDepth(9);
+    this.tweens.add({
+      targets: eliteGlow,
+      scaleX: 1.4, scaleY: 1.4, alpha: 0,
+      duration: 1200, repeat: -1, yoyo: true, ease: "Sine.easeInOut",
+    });
+
     const elite = this.add.circle(ex, ey, ELITE_RADIUS, ELITE_COLOR);
     elite.setStrokeStyle(3, 0xffffff);
     elite.setData("hp", ELITE_HP);
     elite.setData("isElite", true);
     elite.setData("origColor", ELITE_COLOR);
     elite.setData("speedMult", ELITE_SPEED_MULT);
+    elite.setData("glow", eliteGlow);
     this.physics.add.existing(elite);
     (elite.body as Phaser.Physics.Arcade.Body).setCircle(ELITE_RADIUS);
     this.enemies.add(elite);
+
+    // Pulsing size animation
+    this.tweens.add({
+      targets: elite,
+      scaleX: 1.15, scaleY: 1.15,
+      duration: 800, repeat: -1, yoyo: true, ease: "Sine.easeInOut",
+    });
 
     // Announce
     const { width: w, height: h } = this.scale;
@@ -687,18 +776,18 @@ export class SurvivorsScene extends Phaser.Scene {
 
     const panelW = Math.min(width - 40, 600);
     const panelH = 320;
-    const panelBg = this.add.rectangle(width / 2, height / 2, panelW, panelH, 0xffffff, 0.95);
-    panelBg.setStrokeStyle(3, 0x333333);
+    const panelBg = this.add.rectangle(width / 2, height / 2, panelW, panelH, 0x111128, 0.95);
+    panelBg.setStrokeStyle(3, 0x00d4ff);
     container.add(panelBg);
 
     // Wave indicator
     const waveLabel = this.add.text(width / 2, height / 2 - panelH / 2 + 18, `Wave ${this.waveNumber}`, {
-      fontSize: "13px", fontFamily: "sans-serif", color: "#999999", fontStyle: "bold",
+      fontSize: "13px", fontFamily: "sans-serif", color: "#00d4ff", fontStyle: "bold",
     }).setOrigin(0.5, 0);
     container.add(waveLabel);
 
     const qText = this.add.text(width / 2, height / 2 - panelH / 2 + 42, question.text, {
-      fontSize: "18px", fontFamily: "sans-serif", color: "#333333", fontStyle: "bold",
+      fontSize: "18px", fontFamily: "sans-serif", color: "#f0f0ff", fontStyle: "bold",
       wordWrap: { width: panelW - 60 }, align: "center",
     }).setOrigin(0.5, 0);
     container.add(qText);
@@ -740,7 +829,8 @@ export class SurvivorsScene extends Phaser.Scene {
 
     if (correct) {
       const feedback = this.add.text(width / 2, height / 2 + 130, "Correct!", {
-        fontSize: "28px", fontFamily: "sans-serif", color: "#43a047", fontStyle: "bold",
+        fontSize: "28px", fontFamily: "sans-serif", color: "#00ff88", fontStyle: "bold",
+        stroke: "#000000", strokeThickness: 2,
       }).setOrigin(0.5).setDepth(201);
       container.add(feedback);
 
@@ -751,7 +841,8 @@ export class SurvivorsScene extends Phaser.Scene {
       });
     } else {
       const feedback = this.add.text(width / 2, height / 2 + 130, "Wrong!", {
-        fontSize: "28px", fontFamily: "sans-serif", color: "#e53935", fontStyle: "bold",
+        fontSize: "28px", fontFamily: "sans-serif", color: "#ff4757", fontStyle: "bold",
+        stroke: "#000000", strokeThickness: 2,
       }).setOrigin(0.5).setDepth(201);
       container.add(feedback);
 
@@ -987,10 +1078,23 @@ export class SurvivorsScene extends Phaser.Scene {
   private passiveFireRing(level: number): void {
     if (this.isShowingOverlay || this.isComplete) return;
     const radius = FIRE_RING_RADIUS[level];
+    const isMax = level >= MAX_WEAPON_LEVEL;
 
-    // Visual ring
-    const ring = this.add.circle(this.player.x, this.player.y, radius, 0xff5722, 0.15);
-    ring.setStrokeStyle(3, 0xff5722);
+    // Visual ring — enhanced at max level
+    const ring = this.add.circle(this.player.x, this.player.y, radius, isMax ? 0xff3300 : 0xff5722, isMax ? 0.25 : 0.15);
+    ring.setStrokeStyle(isMax ? 5 : 3, isMax ? 0xffcc00 : 0xff5722);
+    ring.setDepth(15);
+
+    // Max level: second shockwave ring
+    if (isMax) {
+      const ring2 = this.add.circle(this.player.x, this.player.y, radius * 0.6, 0xff8800, 0.12);
+      ring2.setStrokeStyle(2, 0xff5500);
+      ring2.setDepth(14);
+      this.tweens.add({
+        targets: ring2, alpha: 0, scale: 2, duration: 600,
+        onComplete: () => ring2.destroy(),
+      });
+    }
 
     const toDestroy: Phaser.GameObjects.Arc[] = [];
     for (const enemy of this.enemies.getChildren()) {
@@ -1024,8 +1128,20 @@ export class SurvivorsScene extends Phaser.Scene {
     sorted.sort((a, b) => a.dist - b.dist);
     const targets = sorted.slice(0, maxTargets);
 
+    const isMaxLightning = level >= MAX_WEAPON_LEVEL;
     const gfx = this.add.graphics();
-    gfx.lineStyle(2, 0xffee58, 1);
+
+    // Max level: draw glow layer first
+    if (isMaxLightning) {
+      gfx.lineStyle(8, 0xffee58, 0.3);
+      let gx = this.player.x, gy = this.player.y;
+      for (const { go } of targets) {
+        gfx.lineBetween(gx, gy, go.x, go.y);
+        gx = go.x; gy = go.y;
+      }
+    }
+
+    gfx.lineStyle(isMaxLightning ? 4 : 2, 0xffee58, 1);
     let prevX = this.player.x, prevY = this.player.y;
     for (const { go } of targets) {
       gfx.lineBetween(prevX, prevY, go.x, go.y);
@@ -1035,7 +1151,7 @@ export class SurvivorsScene extends Phaser.Scene {
     this.updateHUD();
 
     this.tweens.add({
-      targets: gfx, alpha: 0, duration: 400, onComplete: () => gfx.destroy(),
+      targets: gfx, alpha: 0, duration: isMaxLightning ? 600 : 400, onComplete: () => gfx.destroy(),
     });
   }
 
@@ -1067,9 +1183,11 @@ export class SurvivorsScene extends Phaser.Scene {
     if (level === 0) return;
 
     const count = ORBIT_COUNT[level];
+    const isMaxOrbit = level >= MAX_WEAPON_LEVEL;
     for (let i = 0; i < count; i++) {
-      const orb = this.add.circle(this.player.x, this.player.y, ORBIT_ORB_SIZE, 0xba68c8);
-      orb.setStrokeStyle(2, 0x7b1fa2);
+      const orbSize = isMaxOrbit ? ORBIT_ORB_SIZE + 3 : ORBIT_ORB_SIZE;
+      const orb = this.add.circle(this.player.x, this.player.y, orbSize, isMaxOrbit ? 0xce93d8 : 0xba68c8);
+      orb.setStrokeStyle(isMaxOrbit ? 3 : 2, isMaxOrbit ? 0xaa00ff : 0x7b1fa2);
       orb.setDepth(50);
       this.orbitOrbs.push(orb);
     }
