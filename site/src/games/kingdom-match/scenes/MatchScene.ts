@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { LessonConfig, Question } from "@/types/lesson";
 import { QuestionPool } from "@/lib/question-pool";
+import { saveScore } from "@/lib/score-store";
 import {
   TileType,
   SpecialType,
@@ -1408,6 +1409,8 @@ export class MatchScene extends Phaser.Scene {
   // ─── All Levels Complete ───────────────────────────
 
   private showAllComplete(): void {
+    const overallStars = this.totalStars >= 20 ? 3 : this.totalStars >= 10 ? 2 : 1;
+    saveScore("kingdom-match", overallStars);
     this.sceneState = "all-complete";
     this.overlay.removeAll(true);
 

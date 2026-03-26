@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Landing Page", () => {
   test.beforeEach(async ({ page }) => {
+    // Disable entrance animations to avoid opacity:0 blocking clicks
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
   });
 
@@ -80,6 +82,7 @@ test.describe("Landing Page Mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("hero cards stack vertically on mobile", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     await expect(page.locator(".landing-lesson-title")).toBeVisible({ timeout: 5000 });
 

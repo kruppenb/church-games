@@ -2,6 +2,9 @@ import { useState, useMemo, useCallback } from "react";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
+import { saveScore } from "@/lib/score-store";
+import { useComboStreak } from "@/hooks/useComboStreak";
+import { ComboEffects } from "@/components/shared/ComboEffects";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
 import type { Question } from "@/types/lesson";
 
@@ -109,6 +112,7 @@ export function Jeopardy() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [feedbackCorrect, setFeedbackCorrect] = useState(false);
   const [feedbackPoints, setFeedbackPoints] = useState(0);
+  const { streak, streakJustBroke, recordAnswer, reset: resetStreak } = useComboStreak();
 
   // Filter questions based on difficulty setting
   const filteredQuestions = useMemo(() => {
@@ -137,6 +141,7 @@ export function Jeopardy() {
     setCurrentPlayer(0);
     setActiveCell(null);
     setSelectedIndex(null);
+    resetStreak();
     setGameState("board");
   }
 
@@ -156,8 +161,13 @@ export function Jeopardy() {
       const correct = optionIndex === cell.question.correctIndex;
       const points = cell.isDailyDouble ? cell.value * 2 : cell.value;
 
+      const { newStreak } = recordAnswer(correct);
+
       if (correct) {
-        playCorrect();
+        // When streak >= 2, the hook already played the streak tone
+        if (newStreak < 2) {
+          playCorrect();
+        }
         setScores((prev) => {
           const updated: [number, number] = [...prev];
           updated[currentPlayer] += points;
@@ -183,7 +193,7 @@ export function Jeopardy() {
         setGameState("feedback");
       }, 800);
     },
-    [activeCell, selectedIndex, cells, currentPlayer],
+    [activeCell, selectedIndex, cells, currentPlayer, recordAnswer],
   );
 
   const handleFeedbackDismiss = useCallback(() => {
@@ -196,10 +206,11 @@ export function Jeopardy() {
       setSelectedIndex(null);
       if (playerCount === 2) {
         setCurrentPlayer((prev) => (prev === 0 ? 1 : 0));
+        resetStreak();
       }
       setGameState("board");
     }
-  }, [cells, playerCount]);
+  }, [cells, playerCount, resetStreak]);
 
   // --- Loading / Error states ---
   if (loading) {
@@ -267,6 +278,7 @@ export function Jeopardy() {
   if (gameState === "complete") {
     const totalScore = scores[0] + scores[1];
     const stars = totalScore >= 3000 ? 3 : totalScore >= 2000 ? 2 : 1;
+    saveScore("jeopardy", stars);
     const winner =
       playerCount === 2
         ? scores[0] > scores[1]
@@ -463,6 +475,8 @@ export function Jeopardy() {
           </div>
         </div>
       )}
+
+      <ComboEffects streak={streak} streakJustBroke={streakJustBroke} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { LessonConfig, Question } from "@/types/lesson";
 import { filterByDifficulty } from "@/lib/difficulty";
 import { QuestionPool } from "@/lib/question-pool";
+import { saveScore } from "@/lib/score-store";
 import {
   createInitialState,
   answerQuestion,
@@ -1347,6 +1348,7 @@ export class SurvivorsScene extends Phaser.Scene {
   private showCompletion(victory: boolean): void {
     const { width, height } = this.scale;
     const stars = calculateStars(this.state);
+    saveScore("survivors", stars);
     const container = this.add.container(0, 0).setDepth(300);
 
     container.add(this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.6));

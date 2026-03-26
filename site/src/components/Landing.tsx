@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { DifficultyPicker } from "@/components/DifficultyPicker";
+import { loadAllScores, resetAllScores, type ScoreMap } from "@/lib/score-store";
 
 interface GameCardInfo {
   id: string;
@@ -90,29 +92,63 @@ const GAMES: GameCardInfo[] = [
 const QUIZ_ID = "quiz-showdown";
 const ROTATABLE_IDS = GAMES.filter((g) => g.id !== QUIZ_ID).map((g) => g.id);
 
+function StarDisplay({ stars }: { stars: number }) {
+  if (stars <= 0) return null;
+  return (
+    <div className="game-card-stars">
+      {[1, 2, 3].map((s) => (
+        <span
+          key={s}
+          className={
+            s <= stars
+              ? "game-card-star-earned"
+              : "game-card-star-empty"
+          }
+        >
+          &#9733;
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function Landing() {
   const { lesson, loading, error } = useLesson();
   const { difficulty } = useDifficulty();
+  const [scores, setScores] = useState<ScoreMap>(() => loadAllScores());
+
+  const [isReturnVisit] = useState(() => {
+    try {
+      const key = "churchGamesVisited";
+      const visited = sessionStorage.getItem(key);
+      sessionStorage.setItem(key, "1");
+      return !!visited;
+    } catch {
+      return false;
+    }
+  });
 
   const rawSpotlight = lesson?.meta.spotlightGame ?? "";
   const spotlightId = ROTATABLE_IDS.includes(rawSpotlight)
     ? rawSpotlight
     : ROTATABLE_IDS[0];
 
-  // Hero cards: Quiz + featured game
   const heroGames = GAMES.filter(
     (g) => g.id === QUIZ_ID || g.id === spotlightId,
   );
 
-  // More Games: everything else
   const moreGames = GAMES.filter(
     (g) => g.id !== QUIZ_ID && g.id !== spotlightId,
   );
 
+  const hasAnyProgress = Object.keys(scores).length > 0;
+
   return (
     <div className="landing">
       <header className="landing-header">
-        <h1 className="landing-title">Church Games</h1>
+        <h1 className={isReturnVisit ? "landing-title" : "landing-title landing-title-entrance"}>
+          Church Games
+        </h1>
         {loading && <p className="landing-subtitle">Loading lesson...</p>}
         {error && (
           <p className="landing-subtitle landing-error">
@@ -121,8 +157,16 @@ export function Landing() {
         )}
         {lesson && (
           <>
-            <h2 className="landing-lesson-title">{lesson.meta.title}</h2>
-            <p className="landing-verse">
+            <h2
+              className={isReturnVisit ? "landing-lesson-title" : "landing-lesson-title landing-subtitle-entrance"}
+              style={isReturnVisit ? undefined : { "--entrance-delay": "400ms" } as React.CSSProperties}
+            >
+              {lesson.meta.title}
+            </h2>
+            <p
+              className={isReturnVisit ? "landing-verse" : "landing-verse landing-subtitle-entrance"}
+              style={isReturnVisit ? undefined : { "--entrance-delay": "550ms" } as React.CSSProperties}
+            >
               <span className="landing-verse-ref">
                 {lesson.meta.verseReference}
               </span>
@@ -137,60 +181,99 @@ export function Landing() {
 
       {/* Hero Section: 2 big cards */}
       <section className="hero-section">
-        {heroGames.map((card) => {
+        {heroGames.map((card, index) => {
           const isSpotlight = card.id === spotlightId;
+          const record = scores[card.id];
 
           return (
-            <a
+            <div
               key={card.id}
-              href={`#${card.route}`}
-              className="game-card game-card-active game-card-hero"
+              className={isReturnVisit ? "" : "card-entrance card-entrance-hero"}
+              style={isReturnVisit ? undefined : {
+                "--entrance-delay": `${300 + index * 100}ms`,
+              } as React.CSSProperties}
             >
-              <div
-                className="game-card-color-bar"
-                style={{
-                  backgroundColor: card.color,
-                  boxShadow: `0 0 20px ${card.color}40`,
-                }}
-              />
-              {isSpotlight && (
-                <span className="game-card-badge">This Week</span>
-              )}
-              <span className="game-card-icon" aria-hidden="true">
-                {card.icon}
-              </span>
-              <h3 className="game-card-name">{card.name}</h3>
-              <p className="game-card-desc">{card.description}</p>
-            </a>
+              <a
+                href={`#${card.route}`}
+                className="game-card game-card-active game-card-hero"
+              >
+                <div
+                  className="game-card-color-bar"
+                  style={{
+                    backgroundColor: card.color,
+                    boxShadow: `0 0 20px ${card.color}40`,
+                  }}
+                />
+                {isSpotlight && (
+                  <span className="game-card-badge">This Week</span>
+                )}
+                <span className="game-card-icon" aria-hidden="true">
+                  {card.icon}
+                </span>
+                <h3 className="game-card-name">{card.name}</h3>
+                <StarDisplay stars={record?.bestStars ?? 0} />
+                <p className="game-card-desc">{card.description}</p>
+              </a>
+            </div>
           );
         })}
       </section>
 
       {/* More Games Section: smaller cards in a row */}
       <section className="more-games-section">
-        <h3 className="more-games-title">More Games</h3>
+        <h3
+          className={isReturnVisit ? "more-games-title" : "more-games-title more-games-title-entrance"}
+          style={isReturnVisit ? undefined : { "--entrance-delay": "650ms" } as React.CSSProperties}
+        >
+          More Games
+        </h3>
         <div className="more-games-row">
-          {moreGames.map((card) => (
-            <a
-              key={card.id}
-              href={`#${card.route}`}
-              className="game-card game-card-active game-card-small"
-            >
+          {moreGames.map((card, index) => {
+            const record = scores[card.id];
+            return (
               <div
-                className="game-card-color-bar"
-                style={{
-                  backgroundColor: card.color,
-                  boxShadow: `0 0 12px ${card.color}40`,
-                }}
-              />
-              <span className="game-card-icon" aria-hidden="true">
-                {card.icon}
-              </span>
-              <h3 className="game-card-name">{card.name}</h3>
-            </a>
-          ))}
+                key={card.id}
+                className={isReturnVisit ? "" : "card-entrance"}
+                style={isReturnVisit ? undefined : {
+                  "--entrance-delay": `${700 + index * 80}ms`,
+                } as React.CSSProperties}
+              >
+                <a
+                  href={`#${card.route}`}
+                  className="game-card game-card-active game-card-small"
+                >
+                  <div
+                    className="game-card-color-bar"
+                    style={{
+                      backgroundColor: card.color,
+                      boxShadow: `0 0 12px ${card.color}40`,
+                    }}
+                  />
+                  <span className="game-card-icon" aria-hidden="true">
+                    {card.icon}
+                  </span>
+                  <h3 className="game-card-name">{card.name}</h3>
+                  <StarDisplay stars={record?.bestStars ?? 0} />
+                </a>
+              </div>
+            );
+          })}
         </div>
       </section>
+
+      {hasAnyProgress && (
+        <div className="landing-reset">
+          <button
+            className="landing-reset-btn"
+            onClick={() => {
+              resetAllScores();
+              setScores({});
+            }}
+          >
+            Reset Progress
+          </button>
+        </div>
+      )}
     </div>
   );
 }

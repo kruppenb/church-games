@@ -5,6 +5,7 @@ import { Landing } from "./components/Landing";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { TeacherMode } from "./components/TeacherMode";
 import { MuteButton } from "./components/shared/MuteButton";
+import { ParticleBackground } from "./components/shared/ParticleBackground";
 
 const QuizShowdown = lazy(() => import("./games/quiz-showdown"));
 const WordScramble = lazy(() => import("./games/word-scramble"));
@@ -18,8 +19,10 @@ const KingdomMatch = lazy(() => import("./games/kingdom-match"));
 
 export function App() {
   return (
-    <DifficultyProvider>
-      <HashRouter>
+    <>
+      <ParticleBackground />
+      <DifficultyProvider>
+        <HashRouter>
         <Suspense fallback={<div className="loading">Loading...</div>}>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -101,5 +104,6 @@ export function App() {
         <MuteButton />
       </HashRouter>
     </DifficultyProvider>
+    </>
   );
 }

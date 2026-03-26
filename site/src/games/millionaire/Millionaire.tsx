@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
+import { saveScore } from "@/lib/score-store";
 import { Celebration } from "@/components/shared/Celebration";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
 import { Timer } from "@/components/shared/Timer";
@@ -510,6 +511,7 @@ export function Millionaire() {
   // -----------------------------------------------------------------------
   if (gameState === "complete" && state) {
     const stars = calculateStars(state);
+    saveScore("millionaire", stars);
     const completedAll = state.currentLevel >= state.totalLevels;
     const title = completedAll
       ? "Temple Complete!"

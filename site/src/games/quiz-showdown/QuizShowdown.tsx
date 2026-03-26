@@ -3,9 +3,12 @@ import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { QuestionPool } from "@/lib/question-pool";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
+import { saveScore } from "@/lib/score-store";
+import { useComboStreak } from "@/hooks/useComboStreak";
 import { Timer } from "@/components/shared/Timer";
 import { Scoreboard } from "@/components/shared/Scoreboard";
 import { AnswerFeedback } from "@/components/shared/AnswerFeedback";
+import { ComboEffects } from "@/components/shared/ComboEffects";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
 import type { Question } from "@/types/lesson";
 
@@ -19,7 +22,7 @@ export function QuizShowdown() {
 
   const [gameState, setGameState] = useState<GameState>("intro");
   const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
+  const { streak, streakJustBroke, recordAnswer, reset: resetStreak } = useComboStreak();
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(
     null,
   );
@@ -90,7 +93,7 @@ export function QuizShowdown() {
 
   function handleStart() {
     setScore(0);
-    setStreak(0);
+    resetStreak();
     setQuestionsAnswered(0);
     setTotalCorrect(0);
     if (pool) pool.reset();
@@ -100,7 +103,7 @@ export function QuizShowdown() {
   function handlePlayAgain() {
     setGameState("intro");
     setScore(0);
-    setStreak(0);
+    resetStreak();
     setQuestionsAnswered(0);
     setTotalCorrect(0);
   }
@@ -118,10 +121,13 @@ export function QuizShowdown() {
       setWasCorrect(correct);
       setQuestionsAnswered((prev) => prev + 1);
 
+      const { newStreak } = recordAnswer(correct);
+
       if (correct) {
-        playCorrect();
-        const newStreak = streak + 1;
-        setStreak(newStreak);
+        // When streak >= 2, the hook already played the streak tone
+        if (newStreak < 2) {
+          playCorrect();
+        }
         setTotalCorrect((prev) => prev + 1);
 
         // Scoring: 100 base + time bonus + streak bonus
@@ -130,7 +136,6 @@ export function QuizShowdown() {
         setScore((prev) => prev + 100 + timeBonus + streakBonus);
       } else {
         playWrong();
-        setStreak(0);
       }
 
       setGameState("feedback");
@@ -139,9 +144,9 @@ export function QuizShowdown() {
       gameState,
       selectedIndex,
       currentQuestion,
-      streak,
       timerSecondsLeft,
       stopTimerTracking,
+      recordAnswer,
     ],
   );
 
@@ -157,7 +162,7 @@ export function QuizShowdown() {
     setTimerPaused(true);
     stopTimerTracking();
     setWasCorrect(false);
-    setStreak(0);
+    recordAnswer(false);
     setQuestionsAnswered((prev) => prev + 1);
     playWrong();
     setGameState("feedback");
@@ -251,6 +256,7 @@ export function QuizShowdown() {
         ? Math.round((totalCorrect / questionsAnswered) * 100)
         : 0;
     const stars = percentage >= 90 ? 3 : percentage >= 60 ? 2 : 1;
+    saveScore("quiz-showdown", stars);
 
     return (
       <div className={"quiz-container"}>
@@ -342,6 +348,8 @@ export function QuizShowdown() {
           </div>
         )
       )}
+
+      <ComboEffects streak={streak} streakJustBroke={streakJustBroke} />
     </div>
   );
 }

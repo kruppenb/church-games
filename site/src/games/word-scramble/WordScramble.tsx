@@ -3,6 +3,7 @@ import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { filterByDifficulty } from "@/lib/difficulty";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
+import { saveScore } from "@/lib/score-store";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
 import type { KeyWord } from "@/types/lesson";
 
@@ -326,6 +327,7 @@ export function WordScramble() {
         ? Math.round((wordsFirstAttempt / totalWords) * 100)
         : 0;
     const stars = percentage >= 90 ? 3 : percentage >= 60 ? 2 : 1;
+    saveScore("word-scramble", stars);
 
     return (
       <div className={"scramble-container"}>

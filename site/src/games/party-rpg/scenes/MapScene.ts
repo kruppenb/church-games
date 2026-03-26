@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { LessonConfig, StoryScene } from "@/types/lesson";
+import { saveScore } from "@/lib/score-store";
 import {
   createEnemy,
   createBossEnemy,
@@ -527,6 +528,7 @@ export class MapScene extends Phaser.Scene {
   // ---------- Quest Complete ----------
 
   private showQuestComplete(): void {
+    saveScore("promised-land", 3);
     const { width, height } = this.scale;
     const cy = height / 2;
 

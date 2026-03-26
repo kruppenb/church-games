@@ -282,7 +282,6 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: var(--space-lg);
   width: 100%;
-  animation: fadeInUp 0.6s ease-out;
   margin-bottom: var(--space-xl);
   flex-wrap: wrap;
 }
@@ -296,7 +295,6 @@ h1, h2, h3, h4, h5, h6 {
 /* --- More Games Section --- */
 .more-games-section {
   width: 100%;
-  animation: fadeInUp 0.7s ease-out;
 }
 
 .more-games-title {
@@ -344,7 +342,7 @@ h1, h2, h3, h4, h5, h6 {
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .game-card-active {
@@ -426,6 +424,46 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-text-dim);
   font-weight: 400;
   line-height: 1.5;
+}
+
+/* --- Game Card Stars (progress persistence) --- */
+.game-card-stars {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin-bottom: var(--space-xs);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.game-card-star-earned {
+  color: var(--color-gold);
+  filter: drop-shadow(0 0 4px var(--color-gold-glow));
+}
+.game-card-star-empty {
+  color: rgba(255, 255, 255, 0.1);
+}
+.game-card-small .game-card-stars {
+  font-size: 0.85rem;
+  gap: 1px;
+  margin-bottom: 2px;
+}
+
+/* Reset Progress */
+.landing-reset {
+  text-align: center;
+  margin-top: var(--space-xl);
+  padding-bottom: var(--space-lg);
+}
+.landing-reset-btn {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  transition: opacity 0.2s, color 0.2s;
+  cursor: pointer;
+}
+.landing-reset-btn:hover {
+  opacity: 1;
+  color: var(--color-error);
 }
 
 /* Disabled / Coming Soon cards */
@@ -1376,6 +1414,101 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================================
+   Landing Entrance Animations
+   ============================================================ */
+@keyframes cardEntranceUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes titleBounceIn {
+  0% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.08); }
+  70% { transform: scale(0.96); }
+  85% { transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes subtitleFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.card-entrance {
+  opacity: 0;
+  animation: cardEntranceUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) var(--entrance-delay, 0s) forwards;
+}
+.card-entrance-hero {
+  animation: cardEntranceUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) var(--entrance-delay, 0s) forwards,
+             heroFloat 3s ease-in-out calc(var(--entrance-delay, 0s) + 0.5s) infinite;
+}
+.landing-title-entrance {
+  opacity: 0;
+  animation: titleBounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             shimmer 4s ease-in-out 0.6s infinite;
+}
+.landing-subtitle-entrance {
+  opacity: 0;
+  animation: subtitleFadeIn 0.5s ease-out var(--entrance-delay, 0s) forwards;
+}
+.more-games-title-entrance {
+  opacity: 0;
+  animation: subtitleFadeIn 0.4s ease-out var(--entrance-delay, 0s) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-entrance, .card-entrance-hero,
+  .landing-title-entrance, .landing-subtitle-entrance,
+  .more-games-title-entrance {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ============================================================
+   Particle Background
+   ============================================================ */
+.particle-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout style paint;
+}
+
+.particle {
+  position: absolute;
+  bottom: -10px;
+  border-radius: 50%;
+  animation: particleFloat linear infinite;
+  will-change: transform;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--particle-opacity, 0.4);
+  }
+  90% {
+    opacity: var(--particle-opacity, 0.4);
+  }
+  100% {
+    transform: translateY(-110vh) translateX(var(--particle-drift, 0px));
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particle-bg {
+    display: none;
+  }
+}
+
+/* ============================================================
    Celebration Overlay
    ============================================================ */
 .celebration-overlay {
@@ -1389,13 +1522,17 @@ h1, h2, h3, h4, h5, h6 {
   backdrop-filter: blur(4px);
   cursor: pointer;
   animation: fadeIn 0.3s ease;
+  overflow: hidden;
 }
 
 .confetti-piece {
   position: absolute;
   top: -20px;
   animation: confettiFall 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  will-change: transform;
 }
+.confetti-streamer { border-radius: 2px; }
+.confetti-diamond { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
 
 @keyframes confettiFall {
   0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 1; }
@@ -1405,12 +1542,48 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Firework bursts */
+.firework-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+  z-index: 2;
+}
+.firework-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: celebrationFirework 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes celebrationFirework {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: translate(var(--fw-x, 0px), var(--fw-y, 0px)) scale(0); opacity: 0; }
+}
+
 .celebration-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 1;
-  animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Screen shake on content only (not overlay — avoids backdrop-filter repaint) */
+.celebration-shake {
+  animation: celebrationShake 0.4s ease-in-out;
+}
+@keyframes celebrationShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, -2px); }
+  20% { transform: translate(4px, 2px); }
+  30% { transform: translate(-3px, 3px); }
+  40% { transform: translate(3px, -3px); }
+  50% { transform: translate(-2px, 2px); }
+  60% { transform: translate(2px, -2px); }
+  70% { transform: translate(-1px, 1px); }
+  80% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, 0); }
 }
 
 .celebration-text {
@@ -1420,6 +1593,15 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-gold);
   text-shadow: 0 0 40px var(--color-gold-glow);
   margin-bottom: var(--space-lg);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.celebration-text-hidden {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.celebration-text-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .celebration-stars {
@@ -1447,6 +1629,98 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   font-size: 1.5rem;
   color: var(--color-text);
+}
+
+/* Trophy for 3-star completions */
+.celebration-trophy {
+  font-size: 4.5rem;
+  animation: celebrationTrophyBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.6));
+  margin-top: var(--space-md);
+}
+@keyframes celebrationTrophyBounce {
+  0% { opacity: 0; transform: scale(0) translateY(-60px); }
+  40% { opacity: 1; transform: scale(1.2) translateY(0); }
+  60% { transform: scale(0.9) translateY(8px); }
+  80% { transform: scale(1.05) translateY(-4px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece, .firework-particle, .celebration-trophy { animation: none; opacity: 1; transform: none; }
+  .celebration-shake { animation: none; }
+  .celebration-text { transition: none; }
+  .celebration-text-hidden { opacity: 1; transform: none; }
+  .celebration-star { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   Combo Streak Effects
+   ============================================================ */
+.combo-effects-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+.combo-counter {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-gold);
+  text-shadow: 0 0 20px var(--color-gold-glow), 0 2px 4px rgba(0,0,0,0.5);
+  animation: comboPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+.combo-counter-fire {
+  text-shadow: 0 0 20px var(--color-gold-glow), 0 0 40px rgba(255, 100, 0, 0.4), 0 2px 4px rgba(0,0,0,0.5);
+}
+@keyframes comboPop {
+  0% { transform: translateX(-50%) scale(0.3); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.combo-screen-glow {
+  position: absolute;
+  inset: 0;
+  transition: box-shadow 0.3s ease;
+}
+.combo-glow-green { box-shadow: inset 0 0 60px rgba(0, 255, 136, 0.12); }
+.combo-glow-gold { box-shadow: inset 0 0 80px rgba(255, 215, 0, 0.15); }
+.combo-glow-rainbow {
+  box-shadow: inset 0 0 100px rgba(255, 215, 0, 0.2);
+  animation: comboRainbow 2s linear infinite;
+}
+@keyframes comboRainbow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.combo-streak-lost {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-error);
+  text-shadow: 0 0 12px var(--color-error-glow);
+  animation: comboStreakLost 0.8s ease-out forwards;
+}
+@keyframes comboStreakLost {
+  0% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+  100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .combo-counter, .combo-streak-lost { animation: none; opacity: 1; }
+  .combo-glow-rainbow { animation: none; }
 }
 
 /* ============================================================
@@ -1603,6 +1877,7 @@ h1, h2, h3, h4, h5, h6 {
    Responsive
    ============================================================ */
 @media (max-width: 600px) {
+  .particle:nth-child(n+9) { display: none; }
   .quiz-answers { grid-template-columns: 1fr; }
   .quiz-answer-btn { font-size: 0.95rem; padding: 14px 16px; }
   .quiz-hud { padding: var(--space-sm) var(--space-md); }

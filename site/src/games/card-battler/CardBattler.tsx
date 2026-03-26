@@ -3,6 +3,7 @@ import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { QuestionPool } from "@/lib/question-pool";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
+import { saveScore } from "@/lib/score-store";
 import { AnswerFeedback } from "@/components/shared/AnswerFeedback";
 import { Celebration } from "@/components/shared/Celebration";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
@@ -521,6 +522,7 @@ export function CardBattler() {
   // --- Complete Screen ---
 
   if (gameState === "complete" && battleState) {
+    saveScore("scripture-cards", stars);
     const winnerText =
       battleState.winner === "player"
         ? "Your faith is strong!"

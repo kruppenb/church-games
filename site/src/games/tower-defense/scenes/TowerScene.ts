@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { LessonConfig, Question } from "@/types/lesson";
 import { QuestionPool } from "@/lib/question-pool";
+import { saveScore } from "@/lib/score-store";
 import {
   createInitialState,
   getWaves,
@@ -2863,6 +2864,7 @@ export class TowerScene extends Phaser.Scene {
 
     // Stars
     const stars = calculateStars(this.gameState);
+    saveScore("faith-fortress", stars);
     const starStr = Array.from({ length: 3 }, (_, i) =>
       i < stars ? "*" : ".",
     ).join(" ");
@@ -2946,6 +2948,7 @@ export class TowerScene extends Phaser.Scene {
   }
 
   private showDefeatOverlay(): void {
+    saveScore("faith-fortress", calculateStars(this.gameState));
     this.overlayContainer?.destroy();
     this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
