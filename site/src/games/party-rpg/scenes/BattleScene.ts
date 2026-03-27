@@ -6,12 +6,16 @@ import {
   rollLoot,
   guaranteedLoot,
   applyLoot,
+  getLootRarity,
+  RARITY_COLORS,
+  RARITY_LABELS,
   HERO_ABILITIES,
   type BattleState,
   type Hero,
   type Enemy,
   type LootItem,
   type AbilityResult,
+  type LootRarity,
 } from "../logic/rpg-logic";
 
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
@@ -1080,7 +1084,7 @@ export class BattleScene extends Phaser.Scene {
     void overlay;
   }
 
-  // ---------- Loot card ----------
+  // ---------- Loot card with rarity tiers ----------
 
   private showLootCard(
     loot: LootItem,
@@ -1089,14 +1093,19 @@ export class BattleScene extends Phaser.Scene {
     delay: number,
   ): void {
     const cardY = 340;
+    const rarity: LootRarity = getLootRarity(loot);
+    const rarityStyle = RARITY_COLORS[rarity];
+    const rarityLabel = RARITY_LABELS[rarity];
+    const isGold = rarity === "gold";
+    const particleCount = isGold ? 20 : 10;
 
-    // "LOOT FOUND!" announcement
+    // "LOOT FOUND!" announcement — color matches rarity
     const lootBanner = this.add
-      .text(width / 2, cardY - 65, "LOOT FOUND!", {
+      .text(width / 2, cardY - 65, `${rarityLabel.toUpperCase()} LOOT!`, {
         fontSize: "18px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#ffd700",
+        color: rarityStyle.text,
         stroke: "#000000",
         strokeThickness: 3,
       })
@@ -1105,7 +1114,7 @@ export class BattleScene extends Phaser.Scene {
       .setAlpha(0)
       .setScale(0.5);
 
-    // Gold particles burst
+    // Particles burst — more particles and glow for gold
     this.time.delayedCall(delay, () => {
       // Scale-in banner
       this.tweens.add({
@@ -1114,11 +1123,47 @@ export class BattleScene extends Phaser.Scene {
         duration: 400,
         ease: "Back.easeOut",
       });
-      // Particles
-      for (let i = 0; i < 10; i++) {
+
+      // Gold items get extra glow pulse behind the banner
+      if (isGold) {
+        const glowCircle = this.add
+          .circle(width / 2, cardY - 65, 60, rarityStyle.glow, 0.3)
+          .setDepth(32);
+        this.tweens.add({
+          targets: glowCircle,
+          scaleX: 2,
+          scaleY: 2,
+          alpha: 0,
+          duration: 800,
+          onComplete: () => glowCircle.destroy(),
+        });
+        // Extra sparkle ring
+        for (let s = 0; s < 8; s++) {
+          const angle = (s / 8) * Math.PI * 2;
+          const sparkle = this.add
+            .circle(
+              width / 2 + Math.cos(angle) * 30,
+              cardY - 65 + Math.sin(angle) * 30,
+              2, 0xffffff, 1,
+            )
+            .setDepth(35);
+          this.tweens.add({
+            targets: sparkle,
+            x: width / 2 + Math.cos(angle) * 80,
+            y: cardY - 65 + Math.sin(angle) * 80,
+            alpha: 0,
+            duration: 600,
+            delay: s * 50,
+            onComplete: () => sparkle.destroy(),
+          });
+        }
+      }
+
+      // Particles in rarity color
+      for (let i = 0; i < particleCount; i++) {
         const px = width / 2 + Phaser.Math.Between(-100, 100);
         const py = cardY - 20 + Phaser.Math.Between(-30, 30);
-        const p = this.add.circle(px, py, 3, 0xffd700, 1).setDepth(34);
+        const p = this.add.circle(px, py, 3, rarityStyle.glow, 1).setDepth(34);
         this.tweens.add({
           targets: p,
           x: px + Phaser.Math.Between(-40, 40),
@@ -1129,16 +1174,32 @@ export class BattleScene extends Phaser.Scene {
       }
     });
 
-    // Card background
+    // Card background with rarity-colored border
     const cardBg = this.add
-      .rectangle(width / 2, cardY, 300, 90, 0x2a2040)
-      .setStrokeStyle(2, 0xffc107)
+      .rectangle(width / 2, cardY, 300, 100, 0x2a2040)
+      .setStrokeStyle(3, rarityStyle.border)
       .setDepth(31)
       .setAlpha(0);
 
-    // Loot icon area
+    // Gold items get a persistent subtle glow behind the card
+    if (isGold) {
+      const cardGlow = this.add
+        .rectangle(width / 2, cardY, 310, 110, rarityStyle.glow, 0.1)
+        .setDepth(30)
+        .setAlpha(0);
+      this.tweens.add({
+        targets: cardGlow,
+        alpha: { from: 0, to: 0.15 },
+        duration: 500,
+        delay,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    // Loot icon area — rarity colored
     const iconBg = this.add
-      .circle(width / 2 - 120, cardY, 20, 0xffc107)
+      .circle(width / 2 - 120, cardY, 20, rarityStyle.border)
       .setDepth(32)
       .setAlpha(0);
     const iconText = this.add
@@ -1152,13 +1213,25 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(32)
       .setAlpha(0);
 
-    // Loot name
+    // Rarity label above name
+    const rarityText = this.add
+      .text(width / 2 + 10, cardY - 28, rarityLabel, {
+        fontSize: "9px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: rarityStyle.text,
+      })
+      .setOrigin(0.5)
+      .setDepth(32)
+      .setAlpha(0);
+
+    // Loot name — rarity colored
     const nameText = this.add
-      .text(width / 2 + 10, cardY - 16, loot.name, {
+      .text(width / 2 + 10, cardY - 14, loot.name, {
         fontSize: "15px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#ffd700",
+        color: rarityStyle.text,
       })
       .setOrigin(0.5)
       .setDepth(32)
@@ -1166,7 +1239,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Loot description
     const descText = this.add
-      .text(width / 2 + 10, cardY + 4, loot.description, {
+      .text(width / 2 + 10, cardY + 6, loot.description, {
         fontSize: "11px",
         fontFamily: "sans-serif",
         color: "#c0b0d0",
@@ -1181,7 +1254,7 @@ export class BattleScene extends Phaser.Scene {
     if (loot.statBoost.hp) stats.push(`+${loot.statBoost.hp} HP`);
     if (loot.statBoost.attack) stats.push(`+${loot.statBoost.attack} ATK`);
     const statText = this.add
-      .text(width / 2 + 10, cardY + 22, stats.join("  "), {
+      .text(width / 2 + 10, cardY + 26, stats.join("  "), {
         fontSize: "12px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
@@ -1191,13 +1264,25 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(32)
       .setAlpha(0);
 
-    const lootElements = [cardBg, iconBg, iconText, nameText, descText, statText];
-    this.tweens.add({
-      targets: lootElements,
-      alpha: 1,
-      duration: 500,
-      delay,
-    });
+    const lootElements = [cardBg, iconBg, iconText, rarityText, nameText, descText, statText];
+
+    // Gold items get a dramatic reveal: brief delay then burst in
+    if (isGold) {
+      this.tweens.add({
+        targets: lootElements,
+        alpha: 1,
+        duration: 700,
+        delay: delay + 200,
+        ease: "Bounce.easeOut",
+      });
+    } else {
+      this.tweens.add({
+        targets: lootElements,
+        alpha: 1,
+        duration: 500,
+        delay,
+      });
+    }
   }
 
   // ---------- Return button ----------

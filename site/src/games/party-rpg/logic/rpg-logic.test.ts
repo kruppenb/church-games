@@ -11,10 +11,15 @@ import {
   applyLoot,
   rollRandomEvent,
   applyRandomEvent,
+  applyEventChoice,
+  getLootRarity,
   LOOT_TABLE,
   RANDOM_EVENTS,
+  RARITY_COLORS,
+  RARITY_LABELS,
   HERO_ABILITIES,
   type RPGState,
+  type EventChoice,
 } from "./rpg-logic";
 
 describe("createHero", () => {
@@ -540,5 +545,193 @@ describe("ability system", () => {
     expect(next.enemy.hp).toBe(0);
     expect(next.battleOver).toBe(true);
     expect(next.victory).toBe(true);
+  });
+});
+
+describe("getLootRarity", () => {
+  it("returns bronze for low stat bonus (< 15)", () => {
+    // Sword of Truth: attack +10, total = 10 => bronze
+    expect(getLootRarity(LOOT_TABLE[0])).toBe("bronze");
+  });
+
+  it("returns silver for medium stat bonus (15-24)", () => {
+    // Boots of Peace: hp +15, total = 15 => silver
+    expect(getLootRarity(LOOT_TABLE[4])).toBe("silver");
+    // Helmet of Salvation: hp +20, attack +5, total = 25 => gold (boundary)
+    // So let's test a custom item
+    expect(getLootRarity({ name: "Test", statBoost: { hp: 15 }, description: "" })).toBe("silver");
+    expect(getLootRarity({ name: "Test", statBoost: { hp: 10, attack: 8 }, description: "" })).toBe("silver");
+  });
+
+  it("returns gold for high stat bonus (>= 25)", () => {
+    // Helmet of Salvation: hp +20, attack +5, total = 25 => gold
+    expect(getLootRarity(LOOT_TABLE[2])).toBe("gold");
+    // Shield of Faith: hp +30, total = 30 => gold
+    expect(getLootRarity(LOOT_TABLE[1])).toBe("gold");
+  });
+
+  it("treats missing stats as 0", () => {
+    expect(getLootRarity({ name: "Empty", statBoost: {}, description: "" })).toBe("bronze");
+  });
+});
+
+describe("rarity constants", () => {
+  it("RARITY_COLORS has entries for all tiers", () => {
+    expect(RARITY_COLORS.bronze).toBeDefined();
+    expect(RARITY_COLORS.silver).toBeDefined();
+    expect(RARITY_COLORS.gold).toBeDefined();
+  });
+
+  it("RARITY_LABELS has display names for all tiers", () => {
+    expect(RARITY_LABELS.bronze).toBe("Common");
+    expect(RARITY_LABELS.silver).toBe("Uncommon");
+    expect(RARITY_LABELS.gold).toBe("Legendary");
+  });
+});
+
+describe("event choices", () => {
+  it("all RANDOM_EVENTS have choices array", () => {
+    for (const event of RANDOM_EVENTS) {
+      expect(event.choices).toBeDefined();
+      expect(event.choices!.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("each choice has label and effect", () => {
+    for (const event of RANDOM_EVENTS) {
+      for (const choice of event.choices!) {
+        expect(choice.label).toBeTruthy();
+        expect(["heal", "damage", "boost", "none"]).toContain(choice.effect);
+        expect(typeof choice.value).toBe("number");
+      }
+    }
+  });
+});
+
+describe("applyEventChoice", () => {
+  function makeState(): RPGState {
+    const heroes = [
+      createHero("Warrior", "#ff0000"),
+      createHero("Mage", "#0000ff"),
+    ];
+    return {
+      heroes,
+      locationsCleared: [false, false],
+      totalLocations: 2,
+      currentLocation: null,
+      partyHp: 200,
+      maxPartyHp: 200,
+      loot: [],
+    };
+  }
+
+  it("applies heal effect", () => {
+    const state = makeState();
+    state.partyHp = 150;
+    const choice: EventChoice = { label: "Heal", effect: "heal", value: 30 };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(180);
+  });
+
+  it("applies damage effect", () => {
+    const state = makeState();
+    const choice: EventChoice = { label: "Damage", effect: "damage", value: 25 };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(175);
+  });
+
+  it("applies boost effect", () => {
+    const state = makeState();
+    const choice: EventChoice = { label: "Boost", effect: "boost", value: 10 };
+    const result = applyEventChoice(state, choice);
+    expect(result.heroes[0].attack).toBe(35); // 25 + 10
+    expect(result.heroes[1].attack).toBe(45); // 35 + 10
+  });
+
+  it("applies none effect (no change)", () => {
+    const state = makeState();
+    const choice: EventChoice = { label: "Nothing", effect: "none", value: 0 };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(200);
+    expect(result.heroes[0].attack).toBe(25);
+  });
+
+  it("applies secondary effect when chance succeeds", () => {
+    const state = makeState();
+    state.partyHp = 180;
+    const choice: EventChoice = {
+      label: "Combo",
+      effect: "heal",
+      value: 10,
+      secondaryEffect: "boost",
+      secondaryValue: 5,
+      secondaryChance: 1, // always triggers
+    };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(190); // 180 + 10
+    expect(result.heroes[0].attack).toBe(30); // 25 + 5
+  });
+
+  it("skips secondary effect when chance fails", () => {
+    const mockRandom = vi.spyOn(Math, "random");
+    // applyEventChoice calls Math.random for secondary chance check
+    mockRandom.mockReturnValueOnce(0.99); // > 0.5 => secondary fails
+
+    const state = makeState();
+    const choice: EventChoice = {
+      label: "Risky",
+      effect: "none",
+      value: 0,
+      secondaryEffect: "damage",
+      secondaryValue: 15,
+      secondaryChance: 0.5,
+    };
+    const result = applyEventChoice(state, choice);
+    // Secondary did not trigger, so HP unchanged
+    expect(result.partyHp).toBe(200);
+    mockRandom.mockRestore();
+  });
+
+  it("triggers secondary effect when chance succeeds", () => {
+    const mockRandom = vi.spyOn(Math, "random");
+    // Math.random returns 0.1 < 0.5 => secondary triggers
+    mockRandom.mockReturnValueOnce(0.1);
+
+    const state = makeState();
+    const choice: EventChoice = {
+      label: "Risky",
+      effect: "none",
+      value: 0,
+      secondaryEffect: "damage",
+      secondaryValue: 15,
+      secondaryChance: 0.5,
+    };
+    const result = applyEventChoice(state, choice);
+    // Secondary triggered: -15 damage
+    expect(result.partyHp).toBe(185);
+    mockRandom.mockRestore();
+  });
+
+  it("is immutable (does not modify original state)", () => {
+    const state = makeState();
+    const choice: EventChoice = { label: "Damage", effect: "damage", value: 50 };
+    applyEventChoice(state, choice);
+    expect(state.partyHp).toBe(200);
+  });
+
+  it("caps heal at maxPartyHp", () => {
+    const state = makeState();
+    state.partyHp = 195;
+    const choice: EventChoice = { label: "Big heal", effect: "heal", value: 100 };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(200);
+  });
+
+  it("floors damage at 0", () => {
+    const state = makeState();
+    state.partyHp = 5;
+    const choice: EventChoice = { label: "Big damage", effect: "damage", value: 100 };
+    const result = applyEventChoice(state, choice);
+    expect(result.partyHp).toBe(0);
   });
 });

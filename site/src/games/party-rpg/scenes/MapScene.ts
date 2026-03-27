@@ -6,9 +6,15 @@ import {
   createBossEnemy,
   rollRandomEvent,
   applyRandomEvent,
+  applyEventChoice,
+  getLootRarity,
+  RARITY_COLORS,
+  RARITY_LABELS,
   type RPGState,
   type Hero,
   type LootItem,
+  type RandomEvent,
+  type EventChoice,
 } from "../logic/rpg-logic";
 import type { Difficulty } from "@/hooks/useDifficulty";
 
@@ -24,6 +30,8 @@ export class MapScene extends Phaser.Scene {
   private nodeGraphics: Phaser.GameObjects.Container[] = [];
   private progressText: Phaser.GameObjects.Text | null = null;
   private eventOverlay: Phaser.GameObjects.Container | null = null;
+  private playerToken: Phaser.GameObjects.Container | null = null;
+  private cachedNodes: NodeInfo[] = [];
 
   constructor() {
     super({ key: "MapScene" });
@@ -91,6 +99,7 @@ export class MapScene extends Phaser.Scene {
 
     // Layout and draw nodes
     const nodes = this.layoutNodes(scenes, width, height);
+    this.cachedNodes = nodes;
     this.drawPaths(nodes);
 
     this.nodeGraphics = [];
@@ -98,6 +107,9 @@ export class MapScene extends Phaser.Scene {
       const container = this.createNode(node);
       this.nodeGraphics.push(container);
     });
+
+    // Draw player token at current position
+    this.drawPlayerToken(nodes);
 
     // Party status bar at bottom
     this.drawPartyStatusBar(width, height);
@@ -191,6 +203,48 @@ export class MapScene extends Phaser.Scene {
     }
   }
 
+  // ---------- Player token ----------
+
+  private drawPlayerToken(nodes: NodeInfo[]): void {
+    // Find current position: last cleared node, or first node
+    let posIndex = -1;
+    for (let i = this.locationsCleared.length - 1; i >= 0; i--) {
+      if (this.locationsCleared[i]) {
+        posIndex = i;
+        break;
+      }
+    }
+
+    // If nothing cleared, place token at first node
+    const targetNode = posIndex >= 0 ? nodes[posIndex] : nodes[0];
+    if (!targetNode) return;
+
+    // Small golden circle with a flag icon
+    const tokenCircle = this.add.circle(0, 0, 12, 0xffd700).setStrokeStyle(2, 0xd4a847);
+    const tokenFlag = this.add
+      .text(0, -1, "\u2691", {
+        fontSize: "14px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#2a1f14",
+      })
+      .setOrigin(0.5);
+
+    this.playerToken = this.add
+      .container(targetNode.x, targetNode.y - 28, [tokenCircle, tokenFlag])
+      .setDepth(8);
+
+    // Gentle floating animation
+    this.tweens.add({
+      targets: this.playerToken,
+      y: this.playerToken.y - 4,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+  }
+
   // ---------- Node creation ----------
 
   private createNode(node: NodeInfo): Phaser.GameObjects.Container {
@@ -264,7 +318,7 @@ export class MapScene extends Phaser.Scene {
       circle.setInteractive({ useHandCursor: true });
 
       circle.on("pointerdown", () => {
-        this.enterBattle(node);
+        this.showDiceRollAndTravel(node);
       });
 
       circle.on("pointerover", () => {
@@ -288,6 +342,182 @@ export class MapScene extends Phaser.Scene {
     }
 
     return container;
+  }
+
+  // ---------- Dice roll + animated travel ----------
+
+  private showDiceRollAndTravel(targetNode: NodeInfo): void {
+    // Disable all node interactions during animation
+    this.nodeGraphics.forEach((container) => {
+      container.each((child: Phaser.GameObjects.GameObject) => {
+        if ("disableInteractive" in child && typeof child.disableInteractive === "function") {
+          (child as Phaser.GameObjects.Shape).disableInteractive();
+        }
+      });
+    });
+
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2 - 40;
+
+    // Semi-transparent backdrop for dice roll
+    const backdrop = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.4)
+      .setDepth(20);
+
+    // Dice container
+    const diceBox = this.add
+      .rectangle(0, 0, 80, 80, 0x3d2e1a)
+      .setStrokeStyle(3, 0xd4a847);
+
+    const diceText = this.add
+      .text(0, 0, "1", {
+        fontSize: "36px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#ffd700",
+      })
+      .setOrigin(0.5);
+
+    const diceLabel = this.add
+      .text(0, 56, "Rolling...", {
+        fontSize: "12px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#b8943e",
+      })
+      .setOrigin(0.5);
+
+    const diceContainer = this.add
+      .container(cx, cy, [diceBox, diceText, diceLabel])
+      .setDepth(21)
+      .setScale(0.3)
+      .setAlpha(0);
+
+    // Bounce in the dice
+    this.tweens.add({
+      targets: diceContainer,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 300,
+      ease: "Back.easeOut",
+    });
+
+    // Animate dice numbers cycling (bouncing number effect)
+    // Use scheduled delays that increase toward the end for a "settling" feel
+    const finalRoll = Phaser.Math.Between(1, 6);
+    const maxRolls = 12;
+    const delays: number[] = [];
+    let cumulativeDelay = 0;
+    for (let i = 0; i < maxRolls; i++) {
+      const baseDelay = i >= maxRolls - 3 ? 80 + (i - (maxRolls - 3)) * 60 : 80;
+      cumulativeDelay += baseDelay;
+      delays.push(cumulativeDelay);
+    }
+
+    for (let r = 0; r < maxRolls; r++) {
+      this.time.delayedCall(delays[r], () => {
+        const rollIndex = r + 1;
+        const num = rollIndex < maxRolls ? Phaser.Math.Between(1, 6) : finalRoll;
+        diceText.setText(`${num}`);
+
+        // Bounce effect on each change
+        this.tweens.add({
+          targets: diceText,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 40,
+          yoyo: true,
+        });
+
+        if (rollIndex === maxRolls) {
+          // Final number settled
+          diceLabel.setText(`Rolled a ${finalRoll}!`);
+          diceText.setColor("#ffffff");
+
+          // Big settle bounce
+          this.tweens.add({
+            targets: diceContainer,
+            scaleX: 1.15,
+            scaleY: 1.15,
+            duration: 150,
+            yoyo: true,
+            ease: "Bounce.easeOut",
+          });
+
+          // After a pause, fade out dice and start travel animation
+          this.time.delayedCall(800, () => {
+            this.tweens.add({
+              targets: [diceContainer, backdrop],
+              alpha: 0,
+              duration: 300,
+              onComplete: () => {
+                diceContainer.destroy();
+                backdrop.destroy();
+                this.animatePlayerTravel(targetNode);
+              },
+            });
+          });
+        }
+      });
+    }
+  }
+
+  private animatePlayerTravel(targetNode: NodeInfo): void {
+    if (!this.playerToken) {
+      this.enterBattle(targetNode);
+      return;
+    }
+
+    const targetX = targetNode.x;
+    const targetY = targetNode.y - 28;
+
+    // Stop the floating tween temporarily
+    this.tweens.killTweensOf(this.playerToken);
+
+    // Animate the player token moving along the path
+    this.tweens.add({
+      targets: this.playerToken,
+      x: targetX,
+      y: targetY,
+      duration: 600,
+      ease: "Power2",
+      onUpdate: () => {
+        // Leave a small trail particle behind
+        if (this.playerToken && Math.random() < 0.3) {
+          const trail = this.add
+            .circle(this.playerToken.x, this.playerToken.y + 14, 3, 0xffd700, 0.5)
+            .setDepth(7);
+          this.tweens.add({
+            targets: trail,
+            alpha: 0,
+            scaleX: 0,
+            scaleY: 0,
+            duration: 400,
+            onComplete: () => trail.destroy(),
+          });
+        }
+      },
+      onComplete: () => {
+        // Arrival pulse
+        if (this.playerToken) {
+          this.tweens.add({
+            targets: this.playerToken,
+            scaleX: 1.3,
+            scaleY: 1.3,
+            duration: 150,
+            yoyo: true,
+            onComplete: () => {
+              // Brief pause then enter battle
+              this.time.delayedCall(200, () => {
+                this.enterBattle(targetNode);
+              });
+            },
+          });
+        }
+      },
+    });
   }
 
   // ---------- Enter battle ----------
@@ -325,6 +555,17 @@ export class MapScene extends Phaser.Scene {
     const event = rollRandomEvent();
     if (!event) return;
 
+    // If event has choices, show the choice UI instead of auto-applying
+    if (event.choices && event.choices.length > 0) {
+      this.showEventChoiceOverlay(event);
+    } else {
+      // Legacy fallback: auto-apply
+      this.autoApplyEvent(event);
+    }
+  }
+
+  /** Legacy auto-apply for events without choices. */
+  private autoApplyEvent(event: RandomEvent): void {
     const heroes = this.registry.get("partyHeroes") as Hero[];
     const partyHp =
       (this.registry.get("partyHp") as number) ??
@@ -348,14 +589,194 @@ export class MapScene extends Phaser.Scene {
     this.registry.set("partyHp", newState.partyHp);
     this.registry.set("maxPartyHp", newState.maxPartyHp);
 
-    this.showEventOverlay(event);
+    this.showEventResultOverlay(event.text, event.effect, event.value);
   }
 
-  private showEventOverlay(event: {
-    text: string;
-    effect: string;
-    value: number;
-  }): void {
+  // ---------- Event choice overlay (Improvement #3) ----------
+
+  private showEventChoiceOverlay(event: RandomEvent): void {
+    const { width, height } = this.scale;
+    const choices = event.choices!;
+    const choiceCount = choices.length;
+
+    // Calculate card height based on number of choices
+    const cardHeight = 120 + choiceCount * 50;
+    const cy = height / 2;
+
+    // Semi-transparent backdrop
+    const backdrop = this.add
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.6)
+      .setDepth(10)
+      .setInteractive(); // block clicks through
+
+    // Event card
+    const cardBg = this.add
+      .rectangle(width / 2, cy, 360, cardHeight, 0x3d2e1a)
+      .setStrokeStyle(3, 0xd4a847)
+      .setDepth(11);
+
+    // "Random Event" label
+    const headerLabel = this.add
+      .text(width / 2, cy - cardHeight / 2 + 18, "RANDOM EVENT", {
+        fontSize: "12px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#b8943e",
+      })
+      .setOrigin(0.5)
+      .setDepth(12);
+
+    // Event description text
+    const eventText = this.add
+      .text(width / 2, cy - cardHeight / 2 + 46, event.text, {
+        fontSize: "15px",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        color: "#e8d5a8",
+        align: "center",
+        wordWrap: { width: 320 },
+      })
+      .setOrigin(0.5)
+      .setDepth(12);
+
+    // "Choose your action:" prompt
+    const promptText = this.add
+      .text(width / 2, cy - cardHeight / 2 + 76, "Choose your action:", {
+        fontSize: "11px",
+        fontFamily: "sans-serif",
+        color: "#b8943e",
+      })
+      .setOrigin(0.5)
+      .setDepth(12);
+
+    const elements: Phaser.GameObjects.GameObject[] = [
+      backdrop,
+      cardBg,
+      headerLabel,
+      eventText,
+      promptText,
+    ];
+
+    // Choice buttons
+    const btnStartY = cy - cardHeight / 2 + 100;
+    choices.forEach((choice, i) => {
+      const btnY = btnStartY + i * 50;
+      const btnW = 320;
+      const btnH = 40;
+
+      // Determine button color based on primary effect
+      const colorMap: Record<string, number> = {
+        heal: 0x2e5c2e,
+        damage: 0x5c2e2e,
+        boost: 0x5c4e1e,
+        none: 0x3d3d3d,
+      };
+      const btnColor = colorMap[choice.effect] ?? 0x3d3d3d;
+
+      const btnBg = this.add
+        .rectangle(width / 2, btnY, btnW, btnH, btnColor)
+        .setStrokeStyle(2, 0x5a4430)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(12);
+
+      const btnLabel = this.add
+        .text(width / 2, btnY, choice.label, {
+          fontSize: "12px",
+          fontFamily: "sans-serif",
+          fontStyle: "bold",
+          color: "#e8d5a8",
+          align: "center",
+          wordWrap: { width: btnW - 20 },
+        })
+        .setOrigin(0.5)
+        .setDepth(13);
+
+      elements.push(btnBg, btnLabel);
+
+      // Hover effect
+      btnBg.on("pointerover", () => {
+        btnBg.setStrokeStyle(2, 0xd4a847);
+        btnBg.setAlpha(0.9);
+      });
+      btnBg.on("pointerout", () => {
+        btnBg.setStrokeStyle(2, 0x5a4430);
+        btnBg.setAlpha(1);
+      });
+
+      // Click handler
+      btnBg.on("pointerdown", () => {
+        this.handleEventChoice(event, choice, elements);
+      });
+    });
+
+    this.eventOverlay = this.add
+      .container(0, 0, elements)
+      .setDepth(10);
+
+    // Fade in
+    this.eventOverlay.setAlpha(0);
+    this.tweens.add({
+      targets: this.eventOverlay,
+      alpha: 1,
+      duration: 400,
+    });
+  }
+
+  private handleEventChoice(
+    event: RandomEvent,
+    choice: EventChoice,
+    _overlayElements: Phaser.GameObjects.GameObject[],
+  ): void {
+    const heroes = this.registry.get("partyHeroes") as Hero[];
+    const partyHp =
+      (this.registry.get("partyHp") as number) ??
+      heroes.reduce((s, h) => s + h.hp, 0);
+    const maxPartyHp =
+      (this.registry.get("maxPartyHp") as number) ?? partyHp;
+
+    const tempState: RPGState = {
+      heroes: heroes.map((h) => ({ ...h })),
+      locationsCleared: this.locationsCleared,
+      totalLocations: this.locationsCleared.length,
+      currentLocation: null,
+      partyHp,
+      maxPartyHp,
+      loot: [],
+    };
+
+    const newState = applyEventChoice(tempState, choice);
+
+    this.registry.set("partyHeroes", newState.heroes);
+    this.registry.set("partyHp", newState.partyHp);
+    this.registry.set("maxPartyHp", newState.maxPartyHp);
+
+    // Dismiss overlay
+    if (this.eventOverlay) {
+      this.tweens.add({
+        targets: this.eventOverlay,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          this.eventOverlay?.destroy();
+          this.eventOverlay = null;
+
+          // Show result briefly
+          this.showEventResultOverlay(
+            choice.label,
+            choice.effect,
+            choice.value,
+          );
+        },
+      });
+    }
+  }
+
+  /** Show a brief result card after an event resolves. */
+  private showEventResultOverlay(
+    text: string,
+    effect: string,
+    value: number,
+  ): void {
     const { width, height } = this.scale;
     const cy = height / 2;
 
@@ -365,7 +786,7 @@ export class MapScene extends Phaser.Scene {
       .setDepth(10);
 
     // Event card
-    const isGood = event.effect !== "damage";
+    const isGood = effect !== "damage";
     const borderColor = isGood ? 0xd4a847 : 0xe53935;
 
     const cardBg = this.add
@@ -378,11 +799,13 @@ export class MapScene extends Phaser.Scene {
       heal: "+",
       damage: "!",
       boost: "*",
+      none: "-",
     };
     const iconColorMap: Record<string, string> = {
       heal: "#4CAF50",
       damage: "#E53935",
       boost: "#FFD700",
+      none: "#808080",
     };
 
     const iconCircle = this.add
@@ -390,18 +813,18 @@ export class MapScene extends Phaser.Scene {
       .setDepth(12);
 
     const icon = this.add
-      .text(width / 2, cy - 38, iconMap[event.effect] ?? "?", {
+      .text(width / 2, cy - 38, iconMap[effect] ?? "?", {
         fontSize: "28px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: iconColorMap[event.effect] ?? "#e8d5a8",
+        color: iconColorMap[effect] ?? "#e8d5a8",
       })
       .setOrigin(0.5)
       .setDepth(12);
 
     // Event text
     const eventText = this.add
-      .text(width / 2, cy + 6, event.text, {
+      .text(width / 2, cy + 6, text, {
         fontSize: "14px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
@@ -413,27 +836,27 @@ export class MapScene extends Phaser.Scene {
       .setDepth(12);
 
     // Value text
-    const prefix = event.effect === "damage" ? "-" : "+";
-    const suffix = event.effect === "boost" ? " ATK" : " HP";
-    const valueText = this.add
-      .text(width / 2, cy + 40, `${prefix}${event.value}${suffix}`, {
-        fontSize: "18px",
-        fontFamily: "sans-serif",
-        fontStyle: "bold",
-        color: iconColorMap[event.effect] ?? "#e8d5a8",
-      })
-      .setOrigin(0.5)
-      .setDepth(12);
+    const resultElements: Phaser.GameObjects.GameObject[] = [
+      backdrop, cardBg, iconCircle, icon, eventText,
+    ];
+
+    if (effect !== "none" && value > 0) {
+      const prefix = effect === "damage" ? "-" : "+";
+      const suffix = effect === "boost" ? " ATK" : " HP";
+      const valueText = this.add
+        .text(width / 2, cy + 40, `${prefix}${value}${suffix}`, {
+          fontSize: "18px",
+          fontFamily: "sans-serif",
+          fontStyle: "bold",
+          color: iconColorMap[effect] ?? "#e8d5a8",
+        })
+        .setOrigin(0.5)
+        .setDepth(12);
+      resultElements.push(valueText);
+    }
 
     this.eventOverlay = this.add
-      .container(0, 0, [
-        backdrop,
-        cardBg,
-        iconCircle,
-        icon,
-        eventText,
-        valueText,
-      ])
+      .container(0, 0, resultElements)
       .setDepth(10);
 
     // Fade in
@@ -507,23 +930,25 @@ export class MapScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(5);
 
-    // Collected loot icons on the right side
+    // Collected loot icons on the right side — with rarity colors
     const collectedLoot =
       (this.registry.get("collectedLoot") as LootItem[] | undefined) ?? [];
     const lootStartX = width - 20;
     collectedLoot.forEach((loot, i) => {
       const lx = lootStartX - i * 28;
-      // Small loot badge
+      const rarity = getLootRarity(loot);
+      const rarityColor = RARITY_COLORS[rarity];
+      // Small loot badge with rarity-colored border
       this.add
         .circle(lx, barY + 8, 10, 0xd4a847, 0.4)
-        .setStrokeStyle(1, 0xffd700, 0.6)
+        .setStrokeStyle(2, rarityColor.border, 0.9)
         .setDepth(5);
       this.add
         .text(lx, barY + 8, loot.name.charAt(0), {
           fontSize: "10px",
           fontFamily: "sans-serif",
           fontStyle: "bold",
-          color: "#ffd700",
+          color: rarityColor.text,
         })
         .setOrigin(0.5)
         .setDepth(5);
@@ -563,7 +988,7 @@ export class MapScene extends Phaser.Scene {
     const starY = cy - 30;
     for (let s = 0; s < 3; s++) {
       const starText = this.add
-        .text(width / 2 - 50 + s * 50, starY, "★", {
+        .text(width / 2 - 50 + s * 50, starY, "\u2605", {
           fontSize: "32px",
           fontFamily: "sans-serif",
           color: "#ffd700",
@@ -595,7 +1020,7 @@ export class MapScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Show all collected loot
+    // Show all collected loot with rarity colors
     const collectedLoot =
       (this.registry.get("collectedLoot") as LootItem[] | undefined) ?? [];
     if (collectedLoot.length > 0) {
@@ -610,6 +1035,8 @@ export class MapScene extends Phaser.Scene {
 
       collectedLoot.forEach((loot, i) => {
         const ly = cy + 60 + i * 20;
+        const rarity = getLootRarity(loot);
+        const rarityColor = RARITY_COLORS[rarity];
         const stats: string[] = [];
         if (loot.statBoost.hp) stats.push(`+${loot.statBoost.hp} HP`);
         if (loot.statBoost.attack) stats.push(`+${loot.statBoost.attack} ATK`);
@@ -617,11 +1044,11 @@ export class MapScene extends Phaser.Scene {
           .text(
             width / 2,
             ly,
-            `${loot.name}  ${stats.join(" ")}`,
+            `${loot.name}  ${stats.join(" ")}  [${RARITY_LABELS[rarity]}]`,
             {
               fontSize: "11px",
               fontFamily: "sans-serif",
-              color: "#e8d5a8",
+              color: rarityColor.text,
             },
           )
           .setOrigin(0.5);

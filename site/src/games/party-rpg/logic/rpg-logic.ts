@@ -28,11 +28,40 @@ export interface BattleState {
   victory: boolean;
 }
 
+export type LootRarity = "bronze" | "silver" | "gold";
+
 export interface LootItem {
   name: string;
   statBoost: { hp?: number; attack?: number };
   description: string;
 }
+
+/**
+ * Determine loot rarity based on the total stat bonus magnitude.
+ * - Gold: total bonus >= 25 (rare/legendary)
+ * - Silver: total bonus >= 15 (uncommon)
+ * - Bronze: everything else (common)
+ */
+export function getLootRarity(loot: LootItem): LootRarity {
+  const total = (loot.statBoost.hp ?? 0) + (loot.statBoost.attack ?? 0);
+  if (total >= 25) return "gold";
+  if (total >= 15) return "silver";
+  return "bronze";
+}
+
+/** Color values for each rarity tier. */
+export const RARITY_COLORS: Record<LootRarity, { border: number; text: string; glow: number }> = {
+  bronze: { border: 0xcd7f32, text: "#CD7F32", glow: 0xcd7f32 },
+  silver: { border: 0xc0c0c0, text: "#C0C0C0", glow: 0xc0c0c0 },
+  gold: { border: 0xffd700, text: "#FFD700", glow: 0xffd700 },
+};
+
+/** Display label for each rarity tier. */
+export const RARITY_LABELS: Record<LootRarity, string> = {
+  bronze: "Common",
+  silver: "Uncommon",
+  gold: "Legendary",
+};
 
 export const LOOT_TABLE: LootItem[] = [
   { name: "Sword of Truth", statBoost: { attack: 10 }, description: "Cuts through deception" },
@@ -42,19 +71,117 @@ export const LOOT_TABLE: LootItem[] = [
   { name: "Boots of Peace", statBoost: { hp: 15 }, description: "Steady your path" },
 ];
 
+export interface EventChoice {
+  label: string;
+  effect: "heal" | "damage" | "boost" | "none";
+  value: number;
+  /** Optional secondary effect (e.g., risk penalty). */
+  secondaryEffect?: "heal" | "damage" | "boost";
+  secondaryValue?: number;
+  /** Chance (0-1) that secondary effect triggers. 1 = always. */
+  secondaryChance?: number;
+}
+
 export interface RandomEvent {
   text: string;
   effect: "heal" | "damage" | "boost";
   value: number;
+  /** When present, the player picks from these instead of auto-applying. */
+  choices?: EventChoice[];
 }
 
 export const RANDOM_EVENTS: RandomEvent[] = [
-  { text: "A traveler shares bread and water — party healed!", effect: "heal", value: 20 },
-  { text: "A storm blocks your path — endure the challenge!", effect: "damage", value: 15 },
-  { text: "You find a hidden spring — refreshed!", effect: "heal", value: 30 },
-  { text: "Bandits ambush your camp!", effect: "damage", value: 25 },
-  { text: "An old sage blesses your journey!", effect: "boost", value: 10 },
+  {
+    text: "A traveler offers bread and water.",
+    effect: "heal",
+    value: 20,
+    choices: [
+      { label: "Accept gratefully (+20 HP)", effect: "heal", value: 20 },
+      { label: "Share with the poor (+10 HP, +5 ATK)", effect: "heal", value: 10, secondaryEffect: "boost", secondaryValue: 5, secondaryChance: 1 },
+      { label: "Decline politely (no change)", effect: "none", value: 0 },
+    ],
+  },
+  {
+    text: "A storm blocks your path!",
+    effect: "damage",
+    value: 15,
+    choices: [
+      { label: "Push through the storm (-15 HP)", effect: "damage", value: 15 },
+      { label: "Wait it out (-5 HP, slow but safe)", effect: "damage", value: 5 },
+      { label: "Pray for protection (+10 HP, or -20 HP)", effect: "heal", value: 10, secondaryEffect: "damage", secondaryValue: 20, secondaryChance: 0.4 },
+    ],
+  },
+  {
+    text: "You find a hidden spring in the wilderness.",
+    effect: "heal",
+    value: 30,
+    choices: [
+      { label: "Drink deeply (+30 HP)", effect: "heal", value: 30 },
+      { label: "Fill canteens for later (+15 HP, +5 ATK)", effect: "heal", value: 15, secondaryEffect: "boost", secondaryValue: 5, secondaryChance: 1 },
+    ],
+  },
+  {
+    text: "Bandits block the road ahead!",
+    effect: "damage",
+    value: 25,
+    choices: [
+      { label: "Fight them off (-10 HP, +8 ATK)", effect: "damage", value: 10, secondaryEffect: "boost", secondaryValue: 8, secondaryChance: 1 },
+      { label: "Pay a toll (-25 HP)", effect: "damage", value: 25 },
+      { label: "Sneak around (no change, risky: -15 HP)", effect: "none", value: 0, secondaryEffect: "damage", secondaryValue: 15, secondaryChance: 0.5 },
+    ],
+  },
+  {
+    text: "An old sage offers a mysterious blessing.",
+    effect: "boost",
+    value: 10,
+    choices: [
+      { label: "Accept the blessing (+10 ATK)", effect: "boost", value: 10 },
+      { label: "Ask for healing instead (+25 HP)", effect: "heal", value: 25 },
+      { label: "Request both (+5 ATK, +10 HP)", effect: "boost", value: 5, secondaryEffect: "heal", secondaryValue: 10, secondaryChance: 1 },
+    ],
+  },
 ];
+
+/**
+ * Apply an event choice to the RPG state (immutable).
+ * Handles primary effect plus optional secondary effect with chance roll.
+ */
+export function applyEventChoice(state: RPGState, choice: EventChoice): RPGState {
+  let result = applyEffect(state, choice.effect, choice.value);
+
+  // Apply secondary effect if present and chance succeeds
+  if (choice.secondaryEffect !== undefined && choice.secondaryValue !== undefined) {
+    const chance = choice.secondaryChance ?? 1;
+    if (Math.random() < chance) {
+      result = applyEffect(result, choice.secondaryEffect, choice.secondaryValue);
+    }
+  }
+
+  return result;
+}
+
+/** Apply a single effect (heal/damage/boost/none) to the state. */
+function applyEffect(state: RPGState, effect: string, value: number): RPGState {
+  switch (effect) {
+    case "heal": {
+      const newPartyHp = Math.min(state.maxPartyHp, state.partyHp + value);
+      return { ...state, partyHp: newPartyHp };
+    }
+    case "damage": {
+      const newPartyHp = Math.max(0, state.partyHp - value);
+      return { ...state, partyHp: newPartyHp };
+    }
+    case "boost": {
+      const boostedHeroes = state.heroes.map((h) => ({
+        ...h,
+        attack: h.attack + value,
+      }));
+      return { ...state, heroes: boostedHeroes };
+    }
+    default:
+      return state;
+  }
+}
 
 export interface RPGState {
   heroes: Hero[];
@@ -264,27 +391,10 @@ export function rollRandomEvent(): RandomEvent | null {
 
 /**
  * Apply a random event to the RPGState (immutable).
+ * Uses the event's primary effect/value (legacy path for auto-apply).
  */
 export function applyRandomEvent(state: RPGState, event: RandomEvent): RPGState {
-  switch (event.effect) {
-    case "heal": {
-      const newPartyHp = Math.min(state.maxPartyHp, state.partyHp + event.value);
-      return { ...state, partyHp: newPartyHp };
-    }
-    case "damage": {
-      const newPartyHp = Math.max(0, state.partyHp - event.value);
-      return { ...state, partyHp: newPartyHp };
-    }
-    case "boost": {
-      const boostedHeroes = state.heroes.map((h) => ({
-        ...h,
-        attack: h.attack + event.value,
-      }));
-      return { ...state, heroes: boostedHeroes };
-    }
-    default:
-      return state;
-  }
+  return applyEffect(state, event.effect, event.value);
 }
 
 /**
