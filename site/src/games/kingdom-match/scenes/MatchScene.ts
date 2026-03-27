@@ -138,6 +138,19 @@ export class MatchScene extends Phaser.Scene {
   // Track which image assets loaded successfully
   private loadedImages = new Set<string>();
 
+  // Idle hint system
+  private lastInteractionTime = 0;
+  private hintActive = false;
+  private hintTweens: Phaser.Tweens.Tween[] = [];
+  private hintHighlights: Phaser.GameObjects.Rectangle[] = [];
+  private static readonly IDLE_HINT_DELAY = 4500; // ms before showing hint
+
+  // Cascade celebration
+  private cascadeCallout: Phaser.GameObjects.Text | null = null;
+
+  // Kingdom visualization - highest level completed, persisted in localStorage
+  private kingdomLevel = 0;
+
   constructor() {
     super({ key: "MatchScene" });
   }
@@ -187,9 +200,113 @@ export class MatchScene extends Phaser.Scene {
       this.difficulty,
     );
 
+    // Load kingdom progress from localStorage
+    try {
+      const saved = localStorage.getItem("kingdom-match-kingdom-level");
+      if (saved) {
+        this.kingdomLevel = Math.max(0, Math.min(10, parseInt(saved, 10) || 0));
+      }
+    } catch {
+      // localStorage not available, start fresh
+    }
+
     this.overlay = this.add.container(0, 0).setDepth(100);
 
     this.showIntro();
+  }
+
+  update(_time: number, _delta: number): void {
+    // Idle hint system: only active during "playing" state
+    if (this.sceneState === "playing" && this.lastInteractionTime > 0) {
+      const now = this.time.now;
+      const elapsed = now - this.lastInteractionTime;
+      if (elapsed >= MatchScene.IDLE_HINT_DELAY && !this.hintActive) {
+        this.showIdleHint();
+      }
+    }
+  }
+
+  // ─── Idle Hint System ───────────────────────────────
+
+  private resetIdleTimer(): void {
+    this.lastInteractionTime = this.time.now;
+    this.clearIdleHint();
+  }
+
+  private showIdleHint(): void {
+    const move = findValidMove(this.grid);
+    if (!move) return;
+
+    this.hintActive = true;
+
+    // Highlight both tiles involved in the valid move
+    const positions = [move.a, move.b];
+    for (const pos of positions) {
+      const x = this.gridOffsetX + pos.col * this.tileSize + this.tileSize / 2;
+      const y = this.gridOffsetY + pos.row * this.tileSize + this.tileSize / 2;
+
+      const highlight = this.add
+        .rectangle(x, y, this.tileSize - 4, this.tileSize - 4, 0xffd700, 0)
+        .setStrokeStyle(3, 0xffd700)
+        .setDepth(14);
+
+      this.hintHighlights.push(highlight);
+
+      // Gentle pulse glow animation
+      const tween = this.tweens.add({
+        targets: highlight,
+        alpha: { from: 0, to: 0.6 },
+        scaleX: { from: 1.0, to: 1.08 },
+        scaleY: { from: 1.0, to: 1.08 },
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+      this.hintTweens.push(tween);
+
+      // Also subtly pulse the tile sprite itself
+      const sprite = this.tileSprites[pos.row]?.[pos.col];
+      if (sprite) {
+        const spriteTween = this.tweens.add({
+          targets: sprite,
+          scaleX: { from: 1.0, to: 1.06 },
+          scaleY: { from: 1.0, to: 1.06 },
+          duration: 700,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+        this.hintTweens.push(spriteTween);
+      }
+    }
+  }
+
+  private clearIdleHint(): void {
+    if (!this.hintActive) return;
+    this.hintActive = false;
+
+    // Stop all hint tweens
+    for (const tween of this.hintTweens) {
+      tween.stop();
+    }
+    this.hintTweens = [];
+
+    // Destroy highlight rectangles
+    for (const hl of this.hintHighlights) {
+      hl.destroy();
+    }
+    this.hintHighlights = [];
+
+    // Reset any tile sprite scales that were being tweened
+    for (let r = 0; r < this.gridSize; r++) {
+      for (let c = 0; c < this.gridSize; c++) {
+        const sprite = this.tileSprites[r]?.[c];
+        if (sprite) {
+          sprite.setScale(1);
+        }
+      }
+    }
   }
 
   // ─── Intro Screen ───────────────────────────────
@@ -338,6 +455,7 @@ export class MatchScene extends Phaser.Scene {
     // Animate tiles falling in
     this.animateGridEntrance(() => {
       this.sceneState = "playing";
+      this.lastInteractionTime = this.time.now;
     });
   }
 
@@ -458,6 +576,14 @@ export class MatchScene extends Phaser.Scene {
   private clearBoard(): void {
     // Kill all running tweens so nothing references destroyed objects
     this.tweens.killAll();
+
+    // Clear idle hint state
+    this.hintActive = false;
+    this.hintTweens = [];
+    this.hintHighlights = [];
+
+    // Clear cascade callout reference
+    this.cascadeCallout = null;
 
     // Explicitly destroy every tile sprite container
     for (let r = 0; r < this.tileSprites.length; r++) {
@@ -702,6 +828,9 @@ export class MatchScene extends Phaser.Scene {
   private onTileClick(row: number, col: number): void {
     if (this.sceneState !== "playing") return;
 
+    // Reset idle hint timer on any tile interaction
+    this.resetIdleTimer();
+
     const pos: Position = { row, col };
 
     if (!this.selectedTile) {
@@ -768,6 +897,7 @@ export class MatchScene extends Phaser.Scene {
 
   private trySwap(a: Position, b: Position): void {
     this.sceneState = "animating";
+    this.clearIdleHint();
 
     // Animate the swap
     const spriteA = this.tileSprites[a.row]?.[a.col];
@@ -925,11 +1055,13 @@ export class MatchScene extends Phaser.Scene {
         ) as Tile[][];
         this.rebuildGridSprites();
         this.sceneState = "playing";
+        this.lastInteractionTime = this.time.now;
       });
       return;
     }
 
     this.sceneState = "playing";
+    this.lastInteractionTime = this.time.now;
   }
 
   // ─── Animations ───────────────────────────────
@@ -1129,6 +1261,113 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private showCombo(count: number): void {
+    // Cascade celebration callouts with escalating effects
+    let calloutText: string;
+    let fontSize: number;
+    let color: string;
+    let glowColor: number;
+    let shakeIntensity = 0;
+
+    if (count >= 4) {
+      calloutText = "KINGDOM BUILDER!";
+      fontSize = 38;
+      color = "#ffd700";
+      glowColor = 0xffd700;
+      shakeIntensity = 0.008;
+    } else if (count === 3) {
+      calloutText = "Amazing!";
+      fontSize = 32;
+      color = "#ff6600";
+      glowColor = 0xff6600;
+    } else {
+      calloutText = "Nice!";
+      fontSize = 26;
+      color = "#4fc3f7";
+      glowColor = 0x4fc3f7;
+    }
+
+    // Destroy previous callout if still visible
+    if (this.cascadeCallout) {
+      this.cascadeCallout.destroy();
+      this.cascadeCallout = null;
+    }
+
+    // Create the callout text in the center of the grid area
+    const gridCenterX = this.gridOffsetX + (this.tileSize * this.gridSize) / 2;
+    const gridCenterY = this.gridOffsetY + (this.tileSize * this.gridSize) / 2;
+
+    const callout = this.add
+      .text(gridCenterX, gridCenterY, calloutText, {
+        fontSize: `${fontSize}px`,
+        fontFamily: "Arial, sans-serif",
+        color,
+        fontStyle: "bold",
+        stroke: "#000",
+        strokeThickness: 4 + (count >= 4 ? 2 : 0),
+      })
+      .setOrigin(0.5)
+      .setDepth(35)
+      .setAlpha(0)
+      .setScale(0.3);
+
+    this.cascadeCallout = callout;
+
+    // Scale-in with bounce
+    this.tweens.add({
+      targets: callout,
+      alpha: 1,
+      scale: { from: 0.3, to: 1.0 + (count - 2) * 0.15 },
+      duration: 350,
+      ease: "Back.easeOut",
+    });
+
+    // Create glow ring behind text for 3+ chains
+    if (count >= 3) {
+      const glowSize = fontSize * 3;
+      const glow = this.add
+        .rectangle(gridCenterX, gridCenterY, glowSize, glowSize * 0.5, glowColor, 0)
+        .setDepth(34);
+
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0, to: 0.25 },
+        scaleX: { from: 0.5, to: 1.5 },
+        scaleY: { from: 0.5, to: 1.5 },
+        duration: 400,
+        ease: "Quad.easeOut",
+        onComplete: () => {
+          this.tweens.add({
+            targets: glow,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => glow.destroy(),
+          });
+        },
+      });
+    }
+
+    // Screen shake for 4+ chains
+    if (shakeIntensity > 0) {
+      this.cameras.main.shake(250, shakeIntensity);
+    }
+
+    // Float up and fade out
+    this.tweens.add({
+      targets: callout,
+      y: gridCenterY - 60,
+      alpha: 0,
+      duration: 600,
+      delay: 700,
+      ease: "Quad.easeIn",
+      onComplete: () => {
+        callout.destroy();
+        if (this.cascadeCallout === callout) {
+          this.cascadeCallout = null;
+        }
+      },
+    });
+
+    // Also update the HUD combo text
     this.comboText.setText(`${count}x Combo!`);
     this.comboText.setAlpha(1);
     this.comboText.setScale(1.3);
@@ -1204,6 +1443,19 @@ export class MatchScene extends Phaser.Scene {
     this.sceneState = "level-complete";
     this.levelsCompleted++;
 
+    // Update kingdom progress
+    if (this.currentLevel > this.kingdomLevel) {
+      this.kingdomLevel = this.currentLevel;
+      try {
+        localStorage.setItem(
+          "kingdom-match-kingdom-level",
+          String(this.kingdomLevel),
+        );
+      } catch {
+        // localStorage not available
+      }
+    }
+
     const stars = calculateStars(
       this.score,
       this.levelConfig.starThresholds,
@@ -1239,9 +1491,10 @@ export class MatchScene extends Phaser.Scene {
       .setInteractive();
     this.overlay.add(bg);
 
+    // Left side: Level info
     const title = this.add
-      .text(GAME_W / 2, 140, "Level Complete!", {
-        fontSize: "36px",
+      .text(200, 50, "Level Complete!", {
+        fontSize: "32px",
         fontFamily: "Arial, sans-serif",
         color: "#ffd700",
         fontStyle: "bold",
@@ -1252,12 +1505,12 @@ export class MatchScene extends Phaser.Scene {
     this.overlay.add(title);
 
     // Stars
-    const starY = 210;
+    const starY = 110;
     for (let i = 0; i < 3; i++) {
       const earned = i < stars;
       const star = this.add
-        .text(GAME_W / 2 - 60 + i * 60, starY, "\u2605", {
-          fontSize: "48px",
+        .text(140 + i * 60, starY, "\u2605", {
+          fontSize: "42px",
           fontFamily: "Arial, sans-serif",
           color: earned ? "#ffd700" : "#444444",
         })
@@ -1279,23 +1532,50 @@ export class MatchScene extends Phaser.Scene {
 
     // Score
     const scoreLabel = this.add
-      .text(GAME_W / 2, 280, `Score: ${this.score}`, {
-        fontSize: "24px",
+      .text(200, 165, `Score: ${this.score}`, {
+        fontSize: "22px",
         fontFamily: "Arial, sans-serif",
         color: "#ffffff",
       })
       .setOrigin(0.5);
     this.overlay.add(scoreLabel);
 
-    // Continue button
+    // Right side: Kingdom visualization
+    const kingdomLabel = this.add
+      .text(570, 40, "Your Kingdom", {
+        fontSize: "18px",
+        fontFamily: "Arial, sans-serif",
+        color: "#b0a0d0",
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+    this.overlay.add(kingdomLabel);
+
+    // Draw the kingdom in a container on the right side
+    this.drawKingdom(570, 180, this.kingdomLevel);
+
+    // Kingdom stage description
+    const stageDesc = this.getKingdomStageDescription(this.kingdomLevel);
+    const stageText = this.add
+      .text(570, 330, stageDesc, {
+        fontSize: "13px",
+        fontFamily: "Arial, sans-serif",
+        color: "#9080b0",
+        align: "center",
+        wordWrap: { width: 200 },
+      })
+      .setOrigin(0.5);
+    this.overlay.add(stageText);
+
+    // Continue button (centered at bottom)
     const btnBg = this.add
-      .rectangle(GAME_W / 2, 380, 200, 50, 0x4caf50)
+      .rectangle(GAME_W / 2, 520, 200, 50, 0x4caf50)
       .setStrokeStyle(2, 0xffffff)
       .setInteractive({ useHandCursor: true });
     this.overlay.add(btnBg);
 
     const btnText = this.add
-      .text(GAME_W / 2, 380, "Continue", {
+      .text(GAME_W / 2, 520, "Continue", {
         fontSize: "22px",
         fontFamily: "Arial, sans-serif",
         color: "#ffffff",
@@ -1420,7 +1700,7 @@ export class MatchScene extends Phaser.Scene {
     this.overlay.add(bg);
 
     const title = this.add
-      .text(GAME_W / 2, 100, "Kingdom Built!", {
+      .text(GAME_W / 2, 50, "Kingdom Built!", {
         fontSize: "40px",
         fontFamily: "Arial, sans-serif",
         color: "#ffd700",
@@ -1431,17 +1711,13 @@ export class MatchScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.overlay.add(title);
 
-    const crown = this.add
-      .text(GAME_W / 2, 170, "\u{1F451}\u{1F3F0}\u{1F451}", {
-        fontSize: "40px",
-      })
-      .setOrigin(0.5);
-    this.overlay.add(crown);
+    // Draw the full kingdom visualization (level 10)
+    this.drawKingdom(GAME_W / 2, 190, 10);
 
     // Total stars
     const starsLabel = this.add
-      .text(GAME_W / 2, 230, `Total Stars: ${this.totalStars} / 30`, {
-        fontSize: "24px",
+      .text(GAME_W / 2, 340, `Total Stars: ${this.totalStars} / 30`, {
+        fontSize: "22px",
         fontFamily: "Arial, sans-serif",
         color: "#ffd700",
         fontStyle: "bold",
@@ -1453,10 +1729,10 @@ export class MatchScene extends Phaser.Scene {
     const verse = this.add
       .text(
         GAME_W / 2,
-        300,
+        380,
         `"${this.lesson.meta.verseText || this.lesson.meta.verseReference}"`,
         {
-          fontSize: "16px",
+          fontSize: "14px",
           fontFamily: "Arial, sans-serif",
           color: "#e0d0ff",
           fontStyle: "italic",
@@ -1468,8 +1744,8 @@ export class MatchScene extends Phaser.Scene {
     this.overlay.add(verse);
 
     const verseRef = this.add
-      .text(GAME_W / 2, 350, `- ${this.lesson.meta.verseReference}`, {
-        fontSize: "14px",
+      .text(GAME_W / 2, 415, `- ${this.lesson.meta.verseReference}`, {
+        fontSize: "13px",
         fontFamily: "Arial, sans-serif",
         color: "#b0a0d0",
       })
@@ -1478,14 +1754,14 @@ export class MatchScene extends Phaser.Scene {
 
     // Play Again
     const playBg = this.add
-      .rectangle(GAME_W / 2, 420, 200, 50, 0x9b59b6)
+      .rectangle(GAME_W / 2 - 120, 475, 180, 45, 0x9b59b6)
       .setStrokeStyle(2, 0xffd700)
       .setInteractive({ useHandCursor: true });
     this.overlay.add(playBg);
 
     const playText = this.add
-      .text(GAME_W / 2, 420, "Play Again", {
-        fontSize: "22px",
+      .text(GAME_W / 2 - 120, 475, "Play Again", {
+        fontSize: "20px",
         fontFamily: "Arial, sans-serif",
         color: "#ffffff",
         fontStyle: "bold",
@@ -1505,13 +1781,13 @@ export class MatchScene extends Phaser.Scene {
 
     // Back
     const backBg = this.add
-      .rectangle(GAME_W / 2, 490, 200, 50, 0x333355)
+      .rectangle(GAME_W / 2 + 120, 475, 180, 45, 0x333355)
       .setStrokeStyle(2, 0x666688)
       .setInteractive({ useHandCursor: true });
     this.overlay.add(backBg);
 
     const backText = this.add
-      .text(GAME_W / 2, 490, "Back to Games", {
+      .text(GAME_W / 2 + 120, 475, "Back to Games", {
         fontSize: "18px",
         fontFamily: "Arial, sans-serif",
         color: "#aaaacc",
@@ -1527,6 +1803,225 @@ export class MatchScene extends Phaser.Scene {
 
     // Fireworks particles
     this.createFireworks();
+  }
+
+  // ─── Kingdom Visualization ───────────────────────────────
+
+  /**
+   * Draw a kingdom illustration using Phaser Graphics.
+   * The kingdom grows as the player completes levels:
+   *   Level 0: empty field with grass
+   *   Level 1-2: empty field with foundation markers
+   *   Level 3-4: foundation walls appear
+   *   Level 5-6: towers rise
+   *   Level 7-8: castle takes shape with roofs
+   *   Level 9-10: full kingdom with golden glow
+   */
+  private drawKingdom(centerX: number, centerY: number, level: number): void {
+    const gfx = this.add.graphics();
+    gfx.setDepth(101);
+    this.overlay.add(gfx);
+
+    const w = 220; // kingdom drawing width
+    const h = 240; // kingdom drawing height
+    const baseX = centerX - w / 2;
+    const baseY = centerY + h / 2; // ground level
+
+    // Sky gradient background
+    gfx.fillStyle(0x0d0520, 0.5);
+    gfx.fillRect(centerX - w / 2 - 10, centerY - h / 2 - 10, w + 20, h + 20);
+
+    // Ground / grass
+    gfx.fillStyle(0x2d5a1e, 1);
+    gfx.fillRect(baseX - 10, baseY - 15, w + 20, 25);
+    gfx.fillStyle(0x3d7a2e, 1);
+    gfx.fillRect(baseX - 10, baseY - 15, w + 20, 8);
+
+    // Path leading to castle
+    gfx.fillStyle(0x8b7355, 0.6);
+    gfx.fillRect(centerX - 12, baseY - 12, 24, 15);
+
+    if (level <= 0) {
+      // Empty field - just some scattered stones
+      gfx.fillStyle(0x666666, 0.4);
+      gfx.fillCircle(centerX - 30, baseY - 18, 3);
+      gfx.fillCircle(centerX + 25, baseY - 20, 2);
+      gfx.fillCircle(centerX + 5, baseY - 16, 2);
+      return;
+    }
+
+    if (level >= 1) {
+      // Foundation markers / stakes
+      gfx.lineStyle(2, 0x8b6914, 0.8);
+      // Left stake
+      gfx.lineBetween(baseX + 30, baseY - 15, baseX + 30, baseY - 35);
+      // Right stake
+      gfx.lineBetween(baseX + w - 30, baseY - 15, baseX + w - 30, baseY - 35);
+      // String between stakes
+      gfx.lineStyle(1, 0xccaa44, 0.5);
+      gfx.lineBetween(baseX + 30, baseY - 33, baseX + w - 30, baseY - 33);
+    }
+
+    if (level >= 3) {
+      // Foundation walls
+      gfx.fillStyle(0x555577, 1);
+      // Left wall
+      gfx.fillRect(baseX + 25, baseY - 60, 20, 45);
+      // Right wall
+      gfx.fillRect(baseX + w - 45, baseY - 60, 20, 45);
+      // Front wall (lower)
+      gfx.fillRect(baseX + 45, baseY - 40, w - 90, 25);
+      // Wall texture lines
+      gfx.lineStyle(1, 0x444466, 0.4);
+      for (let i = 0; i < 3; i++) {
+        const wy = baseY - 55 + i * 14;
+        gfx.lineBetween(baseX + 26, wy, baseX + 44, wy);
+        gfx.lineBetween(baseX + w - 44, wy, baseX + w - 26, wy);
+      }
+    }
+
+    if (level >= 5) {
+      // Towers rise
+      const towerW = 28;
+      const towerH = 90;
+
+      // Left tower
+      gfx.fillStyle(0x6666aa, 1);
+      gfx.fillRect(baseX + 20, baseY - 15 - towerH, towerW, towerH);
+      // Tower window
+      gfx.fillStyle(0xffdd77, 0.8);
+      gfx.fillRect(baseX + 29, baseY - 15 - towerH + 20, 10, 14);
+      // Tower crenellations
+      gfx.fillStyle(0x6666aa, 1);
+      for (let i = 0; i < 3; i++) {
+        gfx.fillRect(baseX + 20 + i * 10, baseY - 15 - towerH - 8, 7, 8);
+      }
+
+      // Right tower
+      gfx.fillStyle(0x6666aa, 1);
+      gfx.fillRect(baseX + w - 48, baseY - 15 - towerH, towerW, towerH);
+      // Tower window
+      gfx.fillStyle(0xffdd77, 0.8);
+      gfx.fillRect(baseX + w - 43, baseY - 15 - towerH + 20, 10, 14);
+      // Tower crenellations
+      gfx.fillStyle(0x6666aa, 1);
+      for (let i = 0; i < 3; i++) {
+        gfx.fillRect(baseX + w - 48 + i * 10, baseY - 15 - towerH - 8, 7, 8);
+      }
+    }
+
+    if (level >= 7) {
+      // Castle body takes shape
+      const castleH = 65;
+      gfx.fillStyle(0x5555aa, 1);
+      gfx.fillRect(baseX + 48, baseY - 15 - castleH, w - 96, castleH);
+
+      // Castle door
+      gfx.fillStyle(0x4a3520, 1);
+      gfx.fillRoundedRect(centerX - 10, baseY - 40, 20, 25, 10);
+
+      // Castle windows (row)
+      gfx.fillStyle(0xffdd77, 0.8);
+      gfx.fillRect(centerX - 40, baseY - 15 - castleH + 18, 10, 14);
+      gfx.fillRect(centerX + 30, baseY - 15 - castleH + 18, 10, 14);
+
+      // Peaked roofs on towers (triangles)
+      gfx.fillStyle(0x8b2252, 1);
+      // Left tower roof
+      gfx.fillTriangle(
+        baseX + 15, baseY - 105,
+        baseX + 53, baseY - 105,
+        baseX + 34, baseY - 130,
+      );
+      // Right tower roof
+      gfx.fillTriangle(
+        baseX + w - 53, baseY - 105,
+        baseX + w - 15, baseY - 105,
+        baseX + w - 34, baseY - 130,
+      );
+
+      // Crenellations on main castle wall
+      gfx.fillStyle(0x5555aa, 1);
+      const crenelTop = baseY - 15 - castleH - 6;
+      for (let i = 0; i < 6; i++) {
+        gfx.fillRect(baseX + 52 + i * 18, crenelTop, 12, 6);
+      }
+    }
+
+    if (level >= 9) {
+      // Full kingdom with golden glow and flag
+      // Central spire
+      gfx.fillStyle(0x7777cc, 1);
+      gfx.fillRect(centerX - 8, baseY - 150, 16, 70);
+      // Spire roof
+      gfx.fillStyle(0xdaa520, 1);
+      gfx.fillTriangle(
+        centerX - 14, baseY - 150,
+        centerX + 14, baseY - 150,
+        centerX, baseY - 180,
+      );
+
+      // Flag on top
+      gfx.fillStyle(0xff4444, 1);
+      gfx.lineBetween(centerX, baseY - 180, centerX, baseY - 200);
+      gfx.lineStyle(2, 0x8b6914, 1);
+      gfx.lineBetween(centerX, baseY - 180, centerX, baseY - 200);
+      gfx.fillStyle(0xffd700, 1);
+      gfx.fillTriangle(
+        centerX + 1, baseY - 200,
+        centerX + 1, baseY - 188,
+        centerX + 16, baseY - 194,
+      );
+
+      // Golden glow effect around the castle
+      const glowRect = this.add
+        .rectangle(centerX, centerY - 20, w + 30, h + 10, 0xffd700, 0)
+        .setDepth(100);
+      this.overlay.add(glowRect);
+
+      this.tweens.add({
+        targets: glowRect,
+        alpha: { from: 0, to: 0.12 },
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+
+      // Sparkle particles around the castle
+      for (let i = 0; i < 6; i++) {
+        const sx = centerX - 80 + Math.random() * 160;
+        const sy = centerY - 100 + Math.random() * 120;
+        const sparkle = this.add
+          .text(sx, sy, "\u2726", {
+            fontSize: "12px",
+            color: "#ffd700",
+          })
+          .setDepth(102)
+          .setAlpha(0);
+        this.overlay.add(sparkle);
+
+        this.tweens.add({
+          targets: sparkle,
+          alpha: { from: 0, to: 0.8 },
+          scale: { from: 0.5, to: 1.2 },
+          duration: 800 + Math.random() * 600,
+          delay: i * 300,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+    }
+  }
+
+  private getKingdomStageDescription(level: number): string {
+    if (level <= 0) return "An empty field awaits...";
+    if (level <= 2) return "Foundation stakes mark the site";
+    if (level <= 4) return "Walls are being built!";
+    if (level <= 6) return "Towers are rising!";
+    if (level <= 8) return "The castle takes shape!";
+    return "The Kingdom stands in glory!";
   }
 
   private createFireworks(): void {
