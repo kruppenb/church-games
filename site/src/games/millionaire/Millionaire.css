@@ -456,6 +456,150 @@
   }
 }
 
+/* --- New piece construction animation --- */
+.millionaire-piece-new {
+  animation: millionaire-piece-construct 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+  position: relative;
+  z-index: 2;
+  overflow: visible !important;
+}
+
+@keyframes millionaire-piece-construct {
+  0% {
+    opacity: 0;
+    transform: scale(0) translateY(20px);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15) translateY(-4px);
+  }
+  60% {
+    transform: scale(0.95) translateY(2px);
+  }
+  80% {
+    transform: scale(1.05) translateY(-1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Golden glow layer on new piece */
+.millionaire-piece-glow {
+  position: absolute;
+  inset: -4px;
+  border-radius: 5px;
+  background: transparent;
+  box-shadow:
+    0 0 12px 4px rgba(255, 215, 0, 0.6),
+    0 0 30px 8px rgba(255, 215, 0, 0.3),
+    inset 0 0 8px 2px rgba(255, 215, 0, 0.2);
+  animation: millionaire-glow-fade 1.2s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes millionaire-glow-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Particle container */
+.millionaire-piece-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Individual particles (dust / sparkle) */
+.millionaire-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  opacity: 0;
+  animation: millionaire-particle-burst 0.9s ease-out forwards;
+  box-shadow: 0 0 4px rgba(255, 215, 0, 0.8);
+}
+
+.millionaire-particle:nth-child(1) {
+  left: 10%;
+  top: 50%;
+  animation-delay: 0.05s;
+  --particle-x: -12px;
+  --particle-y: -16px;
+}
+.millionaire-particle:nth-child(2) {
+  left: 30%;
+  top: 30%;
+  animation-delay: 0.1s;
+  --particle-x: -6px;
+  --particle-y: -20px;
+  background: #fff;
+}
+.millionaire-particle:nth-child(3) {
+  left: 60%;
+  top: 40%;
+  animation-delay: 0.15s;
+  --particle-x: 8px;
+  --particle-y: -18px;
+}
+.millionaire-particle:nth-child(4) {
+  left: 80%;
+  top: 50%;
+  animation-delay: 0.08s;
+  --particle-x: 14px;
+  --particle-y: -14px;
+  background: #fff;
+}
+.millionaire-particle:nth-child(5) {
+  left: 45%;
+  top: 60%;
+  animation-delay: 0.12s;
+  --particle-x: 2px;
+  --particle-y: -22px;
+  width: 3px;
+  height: 3px;
+}
+.millionaire-particle:nth-child(6) {
+  left: 70%;
+  top: 30%;
+  animation-delay: 0.18s;
+  --particle-x: 10px;
+  --particle-y: -12px;
+  width: 3px;
+  height: 3px;
+  background: #fff;
+}
+
+@keyframes millionaire-particle-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(
+        calc(var(--particle-x) * 0.3),
+        calc(var(--particle-y) * 0.3)
+      )
+      scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--particle-x), var(--particle-y)) scale(0);
+  }
+}
+
 /* --- Temple glow for walk-away / completion --- */
 .millionaire-temple-glow {
   box-shadow: 0 0 30px var(--color-gold-glow), inset 0 0 20px rgba(255, 215, 0, 0.05);
@@ -549,6 +693,147 @@
   font-style: italic;
 }
 
+/* --- "Final Answer?" confirmation overlay --- */
+.millionaire-final-answer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: millionaire-overlay-fade-in 0.3s ease;
+}
+
+@keyframes millionaire-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.millionaire-final-answer-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-2xl) var(--space-xl);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  animation: millionaire-modal-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes millionaire-modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Spotlight radial glow behind the modal */
+.millionaire-final-answer-spotlight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 215, 0, 0.15) 0%,
+    rgba(255, 215, 0, 0.05) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+  animation: millionaire-spotlight-pulse 2s ease-in-out infinite;
+}
+
+@keyframes millionaire-spotlight-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+.millionaire-final-answer-title {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  color: var(--color-gold);
+  text-shadow: 0 0 30px var(--color-gold-glow), 0 0 60px rgba(255, 215, 0, 0.2);
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  position: relative;
+  z-index: 1;
+}
+
+.millionaire-final-answer-choice {
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  position: relative;
+  z-index: 1;
+}
+
+.millionaire-final-answer-choice strong {
+  color: var(--color-text);
+}
+
+.millionaire-final-answer-value {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  position: relative;
+  z-index: 1;
+}
+
+.millionaire-final-answer-amount {
+  color: var(--color-gold);
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px var(--color-gold-glow);
+}
+
+.millionaire-final-answer-buttons {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.millionaire-lock-in-btn {
+  animation: millionaire-lock-in-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes millionaire-lock-in-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(255, 215, 0, 0.3);
+  }
+}
+
+.millionaire-final-answer-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  position: relative;
+  z-index: 1;
+}
+
 /* --- Timer (big kids only) --- */
 .millionaire-timer-wrapper {
   display: flex;
@@ -619,5 +904,14 @@
 
   .millionaire-complete-temple {
     width: 160px;
+  }
+
+  .millionaire-final-answer-modal {
+    padding: var(--space-xl) var(--space-md);
+  }
+
+  .millionaire-final-answer-spotlight {
+    width: 280px;
+    height: 280px;
   }
 }

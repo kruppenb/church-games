@@ -305,3 +305,42 @@ export function isMilestone(
 ): boolean {
   return getMilestones(difficulty).includes(level);
 }
+
+// ---------------------------------------------------------------------------
+// Dollar values for each level (Millionaire-style prize ladder)
+// ---------------------------------------------------------------------------
+
+const LITTLE_KIDS_VALUES = [
+  100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
+];
+
+const BIG_KIDS_VALUES = [
+  100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,
+  2000, 5000, 10000, 50000, 100000,
+];
+
+export function getLevelValue(
+  level: number,
+  difficulty: "little-kids" | "big-kids",
+): number {
+  const values =
+    difficulty === "little-kids" ? LITTLE_KIDS_VALUES : BIG_KIDS_VALUES;
+  if (level < 1 || level > values.length) return 0;
+  return values[level - 1];
+}
+
+// ---------------------------------------------------------------------------
+// Should show "Final Answer?" confirmation
+// Only for big-kids difficulty on questions worth $400+
+// (level index is 0-based, so currentLevel 3 = answering for level 4 = $400)
+// ---------------------------------------------------------------------------
+
+export function shouldShowFinalAnswer(state: MillionaireState): boolean {
+  if (state.difficulty !== "big-kids") return false;
+  // currentLevel is 0-based (the level they're answering FOR)
+  // level 1=$100, level 2=$200, level 3=$300, level 4=$400
+  // currentLevel 3 means answering question #4 which earns $400
+  const targetLevel = state.currentLevel + 1;
+  const value = getLevelValue(targetLevel, state.difficulty);
+  return value >= 400;
+}

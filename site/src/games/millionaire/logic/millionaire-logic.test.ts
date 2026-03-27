@@ -12,6 +12,8 @@ import {
   getTemplePiece,
   getMilestones,
   isMilestone,
+  getLevelValue,
+  shouldShowFinalAnswer,
   type MillionaireState,
 } from "./millionaire-logic";
 
@@ -518,6 +520,60 @@ describe("isMilestone", () => {
     expect(isMilestone(10, "big-kids")).toBe(true);
     expect(isMilestone(15, "big-kids")).toBe(true);
     expect(isMilestone(7, "big-kids")).toBe(false);
+  });
+});
+
+// =========================================================================
+// getLevelValue
+// =========================================================================
+
+describe("getLevelValue", () => {
+  it("returns correct values for little-kids levels", () => {
+    expect(getLevelValue(1, "little-kids")).toBe(100);
+    expect(getLevelValue(4, "little-kids")).toBe(400);
+    expect(getLevelValue(10, "little-kids")).toBe(1000);
+  });
+
+  it("returns correct values for big-kids levels", () => {
+    expect(getLevelValue(1, "big-kids")).toBe(100);
+    expect(getLevelValue(4, "big-kids")).toBe(400);
+    expect(getLevelValue(10, "big-kids")).toBe(1000);
+    expect(getLevelValue(15, "big-kids")).toBe(100000);
+  });
+
+  it("returns 0 for out-of-range levels", () => {
+    expect(getLevelValue(0, "little-kids")).toBe(0);
+    expect(getLevelValue(11, "little-kids")).toBe(0);
+    expect(getLevelValue(16, "big-kids")).toBe(0);
+    expect(getLevelValue(-1, "big-kids")).toBe(0);
+  });
+});
+
+// =========================================================================
+// shouldShowFinalAnswer
+// =========================================================================
+
+describe("shouldShowFinalAnswer", () => {
+  it("returns false for little-kids regardless of level", () => {
+    const state = makeState({ difficulty: "little-kids", currentLevel: 5 });
+    expect(shouldShowFinalAnswer(state)).toBe(false);
+  });
+
+  it("returns false for big-kids on levels below $400 (levels 1-3)", () => {
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 0 }))).toBe(false);
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 1 }))).toBe(false);
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 2 }))).toBe(false);
+  });
+
+  it("returns true for big-kids at level 3 ($400 question)", () => {
+    const state = makeState({ difficulty: "big-kids", currentLevel: 3, totalLevels: 15 });
+    expect(shouldShowFinalAnswer(state)).toBe(true);
+  });
+
+  it("returns true for big-kids at higher levels", () => {
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 5, totalLevels: 15 }))).toBe(true);
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 10, totalLevels: 15 }))).toBe(true);
+    expect(shouldShowFinalAnswer(makeState({ difficulty: "big-kids", currentLevel: 14, totalLevels: 15 }))).toBe(true);
   });
 });
 

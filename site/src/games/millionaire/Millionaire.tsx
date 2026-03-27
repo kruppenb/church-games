@@ -17,8 +17,10 @@ import {
   usePeek,
   calculateStars,
   getTemplePiece,
+  getLevelValue,
   getMilestones,
   isMilestone,
+  shouldShowFinalAnswer,
   type MillionaireState,
 } from "./logic/millionaire-logic";
 import "./Millionaire.css";
@@ -26,6 +28,7 @@ import "./Millionaire.css";
 type GameState =
   | "intro"
   | "playing"
+  | "confirming"
   | "feedback"
   | "decision"
   | "walkaway"
@@ -60,11 +63,13 @@ function TempleVisual({
   totalLevels,
   difficulty,
   glow,
+  newPieceLevel,
 }: {
   level: number;
   totalLevels: number;
   difficulty: "little-kids" | "big-kids";
   glow?: boolean;
+  newPieceLevel?: number;
 }) {
   const milestones = getMilestones(difficulty);
 
@@ -77,14 +82,35 @@ function TempleVisual({
         const pieceLevel = i + 1;
         const pieceName = getTemplePiece(pieceLevel, difficulty);
         const isMilestoneLevel = milestones.includes(pieceLevel);
+        const isNewPiece = pieceLevel === newPieceLevel;
         return (
           <div
             key={pieceLevel}
-            className={`millionaire-temple-piece ${getPieceClass(pieceName)} ${isMilestoneLevel ? "millionaire-piece-milestone" : ""}`}
-            style={{ animationDelay: `${i * 0.05}s` }}
+            className={[
+              "millionaire-temple-piece",
+              getPieceClass(pieceName),
+              isMilestoneLevel ? "millionaire-piece-milestone" : "",
+              isNewPiece ? "millionaire-piece-new" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={isNewPiece ? undefined : { animationDelay: `${i * 0.05}s` }}
             title={pieceName}
           >
             {pieceName}
+            {isNewPiece && (
+              <>
+                <span className="millionaire-piece-glow" aria-hidden="true" />
+                <span className="millionaire-piece-particles" aria-hidden="true">
+                  <span className="millionaire-particle" />
+                  <span className="millionaire-particle" />
+                  <span className="millionaire-particle" />
+                  <span className="millionaire-particle" />
+                  <span className="millionaire-particle" />
+                  <span className="millionaire-particle" />
+                </span>
+              </>
+            )}
           </div>
         );
       })}
@@ -110,6 +136,8 @@ export function Millionaire() {
   const [timerPaused, setTimerPaused] = useState(false);
   // Track the question index we're showing (for little-kids, they may skip ahead on wrong answer)
   const [questionIndex, setQuestionIndex] = useState(0);
+  // Track newly earned temple piece for construction animation
+  const [newPieceLevel, setNewPieceLevel] = useState<number | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Current question being displayed
@@ -131,6 +159,7 @@ export function Millionaire() {
     setSelectedIndex(null);
     setShowHint(false);
     setShowCelebration(false);
+    setNewPieceLevel(null);
     setTimerKey((k) => k + 1);
     setTimerPaused(false);
     setGameState("playing");
@@ -139,18 +168,10 @@ export function Millionaire() {
   // -----------------------------------------------------------------------
   // Handle answer selection
   // -----------------------------------------------------------------------
-  const handleAnswer = useCallback(
+  // Process the answer after selection (or after "Final Answer?" confirmation)
+  const processAnswer = useCallback(
     (index: number) => {
-      if (
-        gameState !== "playing" ||
-        selectedIndex !== null ||
-        !state ||
-        !currentQuestion
-      )
-        return;
-
-      setSelectedIndex(index);
-      setTimerPaused(true);
+      if (!state || !currentQuestion) return;
 
       const correct = index === currentQuestion.correctIndex;
       setWasCorrect(correct);
@@ -167,6 +188,11 @@ export function Millionaire() {
         setState(newState);
 
         if (correct) {
+          // Track the newly earned piece for construction animation
+          setNewPieceLevel(newState.currentLevel);
+          // Clear the animation after it completes
+          setTimeout(() => setNewPieceLevel(null), 1500);
+
           if (newState.gameOver) {
             // Completed all levels!
             playCelebration();
@@ -178,12 +204,53 @@ export function Millionaire() {
           }
         } else {
           // Wrong answer
+          setNewPieceLevel(null);
           setGameState("feedback");
         }
       }, 1000);
     },
-    [gameState, selectedIndex, state, currentQuestion],
+    [state, currentQuestion],
   );
+
+  const handleAnswer = useCallback(
+    (index: number) => {
+      if (
+        gameState !== "playing" ||
+        selectedIndex !== null ||
+        !state ||
+        !currentQuestion
+      )
+        return;
+
+      setSelectedIndex(index);
+      setTimerPaused(true);
+
+      // Check if "Final Answer?" confirmation is needed
+      if (shouldShowFinalAnswer(state)) {
+        setGameState("confirming");
+        return;
+      }
+
+      // Process immediately if no confirmation needed
+      processAnswer(index);
+    },
+    [gameState, selectedIndex, state, currentQuestion, processAnswer],
+  );
+
+  // "Final Answer?" confirmation: lock it in
+  const handleLockIn = useCallback(() => {
+    if (gameState !== "confirming" || selectedIndex === null) return;
+    setGameState("playing");
+    processAnswer(selectedIndex);
+  }, [gameState, selectedIndex, processAnswer]);
+
+  // "Final Answer?" confirmation: change mind
+  const handleChangeMind = useCallback(() => {
+    if (gameState !== "confirming") return;
+    setSelectedIndex(null);
+    setTimerPaused(false);
+    setGameState("playing");
+  }, [gameState]);
 
   // -----------------------------------------------------------------------
   // Handle feedback next (after wrong answer)
@@ -300,6 +367,7 @@ export function Millionaire() {
     setSelectedIndex(null);
     setShowHint(false);
     setShowCelebration(false);
+    setNewPieceLevel(null);
   }
 
   // -----------------------------------------------------------------------
@@ -326,6 +394,17 @@ export function Millionaire() {
           if (state && state.currentLevel > 0) {
             handleWalkAway();
           }
+        }
+      }
+
+      if (gameState === "confirming") {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleLockIn();
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          handleChangeMind();
         }
       }
 
@@ -362,6 +441,8 @@ export function Millionaire() {
     currentQuestion,
     state,
     handleAnswer,
+    handleLockIn,
+    handleChangeMind,
     handleKeepBuilding,
     handleWalkAway,
     handleFeedbackNext,
@@ -658,7 +739,7 @@ export function Millionaire() {
           / {state.totalLevels}
         </span>
 
-        {difficulty === "big-kids" && gameState === "playing" && (
+        {difficulty === "big-kids" && (gameState === "playing" || gameState === "confirming") && (
           <div className="millionaire-timer-wrapper">
             <Timer
               key={timerKey}
@@ -745,7 +826,7 @@ export function Millionaire() {
               </div>
             </div>
           ) : (
-            /* Question display */
+            /* Question display (playing or confirming state) */
             <div className="millionaire-question-area">
               <h2 className="millionaire-question-text">
                 {currentQuestion.text}
@@ -783,7 +864,7 @@ export function Millionaire() {
                       className={btnClass}
                       onClick={() => handleAnswer(idx)}
                       disabled={
-                        selectedIndex !== null || isRemoved
+                        selectedIndex !== null || isRemoved || gameState === "confirming"
                       }
                     >
                       <span className="millionaire-answer-label">
@@ -794,6 +875,49 @@ export function Millionaire() {
                   );
                 })}
               </div>
+
+              {/* "Final Answer?" confirmation overlay */}
+              {gameState === "confirming" && selectedIndex !== null && (
+                <div className="millionaire-final-answer-overlay" role="dialog" aria-label="Final answer confirmation">
+                  <div className="millionaire-final-answer-modal">
+                    <div className="millionaire-final-answer-spotlight" aria-hidden="true" />
+                    <h2 className="millionaire-final-answer-title">
+                      Is that your Final Answer?
+                    </h2>
+                    <p className="millionaire-final-answer-choice">
+                      You selected:{" "}
+                      <strong>
+                        {ANSWER_LABELS[selectedIndex]} &mdash;{" "}
+                        {currentQuestion.options[selectedIndex]}
+                      </strong>
+                    </p>
+                    <p className="millionaire-final-answer-value">
+                      Playing for{" "}
+                      <span className="millionaire-final-answer-amount">
+                        ${getLevelValue(state.currentLevel + 1, state.difficulty).toLocaleString()}
+                      </span>
+                    </p>
+                    <div className="millionaire-final-answer-buttons">
+                      <button
+                        className="btn btn-primary btn-large millionaire-lock-in-btn"
+                        onClick={handleLockIn}
+                        autoFocus
+                      >
+                        Lock it in!
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-large millionaire-change-mind-btn"
+                        onClick={handleChangeMind}
+                      >
+                        Change my mind
+                      </button>
+                    </div>
+                    <p className="millionaire-final-answer-hint">
+                      Press Enter to lock in, Escape to change
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -804,6 +928,7 @@ export function Millionaire() {
             level={state.currentLevel}
             totalLevels={state.totalLevels}
             difficulty={state.difficulty}
+            newPieceLevel={newPieceLevel ?? undefined}
           />
         </div>
       </div>
