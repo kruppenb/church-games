@@ -14,6 +14,120 @@ import type { Question } from "@/types/lesson";
 
 type GameState = "intro" | "playing" | "feedback" | "complete";
 
+function SpeedBadge({ secondsLeft, timerDuration }: { secondsLeft: number; timerDuration: number }) {
+  const ratio = secondsLeft / timerDuration;
+  if (ratio >= 0.8) return <div className="quiz-speed-badge quiz-speed-lightning" key={secondsLeft}>LIGHTNING!</div>;
+  if (ratio >= 0.5) return <div className="quiz-speed-badge quiz-speed-fast" key={secondsLeft}>FAST!</div>;
+  return null;
+}
+
+function PodiumScreen({
+  score,
+  totalCorrect,
+  questionsAnswered,
+  stars,
+  lesson,
+  onPlayAgain,
+}: {
+  score: number;
+  totalCorrect: number;
+  questionsAnswered: number;
+  stars: number;
+  lesson: { meta: { verseReference: string; verseText: string } };
+  onPlayAgain: () => void;
+}) {
+  const [displayScore, setDisplayScore] = useState(0);
+  const [showStars, setShowStars] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  useEffect(() => {
+    if (score === 0) {
+      setDisplayScore(0);
+      setShowStars(true);
+      setShowStats(true);
+      return;
+    }
+    const steps = 30;
+    const increment = Math.ceil(score / steps);
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= score) {
+        current = score;
+        clearInterval(timer);
+        setTimeout(() => setShowStars(true), 200);
+        setTimeout(() => { setShowStats(true); setShowConfetti(true); }, 600);
+      }
+      setDisplayScore(current);
+    }, 40);
+    return () => clearInterval(timer);
+  }, [score]);
+
+  const percentage = questionsAnswered > 0
+    ? Math.round((totalCorrect / questionsAnswered) * 100)
+    : 0;
+  const rank = stars === 3 ? "Champion" : stars === 2 ? "Great Job" : "Good Try";
+
+  return (
+    <div className="quiz-container">
+      <div className="quiz-complete quiz-podium">
+        {showConfetti && (
+          <div className="quiz-confetti" aria-hidden="true">
+            {Array.from({ length: 20 }, (_, i) => (
+              <span
+                key={i}
+                className="quiz-confetti-piece"
+                style={{
+                  "--confetti-x": `${Math.random() * 100}%`,
+                  "--confetti-delay": `${Math.random() * 0.5}s`,
+                  "--confetti-color": ["#ff3b5c", "#ffd700", "#00d4ff", "#00ff88", "#a855f7"][i % 5],
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        )}
+        <h1 className="quiz-podium-rank">{rank}!</h1>
+        <div className="quiz-podium-trophy">
+          {stars === 3 ? "🏆" : stars === 2 ? "🥈" : "🥉"}
+        </div>
+        <div className="quiz-complete-score">
+          <span className="quiz-complete-score-label">Final Score</span>
+          <span className="quiz-complete-score-value quiz-score-counting">{displayScore}</span>
+        </div>
+        <div className={`quiz-complete-stars ${showStars ? "quiz-stars-visible" : "quiz-stars-hidden"}`} aria-label={`${stars} stars`}>
+          {[1, 2, 3].map((s) => (
+            <span
+              key={s}
+              className={`quiz-star ${s <= stars ? "quiz-star-earned" : "quiz-star-empty"}`}
+              style={{ "--star-delay": `${s * 0.15}s` } as React.CSSProperties}
+            >
+              &#9733;
+            </span>
+          ))}
+        </div>
+        <p className={`quiz-complete-stats ${showStats ? "quiz-stats-visible" : "quiz-stats-hidden"}`}>
+          {totalCorrect} of {questionsAnswered} correct ({percentage}%)
+        </p>
+        <div className={`quiz-podium-bottom ${showStats ? "quiz-stats-visible" : "quiz-stats-hidden"}`}>
+          <VerseDisplay
+            reference={lesson.meta.verseReference}
+            text={lesson.meta.verseText}
+          />
+          <div className="quiz-complete-actions">
+            <button className="btn btn-primary btn-large" onClick={onPlayAgain}>
+              Play Again
+            </button>
+            <a href="#/" className="btn btn-secondary">
+              Back to Games
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ANSWER_LABELS = ["A", "B", "C", "D"];
 
 export function QuizShowdown() {
@@ -259,43 +373,14 @@ export function QuizShowdown() {
     saveScore("quiz-showdown", stars);
 
     return (
-      <div className={"quiz-container"}>
-        <div className="quiz-complete">
-          <h1 className="quiz-complete-title">Great Job!</h1>
-          <div className="quiz-complete-stars" aria-label={`${stars} stars`}>
-            {[1, 2, 3].map((s) => (
-              <span
-                key={s}
-                className={`quiz-star ${s <= stars ? "quiz-star-earned" : "quiz-star-empty"}`}
-              >
-                &#9733;
-              </span>
-            ))}
-          </div>
-          <div className="quiz-complete-score">
-            <span className="quiz-complete-score-label">Final Score</span>
-            <span className="quiz-complete-score-value">{score}</span>
-          </div>
-          <p className="quiz-complete-stats">
-            {totalCorrect} of {questionsAnswered} correct ({percentage}%)
-          </p>
-          <VerseDisplay
-            reference={lesson.meta.verseReference}
-            text={lesson.meta.verseText}
-          />
-          <div className="quiz-complete-actions">
-            <button
-              className="btn btn-primary btn-large"
-              onClick={handlePlayAgain}
-            >
-              Play Again
-            </button>
-            <a href="#/" className="btn btn-secondary">
-              Back to Games
-            </a>
-          </div>
-        </div>
-      </div>
+      <PodiumScreen
+        score={score}
+        totalCorrect={totalCorrect}
+        questionsAnswered={questionsAnswered}
+        stars={stars}
+        lesson={lesson}
+        onPlayAgain={handlePlayAgain}
+      />
     );
   }
 
@@ -316,11 +401,14 @@ export function QuizShowdown() {
       </div>
 
       {gameState === "feedback" && currentQuestion ? (
-        <AnswerFeedback
-          correct={wasCorrect}
-          explanation={currentQuestion.explanation}
-          onNext={handleNext}
-        />
+        <>
+          {wasCorrect && <SpeedBadge secondsLeft={timerSecondsLeft} timerDuration={timerDuration} />}
+          <AnswerFeedback
+            correct={wasCorrect}
+            explanation={currentQuestion.explanation}
+            onNext={handleNext}
+          />
+        </>
       ) : (
         currentQuestion && (
           <div className="quiz-question-area">
