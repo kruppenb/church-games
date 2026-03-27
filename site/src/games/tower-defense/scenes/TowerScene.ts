@@ -216,8 +216,9 @@ export class TowerScene extends Phaser.Scene {
   private blessingsOverlay: Phaser.GameObjects.Container | null = null;
   private blessingsHudIcons: Phaser.GameObjects.Arc[] = [];
 
-  // Fast forward
-  private fastForward = false;
+  // Fast forward (1x/2x/3x cycle)
+  private speedMultiplier: 1 | 2 | 3 = 1;
+  private fastForward = false; // kept for backward compat (true when speedMultiplier > 1)
   private fastForwardButton: Phaser.GameObjects.Container | null = null;
 
   // Hero ability
@@ -232,6 +233,12 @@ export class TowerScene extends Phaser.Scene {
   // Tutorial tracking
   private autoPlaceTimer = 0;
   private tutorialPlaced = false;
+
+  // Guided tutorial bubble (waves 1-3)
+  private tutorialBubble: Phaser.GameObjects.Container | null = null;
+
+  // Wave celebration banner
+  private waveCelebration: Phaser.GameObjects.Container | null = null;
 
   // Wave 1 only Light tower available flag
   private get isFirstWave(): boolean {
@@ -1021,22 +1028,27 @@ export class TowerScene extends Phaser.Scene {
     this.showStartWaveButton();
     this.showBlessingsButton();
 
-    // Show hint text for early waves
-    if (this.gameState.wave <= 1) {
-      const hint = this.add.text(
-        GAME_W / 2,
-        GAME_H / 2 + 60,
-        "Tap a green circle to place a tower!",
-        {
-          fontSize: "16px",
-          color: "#88ff88",
-          fontFamily: "'Segoe UI', Arial, sans-serif",
-          fontStyle: "bold",
-        },
+    // Show guided tutorial bubbles for early waves
+    if (this.gameState.wave <= 0) {
+      // Wave 1 placement: explain tower placement
+      const firstSpot = PLACEMENT_SPOTS[0];
+      this.showTutorialBubble(
+        "Tap a glowing spot to place a tower!",
+        firstSpot.x,
+        firstSpot.y - 50,
+        6000,
       );
-      hint.setOrigin(0.5);
-      hint.setDepth(70);
-      this.time.delayedCall(5000, () => hint.destroy());
+    } else if (this.gameState.wave === 1) {
+      // Wave 2 placement: explain upgrading (if player has a tower)
+      if (this.activeTowers.length > 0) {
+        const firstTower = this.activeTowers[0];
+        this.showTutorialBubble(
+          "Tap an existing tower to upgrade it!",
+          firstTower.x,
+          firstTower.y - 55,
+          6000,
+        );
+      }
     }
   }
 
@@ -1267,6 +1279,9 @@ export class TowerScene extends Phaser.Scene {
 
   private onSpotClicked(spotIndex: number): void {
     if (this.gameState.phase !== "placement") return;
+
+    // Dismiss tutorial bubble on player action
+    this.dismissTutorialBubble();
 
     // Check if spot has a tower (for upgrade)
     const existing = this.activeTowers.find(
@@ -1702,6 +1717,9 @@ export class TowerScene extends Phaser.Scene {
     this.enemiesToSpawn = [...waveConfig.enemies];
     this.spawnTimer = 0;
 
+    // Dismiss any leftover tutorial bubble from placement phase
+    this.dismissTutorialBubble();
+
     // Boss wave announcement
     if (waveConfig.isBossWave && waveConfig.bossType) {
       const bossName = ENEMY_DEFS[waveConfig.bossType].label;
@@ -1710,6 +1728,18 @@ export class TowerScene extends Phaser.Scene {
 
     // Show Pray button
     this.showPrayButton();
+
+    // Wave 3 tutorial: explain hero abilities
+    if (this.gameState.wave === 3 && this.gameState.hero) {
+      this.time.delayedCall(500, () => {
+        this.showTutorialBubble(
+          "Use your hero ability with the button below!",
+          80,
+          HUD_HEIGHT + 80,
+          5000,
+        );
+      });
+    }
   }
 
   private showPrayButton(): void {
@@ -1748,15 +1778,18 @@ export class TowerScene extends Phaser.Scene {
 
   private showFastForwardButton(): void {
     this.fastForwardButton?.destroy();
-    // Preserve the current fast forward state across waves (don't reset)
+    // Reset speed to 1x at the start of each wave
+    this.speedMultiplier = 1;
+    this.fastForward = false;
 
     const container = this.add.container(0, 0);
     container.setDepth(85);
 
+    const speedColors: Record<number, number> = { 1: 0x444444, 2: 0x886600, 3: 0xcc4400 };
     const btnBg = this.add.rectangle(GAME_W - 80, HUD_HEIGHT + 70, 80, 30,
-      this.fastForward ? 0x886600 : 0x444444, 0.8);
+      speedColors[this.speedMultiplier], 0.8);
     btnBg.setInteractive({ useHandCursor: true });
-    const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 70, this.fastForward ? "2x" : "1x", {
+    const btnText = this.add.text(GAME_W - 80, HUD_HEIGHT + 70, `${this.speedMultiplier}x`, {
       fontSize: "14px",
       color: "#ffffff",
       fontFamily: "'Segoe UI', Arial, sans-serif",
@@ -1767,9 +1800,17 @@ export class TowerScene extends Phaser.Scene {
     container.add(btnText);
 
     btnBg.on("pointerdown", () => {
-      this.fastForward = !this.fastForward;
-      btnText.setText(this.fastForward ? "2x" : "1x");
-      btnBg.setFillStyle(this.fastForward ? 0x886600 : 0x444444, 0.8);
+      // Cycle: 1x -> 2x -> 3x -> 1x
+      if (this.speedMultiplier === 1) {
+        this.speedMultiplier = 2;
+      } else if (this.speedMultiplier === 2) {
+        this.speedMultiplier = 3;
+      } else {
+        this.speedMultiplier = 1;
+      }
+      this.fastForward = this.speedMultiplier > 1;
+      btnText.setText(`${this.speedMultiplier}x`);
+      btnBg.setFillStyle(speedColors[this.speedMultiplier], 0.8);
     });
 
     this.fastForwardButton = container;
@@ -1823,6 +1864,9 @@ export class TowerScene extends Phaser.Scene {
 
   private activateHeroAbility(): void {
     if (!this.gameState.hero) return;
+
+    // Dismiss tutorial bubble on hero ability use
+    this.dismissTutorialBubble();
 
     switch (this.gameState.hero) {
       case "david":
@@ -2778,6 +2822,8 @@ export class TowerScene extends Phaser.Scene {
 
       if (isVillageDestroyed(this.gameState)) return;
 
+      const completedWaveNum = this.gameState.wave;
+
       this.gameState = completeWave(this.gameState);
       this.updateHud();
 
@@ -2788,8 +2834,8 @@ export class TowerScene extends Phaser.Scene {
       if (this.gameState.phase === "victory") {
         this.showVictoryOverlay();
       } else {
-        // Next question
-        this.time.delayedCall(800, () => {
+        // Show wave celebration banner, then proceed to next question
+        this.showWaveCelebration(completedWaveNum, waveBonus, () => {
           this.transitionToQuestion();
         });
       }
@@ -2803,7 +2849,7 @@ export class TowerScene extends Phaser.Scene {
     this.prayOnCooldown = false;
     this.fastForwardButton?.destroy();
     this.fastForwardButton = null;
-    // Preserve this.fastForward state across waves (don't reset)
+    // Speed multiplier is reset to 1x in showFastForwardButton() at next wave start
     this.heroAbilityButton?.destroy();
     this.heroAbilityButton = null;
     this.estherBoostActive = false;
@@ -3180,6 +3226,178 @@ export class TowerScene extends Phaser.Scene {
   }
 
   // =========================================================================
+  // Guided tutorial bubbles (waves 1-3)
+  // =========================================================================
+
+  private showTutorialBubble(message: string, x: number, y: number, duration = 5000): void {
+    this.tutorialBubble?.destroy();
+
+    const container = this.add.container(0, 0);
+    container.setDepth(95);
+
+    // Speech bubble background
+    const padding = 14;
+    const tempText = this.add.text(0, 0, message, {
+      fontSize: "15px",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      wordWrap: { width: 280 },
+    });
+    const textW = Math.min(tempText.width + padding * 2, 310);
+    const textH = tempText.height + padding * 2;
+    tempText.destroy();
+
+    // Clamp to screen bounds
+    const halfW = textW / 2;
+    const margin = 10;
+    let bx = Math.max(margin + halfW, Math.min(GAME_W - margin - halfW, x));
+    let by = Math.max(margin + textH / 2, Math.min(GAME_H - margin - textH / 2 - 12, y));
+
+    // Rounded rectangle background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x112244, 0.92);
+    bg.fillRoundedRect(bx - halfW, by - textH / 2, textW, textH, 10);
+    bg.lineStyle(2, 0x4488ff, 0.8);
+    bg.strokeRoundedRect(bx - halfW, by - textH / 2, textW, textH, 10);
+    container.add(bg);
+
+    // Small triangle pointer at bottom
+    const triG = this.add.graphics();
+    triG.fillStyle(0x112244, 0.92);
+    triG.fillTriangle(bx - 8, by + textH / 2, bx + 8, by + textH / 2, bx, by + textH / 2 + 12);
+    triG.lineStyle(2, 0x4488ff, 0.8);
+    triG.lineBetween(bx - 8, by + textH / 2, bx, by + textH / 2 + 12);
+    triG.lineBetween(bx + 8, by + textH / 2, bx, by + textH / 2 + 12);
+    container.add(triG);
+
+    // Message text
+    const msgText = this.add.text(bx, by, message, {
+      fontSize: "15px",
+      color: "#ffffff",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+      wordWrap: { width: 280 },
+      align: "center",
+    });
+    msgText.setOrigin(0.5);
+    container.add(msgText);
+
+    // Auto-dismiss with fade
+    this.time.delayedCall(duration, () => {
+      if (container.active) {
+        this.tweens.add({
+          targets: container,
+          alpha: 0,
+          duration: 400,
+          onComplete: () => {
+            container.destroy();
+            if (this.tutorialBubble === container) {
+              this.tutorialBubble = null;
+            }
+          },
+        });
+      }
+    });
+
+    this.tutorialBubble = container;
+  }
+
+  private dismissTutorialBubble(): void {
+    if (this.tutorialBubble) {
+      this.tutorialBubble.destroy();
+      this.tutorialBubble = null;
+    }
+  }
+
+  // =========================================================================
+  // Wave complete celebration
+  // =========================================================================
+
+  private showWaveCelebration(waveNum: number, coinsEarned: number, callback: () => void): void {
+    this.waveCelebration?.destroy();
+
+    const container = this.add.container(0, 0);
+    container.setDepth(96);
+
+    // Semi-transparent backdrop strip
+    const stripH = 140;
+    const stripBg = this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, stripH, 0x000000, 0.7);
+    container.add(stripBg);
+
+    // "Wave X Complete!" title
+    const title = this.add.text(GAME_W / 2, GAME_H / 2 - 35, `Wave ${waveNum} Complete!`, {
+      fontSize: "28px",
+      color: "#ffdd00",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 3,
+    });
+    title.setOrigin(0.5);
+    container.add(title);
+
+    // Coins earned line
+    const coinsText = this.add.text(GAME_W / 2, GAME_H / 2 + 5, `+${coinsEarned} coins`, {
+      fontSize: "18px",
+      color: "#88ff88",
+      fontFamily: "'Segoe UI', Arial, sans-serif",
+      fontStyle: "bold",
+    });
+    coinsText.setOrigin(0.5);
+    container.add(coinsText);
+
+    // Boss preview for waves 9, 19, 29
+    let previewMsg = "";
+    if (waveNum === 9) previewMsg = "Boss incoming: Goliath!";
+    else if (waveNum === 19) previewMsg = "Boss incoming: Pharaoh!";
+    else if (waveNum === 29) previewMsg = "Final Boss incoming: Serpent!";
+
+    if (previewMsg) {
+      const previewText = this.add.text(GAME_W / 2, GAME_H / 2 + 35, previewMsg, {
+        fontSize: "16px",
+        color: "#ff6666",
+        fontFamily: "'Segoe UI', Arial, sans-serif",
+        fontStyle: "bold",
+      });
+      previewText.setOrigin(0.5);
+      container.add(previewText);
+    }
+
+    // Entrance animation: scale up
+    container.setScale(0.8);
+    container.setAlpha(0);
+    this.tweens.add({
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 300,
+      ease: "Back.easeOut",
+    });
+
+    // Auto-dismiss after 2 seconds
+    this.time.delayedCall(2000, () => {
+      if (container.active) {
+        this.tweens.add({
+          targets: container,
+          alpha: 0,
+          duration: 400,
+          onComplete: () => {
+            container.destroy();
+            if (this.waveCelebration === container) {
+              this.waveCelebration = null;
+            }
+            callback();
+          },
+        });
+      } else {
+        callback();
+      }
+    });
+
+    this.waveCelebration = container;
+  }
+
+  // =========================================================================
   // Tutorial auto-place logic
   // =========================================================================
 
@@ -3233,8 +3451,8 @@ export class TowerScene extends Phaser.Scene {
         break;
 
       case "wave": {
-        // Apply fast forward multiplier
-        const effectiveDelta = this.fastForward ? delta * 2 : delta;
+        // Apply speed multiplier (1x/2x/3x)
+        const effectiveDelta = delta * this.speedMultiplier;
 
         // Spawn enemies
         if (this.enemiesToSpawn.length > 0) {
