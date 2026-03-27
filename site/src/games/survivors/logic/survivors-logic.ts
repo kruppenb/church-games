@@ -5,6 +5,8 @@
 
 export type WeaponType = "fire-ring" | "lightning" | "shield" | "orbit" | "holy-water" | "axe" | "beam";
 
+export type EvolvedWeaponType = "baptism-of-fire" | "storm-of-judgment" | "divine-aegis" | "celestial-vortex";
+
 export interface WeaponUpgrade {
   name: string;
   type: WeaponType;
@@ -17,6 +19,18 @@ export interface OwnedWeapon {
   level: number; // 1-3
 }
 
+/** Evolution recipe: combine two max-level weapons into a super-weapon */
+export interface EvolutionRecipe {
+  id: EvolvedWeaponType;
+  name: string;
+  description: string;
+  ingredients: [WeaponType, WeaponType];
+  icon: string;
+}
+
+/** XP bonus types from filling the orb bar */
+export type XpBonusType = "score" | "speed" | "weapon-charge";
+
 export interface SurvivorsState {
   playerHp: number;
   maxHp: number;
@@ -28,12 +42,20 @@ export interface SurvivorsState {
   enemySpeedMultiplier: number;
   enemySpawnMultiplier: number;
   weapons: OwnedWeapon[];
+  evolvedWeapons: EvolvedWeaponType[];
+  xpOrbs: number;
+  xpOrbsToNext: number;
+  xpBonusCount: number;
   gameOver: boolean;
   victory: boolean;
   elapsedSeconds: number;
 }
 
 export const MAX_WEAPON_LEVEL = 3;
+
+/** XP orbs required to fill the bar (increases each time) */
+export const BASE_XP_TO_NEXT = 15;
+export const XP_SCALING = 5; // each bonus adds this many more orbs needed
 
 export const WEAPON_OPTIONS: WeaponUpgrade[] = [
   { name: "Fire Ring", type: "fire-ring", description: "Periodic AoE burst around you" },
@@ -43,6 +65,38 @@ export const WEAPON_OPTIONS: WeaponUpgrade[] = [
   { name: "Holy Water", type: "holy-water", description: "Drop damaging pools on the ground" },
   { name: "Throwing Axe", type: "axe", description: "Piercing projectile that cuts through enemies" },
   { name: "Radiant Beam", type: "beam", description: "Beam of light pierces all enemies in a line" },
+];
+
+/** Evolution recipes: two max-level weapons combine into a super-weapon */
+export const EVOLUTION_RECIPES: EvolutionRecipe[] = [
+  {
+    id: "baptism-of-fire",
+    name: "Baptism of Fire",
+    description: "Massive AoE fire + water explosion that covers the entire screen",
+    ingredients: ["fire-ring", "holy-water"],
+    icon: "\u{1F525}\u{1F4A7}",
+  },
+  {
+    id: "storm-of-judgment",
+    name: "Storm of Judgment",
+    description: "Lightning chains across ALL enemies with devastating beam strikes",
+    ingredients: ["lightning", "beam"],
+    icon: "\u{26A1}\u{2728}",
+  },
+  {
+    id: "divine-aegis",
+    name: "Divine Aegis",
+    description: "Shield that reflects damage and heals on every enemy kill",
+    ingredients: ["shield", "orbit"],
+    icon: "\u{1F6E1}\u{FE0F}\u{1F52E}",
+  },
+  {
+    id: "celestial-vortex",
+    name: "Celestial Vortex",
+    description: "Axes orbit in an expanding spiral destroying everything in their path",
+    ingredients: ["axe", "orbit"],
+    icon: "\u{1FA93}\u{1F52E}",
+  },
 ];
 
 /** Creates the initial state for a new survivors game. */
@@ -58,6 +112,10 @@ export function createInitialState(): SurvivorsState {
     enemySpeedMultiplier: 1,
     enemySpawnMultiplier: 1,
     weapons: [],
+    evolvedWeapons: [],
+    xpOrbs: 0,
+    xpOrbsToNext: BASE_XP_TO_NEXT,
+    xpBonusCount: 0,
     gameOver: false,
     victory: false,
     elapsedSeconds: 0,
@@ -211,4 +269,158 @@ export function collectScorePowerUp(state: SurvivorsState): SurvivorsState {
 /** Returns true when the game is over (player dead, victory, or time expired). */
 export function isGameOver(state: SurvivorsState): boolean {
   return state.gameOver || state.victory;
+}
+
+// ---- Evolution system ----
+
+/**
+ * Returns evolution recipes that are available (both ingredients at max level,
+ * and not already evolved).
+ */
+export function getAvailableEvolutions(state: SurvivorsState): EvolutionRecipe[] {
+  return EVOLUTION_RECIPES.filter((recipe) => {
+    // Already evolved?
+    if (state.evolvedWeapons.includes(recipe.id)) return false;
+    // Both ingredients at max level?
+    const [a, b] = recipe.ingredients;
+    return (
+      getWeaponLevel(state, a) >= MAX_WEAPON_LEVEL &&
+      getWeaponLevel(state, b) >= MAX_WEAPON_LEVEL
+    );
+  });
+}
+
+/**
+ * Evolves two max-level weapons into a super-weapon.
+ * Removes the ingredient weapons and adds the evolved weapon.
+ * Returns null if the recipe is invalid or ingredients are missing.
+ */
+export function evolveWeapon(
+  state: SurvivorsState,
+  recipeId: EvolvedWeaponType,
+): SurvivorsState | null {
+  const recipe = EVOLUTION_RECIPES.find((r) => r.id === recipeId);
+  if (!recipe) return null;
+  if (state.evolvedWeapons.includes(recipeId)) return null;
+
+  const [a, b] = recipe.ingredients;
+  if (getWeaponLevel(state, a) < MAX_WEAPON_LEVEL) return null;
+  if (getWeaponLevel(state, b) < MAX_WEAPON_LEVEL) return null;
+
+  return {
+    ...state,
+    weapons: state.weapons.filter(
+      (w) => w.type !== a && w.type !== b,
+    ),
+    evolvedWeapons: [...state.evolvedWeapons, recipeId],
+    score: state.score + 500, // evolution bonus
+  };
+}
+
+// ---- Weapon choice generation ----
+
+/** A choice option shown in the level-up screen */
+export type WeaponChoice =
+  | { kind: "weapon"; weapon: WeaponUpgrade; currentLevel: number }
+  | { kind: "evolution"; recipe: EvolutionRecipe }
+  | { kind: "max-hp" };
+
+/**
+ * Generates up to 3 weapon/evolution choices for the level-up screen.
+ * Evolutions are prioritized (shown first). Remaining slots filled with
+ * non-maxed weapons. If nothing is available, returns a single max-hp option.
+ * Uses a provided random function for testability.
+ */
+export function generateWeaponChoices(
+  state: SurvivorsState,
+  randomFn: () => number = Math.random,
+): WeaponChoice[] {
+  const choices: WeaponChoice[] = [];
+
+  // 1. Available evolutions get priority slots
+  const evolutions = getAvailableEvolutions(state);
+  for (const recipe of evolutions) {
+    if (choices.length >= 3) break;
+    choices.push({ kind: "evolution", recipe });
+  }
+
+  // 2. Fill remaining slots with non-maxed weapons
+  const available = WEAPON_OPTIONS.filter(
+    (w) => getWeaponLevel(state, w.type) < MAX_WEAPON_LEVEL,
+  );
+  // Shuffle using Fisher-Yates with provided random
+  const shuffled = [...available];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFn() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  for (const weapon of shuffled) {
+    if (choices.length >= 3) break;
+    choices.push({
+      kind: "weapon",
+      weapon,
+      currentLevel: getWeaponLevel(state, weapon.type),
+    });
+  }
+
+  // 3. If no choices at all, offer max HP
+  if (choices.length === 0) {
+    choices.push({ kind: "max-hp" });
+  }
+
+  return choices;
+}
+
+// ---- XP Orb system ----
+
+/**
+ * Collects an XP orb. Returns the new state and whether the bar is now full.
+ */
+export function collectXpOrb(state: SurvivorsState): { state: SurvivorsState; barFull: boolean } {
+  const newOrbs = state.xpOrbs + 1;
+  const barFull = newOrbs >= state.xpOrbsToNext;
+  return {
+    state: { ...state, xpOrbs: newOrbs },
+    barFull,
+  };
+}
+
+/**
+ * Returns the XP bar fill ratio (0-1).
+ */
+export function getXpBarProgress(state: SurvivorsState): number {
+  if (state.xpOrbsToNext <= 0) return 1;
+  return Math.min(1, state.xpOrbs / state.xpOrbsToNext);
+}
+
+/**
+ * Activates an XP bonus (called when bar is full). Resets orbs, increases
+ * threshold, increments bonus count. Returns the bonus type and new state.
+ */
+export function activateXpBonus(state: SurvivorsState): { state: SurvivorsState; bonus: XpBonusType } {
+  // Cycle through bonus types
+  const bonusTypes: XpBonusType[] = ["score", "speed", "weapon-charge"];
+  const bonus = bonusTypes[state.xpBonusCount % bonusTypes.length];
+
+  let newState: SurvivorsState = {
+    ...state,
+    xpOrbs: 0,
+    xpOrbsToNext: state.xpOrbsToNext + XP_SCALING,
+    xpBonusCount: state.xpBonusCount + 1,
+  };
+
+  // Apply bonus
+  switch (bonus) {
+    case "score":
+      newState = { ...newState, score: newState.score + 300 };
+      break;
+    case "speed":
+      // Speed boost is handled visually in the scene (temporary effect)
+      break;
+    case "weapon-charge":
+      // Weapon charge is handled visually in the scene (fires all weapons once)
+      break;
+  }
+
+  return { state: newState, bonus };
 }

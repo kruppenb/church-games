@@ -16,11 +16,21 @@ import {
   boostMaxHp,
   calculateStars,
   isGameOver,
+  getAvailableEvolutions,
+  evolveWeapon,
+  generateWeaponChoices,
+  collectXpOrb,
+  getXpBarProgress,
+  activateXpBonus,
   WEAPON_OPTIONS,
   MAX_WEAPON_LEVEL,
+  EVOLUTION_RECIPES,
   type SurvivorsState,
   type WeaponUpgrade,
   type WeaponType,
+  type EvolvedWeaponType,
+  type WeaponChoice,
+  type XpBonusType,
 } from "../logic/survivors-logic";
 
 /** How often the player auto-fires base projectile (ms). */
@@ -80,6 +90,24 @@ const ELITE_SPEED_MULT = 0.7; // slower than normal
 const POWERUP_DROP_CHANCE = 0.04; // 4% from normal enemies
 const POWERUP_LIFETIME = 8000; // ms before fading
 
+/** XP orb config */
+const XP_ORB_RADIUS = 5;
+const XP_ORB_PICKUP_RADIUS = 80;
+const XP_ORB_MAGNET_RADIUS = 9999; // screen-wide during magnet
+const XP_ORB_COLORS = [0x7c4dff, 0x536dfe, 0x448aff, 0x40c4ff, 0x18ffff];
+const XP_ORB_SPEED = 300; // speed when attracted to player
+const XP_ORB_DROP_CHANCE = 0.65; // 65% chance from normal enemies
+const XP_ORB_ELITE_COUNT = 5; // elites drop multiple orbs
+const MAGNET_SPAWN_INTERVAL = 45000; // a magnet spawns every 45s
+const MAGNET_DURATION = 5000; // magnet effect lasts 5s
+const MAGNET_COLOR = 0xff4081;
+
+/** Evolution weapon intervals */
+const EVOLVED_BAPTISM_INTERVAL = 6000;
+const EVOLVED_STORM_INTERVAL = 5000;
+const EVOLVED_AEGIS_REGEN_INTERVAL = 3000;
+const EVOLVED_VORTEX_INTERVAL = 4000;
+
 const WEAPON_COLOR_MAP: Record<string, number> = {
   "fire-ring": 0xef5350, lightning: 0xffee58, shield: 0x42a5f5,
   orbit: 0xba68c8, "holy-water": 0x4fc3f7, axe: 0xff8a65, beam: 0xffd54f,
@@ -87,6 +115,12 @@ const WEAPON_COLOR_MAP: Record<string, number> = {
 const WEAPON_ICON_MAP: Record<string, string> = {
   "fire-ring": "\u{1F525}", lightning: "\u{26A1}", shield: "\u{1F6E1}\u{FE0F}",
   orbit: "\u{1F52E}", "holy-water": "\u{1F4A7}", axe: "\u{1FA93}", beam: "\u{2728}",
+};
+const EVOLUTION_COLOR_MAP: Record<string, number> = {
+  "baptism-of-fire": 0xff6600,
+  "storm-of-judgment": 0xffee00,
+  "divine-aegis": 0x00e5ff,
+  "celestial-vortex": 0xd500f9,
 };
 
 export class SurvivorsScene extends Phaser.Scene {
@@ -116,12 +150,32 @@ export class SurvivorsScene extends Phaser.Scene {
   private axeTimer: Phaser.Time.TimerEvent | null = null;
   private beamTimer: Phaser.Time.TimerEvent | null = null;
 
+  // Evolution weapon timers
+  private baptismTimer: Phaser.Time.TimerEvent | null = null;
+  private stormTimer: Phaser.Time.TimerEvent | null = null;
+  private aegisTimer: Phaser.Time.TimerEvent | null = null;
+  private vortexTimer: Phaser.Time.TimerEvent | null = null;
+
   // Orbit weapon visuals
   private orbitOrbs: Phaser.GameObjects.Arc[] = [];
+
+  // Vortex evolved weapon visuals
+  private vortexAxes: Phaser.GameObjects.Arc[] = [];
 
   // Power-ups
   private powerUps!: Phaser.GameObjects.Group;
   private lastEliteWave = 0;
+
+  // XP orbs
+  private xpOrbs!: Phaser.GameObjects.Group;
+  private isMagnetActive = false;
+  private magnetTimer: Phaser.Time.TimerEvent | null = null;
+  private magnetSpawnTimer: Phaser.Time.TimerEvent | null = null;
+
+  // XP bar HUD
+  private xpBarBg!: Phaser.GameObjects.Rectangle;
+  private xpBarFill!: Phaser.GameObjects.Rectangle;
+  private xpBarText!: Phaser.GameObjects.Text;
 
   // UI
   private scoreText!: Phaser.GameObjects.Text;
@@ -141,6 +195,10 @@ export class SurvivorsScene extends Phaser.Scene {
   private comboTimer: Phaser.Time.TimerEvent | null = null;
   private comboText: Phaser.GameObjects.Text | null = null;
   private bestCombo = 0;
+
+  // Speed boost from XP bonus
+  private speedBoostActive = false;
+  private speedBoostTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor() {
     super({ key: "SurvivorsScene" });
@@ -168,11 +226,21 @@ export class SurvivorsScene extends Phaser.Scene {
     this.holyWaterTimer = null;
     this.axeTimer = null;
     this.beamTimer = null;
+    this.baptismTimer = null;
+    this.stormTimer = null;
+    this.aegisTimer = null;
+    this.vortexTimer = null;
     this.comboCount = 0;
     this.comboTimer = null;
     this.comboText = null;
     this.bestCombo = 0;
     this.orbitOrbs = [];
+    this.vortexAxes = [];
+    this.isMagnetActive = false;
+    this.magnetTimer = null;
+    this.magnetSpawnTimer = null;
+    this.speedBoostActive = false;
+    this.speedBoostTimer = null;
     this.nextQuestionAt = QUESTION_INTERVAL_SEC;
 
     const { width, height } = this.scale;
@@ -193,6 +261,7 @@ export class SurvivorsScene extends Phaser.Scene {
     this.projectiles = this.add.group();
     this.axeProjectiles = this.add.group();
     this.powerUps = this.add.group();
+    this.xpOrbs = this.add.group();
     this.lastEliteWave = 0;
 
     // Collision: projectile hits enemy
@@ -260,6 +329,14 @@ export class SurvivorsScene extends Phaser.Scene {
       loop: true,
     });
 
+    // Magnet power-up spawns periodically
+    this.magnetSpawnTimer = this.time.addEvent({
+      delay: MAGNET_SPAWN_INTERVAL,
+      callback: this.spawnMagnetPowerUp,
+      callbackScope: this,
+      loop: true,
+    });
+
     this.createHUD();
     this.setupMovement();
   }
@@ -291,6 +368,14 @@ export class SurvivorsScene extends Phaser.Scene {
 
     // Update orbit weapon (positions always, collisions only when not overlaying)
     this.updateOrbitWeapon();
+
+    // Update vortex evolved weapon
+    this.updateVortexWeapon();
+
+    // Collect nearby XP orbs
+    if (!this.isShowingOverlay) {
+      this.collectNearbyXpOrbs();
+    }
 
     // Check if it's time for a question (based on game elapsed time, not wall clock)
     if (!this.isShowingOverlay && this.state.elapsedSeconds >= this.nextQuestionAt) {
@@ -332,7 +417,7 @@ export class SurvivorsScene extends Phaser.Scene {
 
   private setupMovement(): void {
     const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-    const speed = 180;
+    const baseSpeed = 180;
 
     if (this.input.keyboard) {
       const cursors = this.input.keyboard.createCursorKeys();
@@ -348,6 +433,7 @@ export class SurvivorsScene extends Phaser.Scene {
           playerBody.setVelocity(0, 0);
           return;
         }
+        const speed = this.speedBoostActive ? baseSpeed * 1.5 : baseSpeed;
         let vx = 0, vy = 0;
         if (cursors.left.isDown || wasd.left.isDown) vx = -speed;
         else if (cursors.right.isDown || wasd.right.isDown) vx = speed;
@@ -359,6 +445,7 @@ export class SurvivorsScene extends Phaser.Scene {
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
       if (this.isShowingOverlay || this.isComplete || !pointer.isDown) return;
+      const speed = this.speedBoostActive ? baseSpeed * 1.5 : baseSpeed;
       const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.x, pointer.y);
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, pointer.x, pointer.y);
       if (dist > 10) {
@@ -457,12 +544,22 @@ export class SurvivorsScene extends Phaser.Scene {
       this.state = defeatElite(this.state);
       this.spawnPowerUp(enemy.x, enemy.y, true); // guaranteed drop
       this.spawnEliteDeathEffect(enemy.x, enemy.y);
+      // Elites drop multiple XP orbs
+      this.spawnXpOrbs(enemy.x, enemy.y, XP_ORB_ELITE_COUNT);
     } else {
       this.state = defeatEnemy(this.state);
       // Small chance to drop power-up
       if (Math.random() < POWERUP_DROP_CHANCE) {
         this.spawnPowerUp(enemy.x, enemy.y, false);
       }
+      // XP orb drop
+      if (Math.random() < XP_ORB_DROP_CHANCE) {
+        this.spawnXpOrbs(enemy.x, enemy.y, 1);
+      }
+    }
+    // Divine Aegis evolution: heal 1 HP on kill
+    if (this.state.evolvedWeapons.includes("divine-aegis") && this.state.playerHp < this.state.maxHp) {
+      this.state = healPlayer(this.state, 1);
     }
     enemy.destroy();
     this.trackCombo();
@@ -705,7 +802,9 @@ export class SurvivorsScene extends Phaser.Scene {
     if (!pu.active) return;
     const puType = pu.getData("puType") as string;
 
-    if (puType === "health") {
+    if (puType === "magnet") {
+      this.activateMagnet();
+    } else if (puType === "health") {
       this.state = healPlayer(this.state, 1);
       this.showPowerUpText(pu.x, pu.y, "+1 HP", "#43a047");
     } else {
@@ -856,23 +955,10 @@ export class SurvivorsScene extends Phaser.Scene {
     }
   }
 
-  // ---- Weapon selection (progressive, VS-style random 3) ----
+  // ---- Weapon selection (progressive, VS-style pick 1 of 3) ----
 
   private showWeaponSelection(): void {
-    // Filter to non-maxed weapons
-    const available = WEAPON_OPTIONS.filter(
-      (w) => getWeaponLevel(this.state, w.type) < MAX_WEAPON_LEVEL,
-    );
-
-    if (available.length === 0) {
-      // All weapons maxed — show +1 Max HP option
-      this.showMaxHpSelection();
-      return;
-    }
-
-    // Shuffle and pick up to 3 (like Vampire Survivors)
-    const shuffled = [...available].sort(() => Math.random() - 0.5);
-    const options = shuffled.slice(0, 3);
+    const choices = generateWeaponChoices(this.state);
 
     const { width, height } = this.scale;
     const container = this.add.container(0, 0).setDepth(200);
@@ -880,15 +966,30 @@ export class SurvivorsScene extends Phaser.Scene {
     const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
     container.add(backdrop);
 
-    const title = this.add.text(width / 2, height * 0.18, "Choose a Power-Up!", {
-      fontSize: "28px", fontFamily: "sans-serif", color: "#FFD700", fontStyle: "bold",
+    // Check if there's an evolution available for dramatic title
+    const hasEvolution = choices.some((c) => c.kind === "evolution");
+    const titleText = hasEvolution ? "EVOLVE!" : "Choose a Power-Up!";
+    const titleColor = hasEvolution ? "#ff6600" : "#FFD700";
+    const title = this.add.text(width / 2, height * 0.18, titleText, {
+      fontSize: hasEvolution ? "32px" : "28px", fontFamily: "sans-serif",
+      color: titleColor, fontStyle: "bold",
+      stroke: hasEvolution ? "#000000" : undefined,
+      strokeThickness: hasEvolution ? 3 : 0,
     }).setOrigin(0.5);
     container.add(title);
 
+    // Pulsing animation on EVOLVE title
+    if (hasEvolution) {
+      this.tweens.add({
+        targets: title, scaleX: 1.1, scaleY: 1.1,
+        duration: 400, yoyo: true, repeat: -1,
+      });
+    }
+
     const cardW = 180;
-    const cardH = 180;
+    const cardH = 200;
     const gap = 20;
-    const totalW = options.length * cardW + (options.length - 1) * gap;
+    const totalW = choices.length * cardW + (choices.length - 1) * gap;
     const startX = width / 2 - totalW / 2 + cardW / 2;
 
     const descLines: Record<string, string[]> = {
@@ -901,40 +1002,118 @@ export class SurvivorsScene extends Phaser.Scene {
       "beam": ["Lv1: Beam every 5s", "Lv2: Every 3.5s, wider", "Lv3: Every 2.5s, widest"],
     };
 
-    options.forEach((weapon, idx) => {
+    choices.forEach((choice, idx) => {
       const cx = startX + idx * (cardW + gap);
       const cy = height * 0.5;
-      const currentLevel = getWeaponLevel(this.state, weapon.type);
 
-      const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
-      card.setStrokeStyle(3, WEAPON_COLOR_MAP[weapon.type] ?? 0xffffff);
-      card.setInteractive({ useHandCursor: true });
-      container.add(card);
+      if (choice.kind === "evolution") {
+        // Evolution card — special golden/glowing style
+        const recipe = choice.recipe;
+        const evoColor = EVOLUTION_COLOR_MAP[recipe.id] ?? 0xff6600;
 
-      // Icon
-      container.add(this.add.text(cx, cy - 50, WEAPON_ICON_MAP[weapon.type] ?? "\u{2694}", { fontSize: "32px" }).setOrigin(0.5));
+        // Glow behind card
+        const glow = this.add.rectangle(cx, cy, cardW + 8, cardH + 8, evoColor, 0.3);
+        glow.setDepth(199);
+        container.add(glow);
+        this.tweens.add({
+          targets: glow, alpha: 0.1, scaleX: 1.05, scaleY: 1.05,
+          duration: 600, yoyo: true, repeat: -1,
+        });
 
-      // Name
-      container.add(this.add.text(cx, cy - 8, weapon.name, {
-        fontSize: "16px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
-      }).setOrigin(0.5));
+        const card = this.add.rectangle(cx, cy, cardW, cardH, 0x1a1a2e, 0.95);
+        card.setStrokeStyle(4, evoColor);
+        card.setInteractive({ useHandCursor: true });
+        container.add(card);
 
-      // Level indicator
-      const levelStr = currentLevel === 0 ? "NEW!" : `Lv ${currentLevel} \u2192 ${currentLevel + 1}`;
-      const levelColor = currentLevel === 0 ? "#00ff88" : "#ffd700";
-      container.add(this.add.text(cx, cy + 18, levelStr, {
-        fontSize: "14px", fontFamily: "sans-serif", color: levelColor, fontStyle: "bold",
-      }).setOrigin(0.5));
+        // "EVOLVE!" badge
+        const badge = this.add.text(cx, cy - 78, "EVOLVE!", {
+          fontSize: "12px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+          backgroundColor: "#ff6600", padding: { x: 6, y: 2 },
+        }).setOrigin(0.5);
+        container.add(badge);
 
-      // Description
-      const nextLevel = Math.min(currentLevel + 1, 3);
-      const descText = descLines[weapon.type]?.[nextLevel - 1] ?? weapon.description;
-      container.add(this.add.text(cx, cy + 45, descText, {
-        fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
-        wordWrap: { width: cardW - 20 }, align: "center",
-      }).setOrigin(0.5));
+        // Icon
+        container.add(this.add.text(cx, cy - 45, recipe.icon, { fontSize: "32px" }).setOrigin(0.5));
 
-      card.on("pointerdown", () => this.selectWeapon(weapon, container));
+        // Name
+        container.add(this.add.text(cx, cy - 5, recipe.name, {
+          fontSize: "14px", fontFamily: "sans-serif", color: "#ffcc00", fontStyle: "bold",
+          wordWrap: { width: cardW - 20 }, align: "center",
+        }).setOrigin(0.5));
+
+        // Ingredients
+        const [a, b] = recipe.ingredients;
+        const nameA = WEAPON_OPTIONS.find((w) => w.type === a)?.name ?? a;
+        const nameB = WEAPON_OPTIONS.find((w) => w.type === b)?.name ?? b;
+        container.add(this.add.text(cx, cy + 22, `${nameA} + ${nameB}`, {
+          fontSize: "10px", fontFamily: "sans-serif", color: "#aaaaaa",
+        }).setOrigin(0.5));
+
+        // Description
+        container.add(this.add.text(cx, cy + 50, recipe.description, {
+          fontSize: "10px", fontFamily: "sans-serif", color: "#cccccc",
+          wordWrap: { width: cardW - 20 }, align: "center",
+        }).setOrigin(0.5));
+
+        card.on("pointerdown", () => this.selectEvolution(recipe.id, container));
+
+      } else if (choice.kind === "weapon") {
+        const weapon = choice.weapon;
+        const currentLevel = choice.currentLevel;
+
+        const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
+        card.setStrokeStyle(3, WEAPON_COLOR_MAP[weapon.type] ?? 0xffffff);
+        card.setInteractive({ useHandCursor: true });
+        container.add(card);
+
+        // Icon
+        container.add(this.add.text(cx, cy - 60, WEAPON_ICON_MAP[weapon.type] ?? "\u{2694}", { fontSize: "32px" }).setOrigin(0.5));
+
+        // Name
+        container.add(this.add.text(cx, cy - 15, weapon.name, {
+          fontSize: "16px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+        }).setOrigin(0.5));
+
+        // Level indicator
+        const levelStr = currentLevel === 0 ? "NEW!" : `Lv ${currentLevel} \u2192 ${currentLevel + 1}`;
+        const levelColor = currentLevel === 0 ? "#00ff88" : "#ffd700";
+        container.add(this.add.text(cx, cy + 12, levelStr, {
+          fontSize: "14px", fontFamily: "sans-serif", color: levelColor, fontStyle: "bold",
+        }).setOrigin(0.5));
+
+        // Description
+        const nextLevel = Math.min(currentLevel + 1, 3);
+        const descText = descLines[weapon.type]?.[nextLevel - 1] ?? weapon.description;
+        container.add(this.add.text(cx, cy + 45, descText, {
+          fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
+          wordWrap: { width: cardW - 20 }, align: "center",
+        }).setOrigin(0.5));
+
+        card.on("pointerdown", () => this.selectWeapon(weapon, container));
+
+      } else {
+        // max-hp choice
+        const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
+        card.setStrokeStyle(3, 0xe53935);
+        card.setInteractive({ useHandCursor: true });
+        container.add(card);
+
+        container.add(this.add.text(cx, cy - 60, "\u{2764}\u{FE0F}", { fontSize: "32px" }).setOrigin(0.5));
+        container.add(this.add.text(cx, cy - 15, "+1 Max Health", {
+          fontSize: "16px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+        }).setOrigin(0.5));
+        container.add(this.add.text(cx, cy + 12, `HP: ${this.state.maxHp} \u2192 ${this.state.maxHp + 1}`, {
+          fontSize: "14px", fontFamily: "sans-serif", color: "#00ff88", fontStyle: "bold",
+        }).setOrigin(0.5));
+        container.add(this.add.text(cx, cy + 45, "Increases max HP and heals 1", {
+          fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
+        }).setOrigin(0.5));
+
+        card.on("pointerdown", () => {
+          this.state = boostMaxHp(this.state);
+          this.dismissWeaponPanel(container);
+        });
+      }
     });
 
     this.weaponPanel = container;
@@ -946,59 +1125,40 @@ export class SurvivorsScene extends Phaser.Scene {
     // Restart the passive timer for this weapon at new level
     this.setupPassiveWeapon(weapon.type);
 
+    this.dismissWeaponPanel(container);
+  }
+
+  private selectEvolution(recipeId: EvolvedWeaponType, container: Phaser.GameObjects.Container): void {
+    const result = evolveWeapon(this.state, recipeId);
+    if (!result) return; // safety check
+
+    this.state = result;
+
+    // Stop the passive timers for the consumed weapons
+    const recipe = EVOLUTION_RECIPES.find((r) => r.id === recipeId);
+    if (recipe) {
+      for (const ingredient of recipe.ingredients) {
+        this.stopPassiveWeapon(ingredient);
+      }
+    }
+
+    // Set up the evolved weapon effect
+    this.setupEvolvedWeapon(recipeId);
+
+    // Big evolution announcement
+    this.showEvolutionAnnouncement(recipeId);
+
+    this.dismissWeaponPanel(container);
+  }
+
+  /** Common cleanup after picking a weapon/evolution/max-hp */
+  private dismissWeaponPanel(container: Phaser.GameObjects.Container): void {
     container.destroy();
     this.weaponPanel = null;
     this.isShowingOverlay = false;
     this.updateHUD();
     this.updateSpawnRate();
     this.nextQuestionAt = this.state.elapsedSeconds + QUESTION_INTERVAL_SEC;
-  }
-
-  // ---- Max HP selection (when all weapons are maxed) ----
-
-  private showMaxHpSelection(): void {
-    const { width, height } = this.scale;
-    const container = this.add.container(0, 0).setDepth(200);
-
-    const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
-    container.add(backdrop);
-
-    container.add(this.add.text(width / 2, height * 0.18, "All Weapons Maxed!", {
-      fontSize: "28px", fontFamily: "sans-serif", color: "#FFD700", fontStyle: "bold",
-    }).setOrigin(0.5));
-
-    const cardW = 200;
-    const cardH = 180;
-    const cx = width / 2;
-    const cy = height * 0.5;
-
-    const card = this.add.rectangle(cx, cy, cardW, cardH, 0x2a2a3a, 0.95);
-    card.setStrokeStyle(3, 0xe53935);
-    card.setInteractive({ useHandCursor: true });
-    container.add(card);
-
-    container.add(this.add.text(cx, cy - 50, "\u{2764}\u{FE0F}", { fontSize: "32px" }).setOrigin(0.5));
-    container.add(this.add.text(cx, cy - 8, "+1 Max Health", {
-      fontSize: "18px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
-    }).setOrigin(0.5));
-    container.add(this.add.text(cx, cy + 18, `HP: ${this.state.maxHp} \u2192 ${this.state.maxHp + 1}`, {
-      fontSize: "14px", fontFamily: "sans-serif", color: "#00ff88", fontStyle: "bold",
-    }).setOrigin(0.5));
-    container.add(this.add.text(cx, cy + 45, "Increases max HP and heals 1", {
-      fontSize: "11px", fontFamily: "sans-serif", color: "#cccccc",
-    }).setOrigin(0.5));
-
-    card.on("pointerdown", () => {
-      this.state = boostMaxHp(this.state);
-      container.destroy();
-      this.weaponPanel = null;
-      this.isShowingOverlay = false;
-      this.updateHUD();
-      this.updateSpawnRate();
-      this.nextQuestionAt = this.state.elapsedSeconds + QUESTION_INTERVAL_SEC;
-    });
-
-    this.weaponPanel = container;
   }
 
   // ---- Passive weapon effects ----
@@ -1423,6 +1583,518 @@ export class SurvivorsScene extends Phaser.Scene {
     });
   }
 
+  // ---- XP Orbs ----
+
+  private spawnXpOrbs(x: number, y: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const color = XP_ORB_COLORS[Phaser.Math.Between(0, XP_ORB_COLORS.length - 1)];
+      const orb = this.add.circle(
+        x + Phaser.Math.Between(-12, 12),
+        y + Phaser.Math.Between(-12, 12),
+        XP_ORB_RADIUS, color, 0.9,
+      );
+      orb.setStrokeStyle(1, 0xffffff, 0.4);
+      orb.setDepth(12);
+      this.physics.add.existing(orb, true);
+      this.xpOrbs.add(orb);
+
+      // Add a subtle glow effect
+      const glow = this.add.circle(orb.x, orb.y, XP_ORB_RADIUS + 3, color, 0.15);
+      glow.setDepth(11);
+      orb.setData("glow", glow);
+
+      // Gentle floating animation
+      this.tweens.add({
+        targets: [orb, glow],
+        y: orb.y + Phaser.Math.Between(-6, 6),
+        duration: 800 + Phaser.Math.Between(0, 400),
+        yoyo: true, repeat: -1, ease: "Sine.easeInOut",
+      });
+
+      // Auto-destroy after 12 seconds
+      this.time.delayedCall(12000, () => {
+        if (orb.active) {
+          const g = orb.getData("glow") as Phaser.GameObjects.Arc | undefined;
+          if (g && g.active) g.destroy();
+          orb.destroy();
+        }
+      });
+    }
+  }
+
+  private collectNearbyXpOrbs(): void {
+    const pickupRadius = this.isMagnetActive ? XP_ORB_MAGNET_RADIUS : XP_ORB_PICKUP_RADIUS;
+
+    for (const orbGo of this.xpOrbs.getChildren()) {
+      const orb = orbGo as Phaser.GameObjects.Arc;
+      if (!orb.active) continue;
+
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, orb.x, orb.y);
+
+      if (dist <= pickupRadius) {
+        // Attract orb toward player
+        const angle = Phaser.Math.Angle.Between(orb.x, orb.y, this.player.x, this.player.y);
+        const attractSpeed = this.isMagnetActive ? XP_ORB_SPEED * 2 : XP_ORB_SPEED;
+        const dx = Math.cos(angle) * attractSpeed * (1 / 60); // approximate per-frame
+        const dy = Math.sin(angle) * attractSpeed * (1 / 60);
+        orb.x += dx;
+        orb.y += dy;
+
+        // Update glow position
+        const glow = orb.getData("glow") as Phaser.GameObjects.Arc | undefined;
+        if (glow && glow.active) { glow.x = orb.x; glow.y = orb.y; }
+
+        // Actually collect when very close
+        if (dist <= 20) {
+          // Collect the orb
+          const result = collectXpOrb(this.state);
+          this.state = result.state;
+
+          if (glow && glow.active) glow.destroy();
+          orb.destroy();
+
+          // Update XP bar visual
+          this.updateXpBar();
+
+          // Check if bar is full
+          if (result.barFull) {
+            this.triggerXpBonus();
+          }
+        }
+      }
+    }
+  }
+
+  private triggerXpBonus(): void {
+    const result = activateXpBonus(this.state);
+    this.state = result.state;
+    this.updateXpBar();
+    this.updateHUD();
+
+    const { width, height } = this.scale;
+    let bonusMsg = "";
+    let bonusColor = "#ffffff";
+
+    switch (result.bonus) {
+      case "score":
+        bonusMsg = "+300 Score!";
+        bonusColor = "#ffd700";
+        break;
+      case "speed":
+        bonusMsg = "Speed Boost!";
+        bonusColor = "#00e5ff";
+        this.activateSpeedBoost();
+        break;
+      case "weapon-charge":
+        bonusMsg = "Weapon Surge!";
+        bonusColor = "#ff4081";
+        this.triggerAllWeapons();
+        break;
+    }
+
+    // Show bonus text
+    const txt = this.add.text(width / 2, height * 0.35, bonusMsg, {
+      fontSize: "24px", fontFamily: "sans-serif", color: bonusColor, fontStyle: "bold",
+      stroke: "#000000", strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(100);
+    this.tweens.add({
+      targets: txt, y: txt.y - 40, alpha: 0, scale: 1.3, duration: 1200,
+      onComplete: () => txt.destroy(),
+    });
+
+    // Flash effect
+    const flash = this.add.rectangle(width / 2, height / 2, width, height, 0xffffff, 0.15);
+    flash.setDepth(90);
+    this.tweens.add({
+      targets: flash, alpha: 0, duration: 300,
+      onComplete: () => flash.destroy(),
+    });
+  }
+
+  private activateSpeedBoost(): void {
+    this.speedBoostActive = true;
+    // Increase player movement speed temporarily
+    if (this.speedBoostTimer) this.speedBoostTimer.remove();
+    this.speedBoostTimer = this.time.delayedCall(5000, () => {
+      this.speedBoostActive = false;
+    });
+
+    // Visual indicator on player
+    const aura = this.add.circle(this.player.x, this.player.y, 24, 0x00e5ff, 0.3);
+    aura.setDepth(45);
+    const updateAura = () => {
+      if (this.speedBoostActive && aura.active) {
+        aura.x = this.player.x;
+        aura.y = this.player.y;
+      } else if (aura.active) {
+        aura.destroy();
+      }
+    };
+    this.events.on("update", updateAura);
+    this.time.delayedCall(5100, () => {
+      this.events.off("update", updateAura);
+      if (aura.active) aura.destroy();
+    });
+  }
+
+  private triggerAllWeapons(): void {
+    // Fire all owned weapons once immediately
+    for (const w of this.state.weapons) {
+      const level = w.level;
+      switch (w.type) {
+        case "fire-ring": this.passiveFireRing(level); break;
+        case "lightning": this.passiveLightning(level); break;
+        case "holy-water": this.passiveHolyWater(level); break;
+        case "axe": this.passiveAxe(level); break;
+        case "beam": this.passiveBeam(level); break;
+      }
+    }
+    // Also fire evolved weapons
+    for (const evo of this.state.evolvedWeapons) {
+      switch (evo) {
+        case "baptism-of-fire": this.passiveBaptismOfFire(); break;
+        case "storm-of-judgment": this.passiveStormOfJudgment(); break;
+      }
+    }
+  }
+
+  // ---- Magnet power-up ----
+
+  private spawnMagnetPowerUp(): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+    const { width, height } = this.scale;
+
+    // Spawn at a random position on the field
+    const mx = Phaser.Math.Between(60, width - 60);
+    const my = Phaser.Math.Between(60, height - 60);
+
+    const magnet = this.add.circle(mx, my, 12, MAGNET_COLOR, 0.9);
+    magnet.setStrokeStyle(2, 0xffffff);
+    magnet.setDepth(16);
+    magnet.setData("puType", "magnet");
+    this.physics.add.existing(magnet, true);
+    this.powerUps.add(magnet);
+
+    // "U" magnet icon
+    const lbl = this.add.text(mx, my, "\u{1F9F2}", { fontSize: "14px" });
+    lbl.setOrigin(0.5);
+    lbl.setDepth(17);
+    magnet.setData("label", lbl);
+
+    // Pulsing glow
+    this.tweens.add({
+      targets: magnet, scaleX: 1.3, scaleY: 1.3,
+      yoyo: true, repeat: -1, duration: 600,
+    });
+
+    // Auto-destroy after timeout
+    this.time.delayedCall(POWERUP_LIFETIME * 2, () => {
+      if (magnet.active) {
+        (magnet.getData("label") as Phaser.GameObjects.Text)?.destroy();
+        magnet.destroy();
+      }
+    });
+  }
+
+  private activateMagnet(): void {
+    this.isMagnetActive = true;
+    if (this.magnetTimer) this.magnetTimer.remove();
+    this.magnetTimer = this.time.delayedCall(MAGNET_DURATION, () => {
+      this.isMagnetActive = false;
+    });
+
+    // Visual: briefly flash screen with magnet color
+    const { width, height } = this.scale;
+    const flash = this.add.rectangle(width / 2, height / 2, width, height, MAGNET_COLOR, 0.1);
+    flash.setDepth(90);
+    this.tweens.add({
+      targets: flash, alpha: 0, duration: 500,
+      onComplete: () => flash.destroy(),
+    });
+
+    this.showPowerUpText(this.player.x, this.player.y, "MAGNET!", "#ff4081");
+  }
+
+  // ---- Evolution weapon effects ----
+
+  private stopPassiveWeapon(type: WeaponType): void {
+    switch (type) {
+      case "fire-ring":
+        if (this.fireRingTimer) { this.fireRingTimer.remove(); this.fireRingTimer = null; }
+        break;
+      case "lightning":
+        if (this.lightningTimer) { this.lightningTimer.remove(); this.lightningTimer = null; }
+        break;
+      case "shield":
+        if (this.shieldTimer) { this.shieldTimer.remove(); this.shieldTimer = null; }
+        break;
+      case "orbit":
+        for (const orb of this.orbitOrbs) { if (orb && orb.active) orb.destroy(); }
+        this.orbitOrbs = [];
+        break;
+      case "holy-water":
+        if (this.holyWaterTimer) { this.holyWaterTimer.remove(); this.holyWaterTimer = null; }
+        break;
+      case "axe":
+        if (this.axeTimer) { this.axeTimer.remove(); this.axeTimer = null; }
+        break;
+      case "beam":
+        if (this.beamTimer) { this.beamTimer.remove(); this.beamTimer = null; }
+        break;
+    }
+  }
+
+  private setupEvolvedWeapon(id: EvolvedWeaponType): void {
+    switch (id) {
+      case "baptism-of-fire": {
+        if (this.baptismTimer) this.baptismTimer.remove();
+        this.baptismTimer = this.time.addEvent({
+          delay: EVOLVED_BAPTISM_INTERVAL,
+          callback: () => this.passiveBaptismOfFire(),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+      case "storm-of-judgment": {
+        if (this.stormTimer) this.stormTimer.remove();
+        this.stormTimer = this.time.addEvent({
+          delay: EVOLVED_STORM_INTERVAL,
+          callback: () => this.passiveStormOfJudgment(),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+      case "divine-aegis": {
+        if (this.aegisTimer) this.aegisTimer.remove();
+        this.aegisTimer = this.time.addEvent({
+          delay: EVOLVED_AEGIS_REGEN_INTERVAL,
+          callback: () => this.passiveDivineAegis(),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+      case "celestial-vortex": {
+        if (this.vortexTimer) this.vortexTimer.remove();
+        this.setupVortexWeapon();
+        this.vortexTimer = this.time.addEvent({
+          delay: EVOLVED_VORTEX_INTERVAL,
+          callback: () => this.passiveCelestialVortex(),
+          callbackScope: this,
+          loop: true,
+        });
+        break;
+      }
+    }
+  }
+
+  private showEvolutionAnnouncement(id: EvolvedWeaponType): void {
+    const recipe = EVOLUTION_RECIPES.find((r) => r.id === id);
+    if (!recipe) return;
+
+    const { width, height } = this.scale;
+    const color = EVOLUTION_COLOR_MAP[id] ?? 0xff6600;
+
+    // Full-screen flash
+    const flash = this.add.rectangle(width / 2, height / 2, width, height, color, 0.25);
+    flash.setDepth(250);
+    this.tweens.add({
+      targets: flash, alpha: 0, duration: 800,
+      onComplete: () => flash.destroy(),
+    });
+
+    // Big announcement text
+    const txt = this.add.text(width / 2, height * 0.3, `${recipe.icon} ${recipe.name}!`, {
+      fontSize: "30px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+      stroke: "#000000", strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(260);
+
+    this.tweens.add({
+      targets: txt, y: txt.y - 40, alpha: 0, scale: 1.5, duration: 2000,
+      onComplete: () => txt.destroy(),
+    });
+  }
+
+  // ---- Evolved weapon passive effects ----
+
+  /** Baptism of Fire: massive AoE explosion covering huge radius */
+  private passiveBaptismOfFire(): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+    const { width, height } = this.scale;
+    const radius = Math.max(width, height) * 0.6;
+
+    // Visual: expanding fire + water rings
+    const ring1 = this.add.circle(this.player.x, this.player.y, radius * 0.3, 0xff3300, 0.3);
+    ring1.setStrokeStyle(6, 0xff6600);
+    ring1.setDepth(20);
+    const ring2 = this.add.circle(this.player.x, this.player.y, radius * 0.15, 0x4fc3f7, 0.2);
+    ring2.setStrokeStyle(4, 0x0288d1);
+    ring2.setDepth(19);
+
+    this.tweens.add({
+      targets: ring1, alpha: 0, scaleX: 3, scaleY: 3, duration: 800,
+      onComplete: () => ring1.destroy(),
+    });
+    this.tweens.add({
+      targets: ring2, alpha: 0, scaleX: 4, scaleY: 4, duration: 600,
+      onComplete: () => ring2.destroy(),
+    });
+
+    // Damage all enemies in radius
+    const toDestroy: Phaser.GameObjects.Arc[] = [];
+    for (const enemy of this.enemies.getChildren()) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, go.x, go.y);
+      if (dist <= radius) toDestroy.push(go);
+    }
+    for (const go of toDestroy) {
+      this.hitEnemy(go);
+    }
+    if (toDestroy.length > 0) this.updateHUD();
+  }
+
+  /** Storm of Judgment: lightning chains to ALL enemies + beam strikes */
+  private passiveStormOfJudgment(): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+
+    const targets: Phaser.GameObjects.Arc[] = [];
+    for (const enemy of this.enemies.getChildren()) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (go.active) targets.push(go);
+    }
+
+    if (targets.length === 0) return;
+
+    // Draw lightning chains to all enemies
+    const gfx = this.add.graphics();
+    gfx.lineStyle(6, 0xffee58, 0.5);
+    for (const go of targets) {
+      gfx.lineBetween(this.player.x, this.player.y, go.x, go.y);
+    }
+    gfx.lineStyle(3, 0xffffff, 1);
+    for (const go of targets) {
+      gfx.lineBetween(this.player.x, this.player.y, go.x, go.y);
+    }
+    gfx.setDepth(60);
+
+    // Damage all
+    for (const go of targets) {
+      this.hitEnemy(go);
+    }
+    if (targets.length > 0) this.updateHUD();
+
+    this.tweens.add({
+      targets: gfx, alpha: 0, duration: 800,
+      onComplete: () => gfx.destroy(),
+    });
+  }
+
+  /** Divine Aegis: regenerate HP + reflect damage aura */
+  private passiveDivineAegis(): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+
+    // Regen HP
+    if (this.state.playerHp < this.state.maxHp) {
+      this.state = healPlayer(this.state, 2);
+      this.updateHUD();
+    }
+
+    // Visual shield aura
+    const aura = this.add.circle(this.player.x, this.player.y, 30, 0x00e5ff, 0.2);
+    aura.setStrokeStyle(3, 0x00e5ff);
+    aura.setDepth(45);
+    this.tweens.add({
+      targets: aura, alpha: 0, scale: 2, duration: 600,
+      onComplete: () => aura.destroy(),
+    });
+
+    // Damage nearby enemies (reflect aura)
+    const reflectRadius = 100;
+    const toDestroy: Phaser.GameObjects.Arc[] = [];
+    for (const enemy of this.enemies.getChildren()) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, go.x, go.y);
+      if (dist <= reflectRadius) toDestroy.push(go);
+    }
+    for (const go of toDestroy) {
+      this.hitEnemy(go);
+    }
+    if (toDestroy.length > 0) this.updateHUD();
+  }
+
+  /** Celestial Vortex: sets up orbiting axes */
+  private setupVortexWeapon(): void {
+    for (const axe of this.vortexAxes) {
+      if (axe && axe.active) axe.destroy();
+    }
+    this.vortexAxes = [];
+
+    const count = 6;
+    for (let i = 0; i < count; i++) {
+      const axe = this.add.circle(this.player.x, this.player.y, 12, 0xff8a65);
+      axe.setStrokeStyle(3, 0xd500f9);
+      axe.setDepth(50);
+      this.vortexAxes.push(axe);
+    }
+  }
+
+  private updateVortexWeapon(): void {
+    if (!this.state.evolvedWeapons.includes("celestial-vortex") || this.vortexAxes.length === 0) return;
+
+    const count = this.vortexAxes.length;
+    const time = this.time.now / 1000;
+    const baseRadius = 120;
+    // Expanding spiral effect
+    const pulseRadius = baseRadius + Math.sin(time * 1.5) * 40;
+
+    for (let i = 0; i < count; i++) {
+      const axe = this.vortexAxes[i];
+      if (!axe || !axe.active) continue;
+      const angle = time * 3 + (i / count) * Math.PI * 2;
+      axe.x = this.player.x + Math.cos(angle) * pulseRadius;
+      axe.y = this.player.y + Math.sin(angle) * pulseRadius;
+    }
+
+    // Collision check
+    if (this.isShowingOverlay || this.isComplete) return;
+
+    const toDestroy: Phaser.GameObjects.Arc[] = [];
+    for (const enemy of this.enemies.getChildren()) {
+      const go = enemy as Phaser.GameObjects.Arc;
+      if (!go.active) continue;
+      for (const axe of this.vortexAxes) {
+        if (!axe || !axe.active) continue;
+        const dist = Phaser.Math.Distance.Between(axe.x, axe.y, go.x, go.y);
+        if (dist <= 25) {
+          toDestroy.push(go);
+          break;
+        }
+      }
+    }
+    for (const go of toDestroy) {
+      this.hitEnemy(go);
+    }
+    if (toDestroy.length > 0) this.updateHUD();
+  }
+
+  /** Celestial Vortex periodic: expand radius briefly and damage in range */
+  private passiveCelestialVortex(): void {
+    if (this.isShowingOverlay || this.isComplete) return;
+
+    // Visual expansion burst
+    const burst = this.add.circle(this.player.x, this.player.y, 120, 0xd500f9, 0.15);
+    burst.setStrokeStyle(3, 0xd500f9);
+    burst.setDepth(20);
+    this.tweens.add({
+      targets: burst, alpha: 0, scale: 2.5, duration: 600,
+      onComplete: () => burst.destroy(),
+    });
+  }
+
   // ---- End game ----
 
   private endGame(victory: boolean): void {
@@ -1442,12 +2114,33 @@ export class SurvivorsScene extends Phaser.Scene {
     if (this.holyWaterTimer) this.holyWaterTimer.remove();
     if (this.axeTimer) this.axeTimer.remove();
     if (this.beamTimer) this.beamTimer.remove();
+    if (this.baptismTimer) this.baptismTimer.remove();
+    if (this.stormTimer) this.stormTimer.remove();
+    if (this.aegisTimer) this.aegisTimer.remove();
+    if (this.vortexTimer) this.vortexTimer.remove();
+    if (this.magnetSpawnTimer) this.magnetSpawnTimer.remove();
+    if (this.magnetTimer) this.magnetTimer.remove();
+    if (this.speedBoostTimer) this.speedBoostTimer.remove();
 
     // Clean up orbit orbs
     for (const orb of this.orbitOrbs) {
       if (orb && orb.active) orb.destroy();
     }
     this.orbitOrbs = [];
+
+    // Clean up vortex axes
+    for (const axe of this.vortexAxes) {
+      if (axe && axe.active) axe.destroy();
+    }
+    this.vortexAxes = [];
+
+    // Clean up XP orbs
+    for (const orbGo of this.xpOrbs.getChildren()) {
+      const orb = orbGo as Phaser.GameObjects.Arc;
+      const glow = orb.getData("glow") as Phaser.GameObjects.Arc | undefined;
+      if (glow && glow.active) glow.destroy();
+    }
+    this.xpOrbs.clear(true, true);
 
     for (const enemy of this.enemies.getChildren()) {
       const body = (enemy as Phaser.GameObjects.Arc).body as Phaser.Physics.Arcade.Body;
@@ -1488,10 +2181,15 @@ export class SurvivorsScene extends Phaser.Scene {
 
     const minutes = Math.floor(this.state.elapsedSeconds / 60);
     const seconds = this.state.elapsedSeconds % 60;
-    const weaponSummary = this.state.weapons.map((w) => {
+    const weaponParts = this.state.weapons.map((w) => {
       const name = WEAPON_OPTIONS.find((o) => o.type === w.type)?.name ?? w.type;
       return `${name} Lv${w.level}`;
-    }).join(", ") || "None";
+    });
+    const evoParts = this.state.evolvedWeapons.map((evoId) => {
+      const recipe = EVOLUTION_RECIPES.find((r) => r.id === evoId);
+      return recipe ? recipe.name : evoId;
+    });
+    const weaponSummary = [...weaponParts, ...evoParts].join(", ") || "None";
 
     const statsLines = [
       `Enemies Defeated: ${this.state.enemiesDefeated}`,
@@ -1552,6 +2250,23 @@ export class SurvivorsScene extends Phaser.Scene {
       fontSize: "12px", fontFamily: "sans-serif", color: "#ffd700",
       backgroundColor: "rgba(0,0,0,0.4)", padding: { x: 10, y: 4 },
     }).setScrollFactor(0).setDepth(100);
+
+    // XP bar at bottom of screen
+    const { height } = this.scale;
+    const barW = width - 30;
+    const barH = 10;
+    const barY = height - 20;
+    this.xpBarBg = this.add.rectangle(width / 2, barY, barW, barH, 0x333333, 0.7);
+    this.xpBarBg.setStrokeStyle(1, 0x555555);
+    this.xpBarBg.setScrollFactor(0).setDepth(100);
+
+    this.xpBarFill = this.add.rectangle(15, barY, 0, barH, 0x7c4dff, 0.9);
+    this.xpBarFill.setOrigin(0, 0.5);
+    this.xpBarFill.setScrollFactor(0).setDepth(101);
+
+    this.xpBarText = this.add.text(width / 2, barY, "Faith Orbs", {
+      fontSize: "8px", fontFamily: "sans-serif", color: "#ffffff",
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
   }
 
   private updateHUD(): void {
@@ -1565,11 +2280,33 @@ export class SurvivorsScene extends Phaser.Scene {
     this.enemyCountText?.setText(`Enemies: ${this.state.enemiesDefeated}`);
 
     // Weapon HUD
+    const parts: string[] = [];
     if (this.state.weapons.length > 0) {
-      const weapStr = this.state.weapons.map((w) => {
+      parts.push(...this.state.weapons.map((w) => {
         return `${WEAPON_ICON_MAP[w.type] ?? ""}Lv${w.level}`;
-      }).join(" ");
-      this.weaponHudText?.setText(weapStr);
+      }));
+    }
+    if (this.state.evolvedWeapons.length > 0) {
+      for (const evoId of this.state.evolvedWeapons) {
+        const recipe = EVOLUTION_RECIPES.find((r) => r.id === evoId);
+        if (recipe) parts.push(`${recipe.icon}`);
+      }
+    }
+    if (parts.length > 0) {
+      this.weaponHudText?.setText(parts.join(" "));
+    }
+  }
+
+  private updateXpBar(): void {
+    const progress = getXpBarProgress(this.state);
+    const { width } = this.scale;
+    const barW = width - 30;
+    const fillW = barW * progress;
+    if (this.xpBarFill) {
+      this.xpBarFill.width = fillW;
+    }
+    if (this.xpBarText) {
+      this.xpBarText.setText(`Faith Orbs: ${this.state.xpOrbs}/${this.state.xpOrbsToNext}`);
     }
   }
 }
