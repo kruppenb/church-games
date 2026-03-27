@@ -19,6 +19,8 @@ interface AnswerSlot {
   letter: string | null;
   /** Index into the scrambled tiles array */
   tileIndex: number | null;
+  /** Whether this slot was revealed by a progressive hint */
+  hinted: boolean;
 }
 
 /**
@@ -48,6 +50,33 @@ function shuffleLetters(word: string): string[] {
   return result;
 }
 
+/**
+ * Fisher-Yates shuffle for LetterTile arrays (used by the Shuffle button).
+ * Only re-randomizes tiles that are not currently used (placed in answer slots).
+ */
+function shuffleTiles(tiles: LetterTile[]): LetterTile[] {
+  const result = [...tiles];
+  // Collect indices of unused tiles
+  const unusedIndices = result
+    .map((t, i) => (!t.used ? i : -1))
+    .filter((i) => i !== -1);
+
+  if (unusedIndices.length <= 1) return result;
+
+  // Fisher-Yates on the unused subset
+  for (let i = unusedIndices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const idxA = unusedIndices[i];
+    const idxB = unusedIndices[j];
+    // Swap the tiles at these positions
+    const temp = result[idxA];
+    result[idxA] = result[idxB];
+    result[idxB] = temp;
+  }
+
+  return result;
+}
+
 export function WordScramble() {
   const { lesson, loading, error } = useLesson();
   const { difficulty } = useDifficulty();
@@ -57,13 +86,16 @@ export function WordScramble() {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [tiles, setTiles] = useState<LetterTile[]>([]);
   const [answerSlots, setAnswerSlots] = useState<AnswerSlot[]>([]);
-  const [hintUsed, setHintUsed] = useState(false);
+  const [hintsUsed, setHintsUsed] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [firstAttempt, setFirstAttempt] = useState(true);
   const [wrongShake, setWrongShake] = useState(false);
   const [correctFlash, setCorrectFlash] = useState(false);
   const [wordsWithoutHint, setWordsWithoutHint] = useState(0);
   const [wordsFirstAttempt, setWordsFirstAttempt] = useState(0);
+  // Animation states
+  const [tileBounceIndex, setTileBounceIndex] = useState<number | null>(null);
+  const [cascadeIndices, setCascadeIndices] = useState<number[]>([]);
 
   // Filter keywords by difficulty
   const words: KeyWord[] = useMemo(() => {
@@ -72,6 +104,9 @@ export function WordScramble() {
   }, [lesson, difficulty]);
 
   const currentWord = words[currentWordIndex] ?? null;
+
+  // Maximum hints allowed = word length - 1 (must solve at least 1 letter)
+  const maxHints = currentWord ? currentWord.word.length - 1 : 0;
 
   const setupWord = useCallback(
     (wordIndex: number) => {
@@ -89,16 +124,19 @@ export function WordScramble() {
         () => ({
           letter: null,
           tileIndex: null,
+          hinted: false,
         }),
       );
 
       setTiles(newTiles);
       setAnswerSlots(newSlots);
-      setHintUsed(false);
+      setHintsUsed(0);
       setShowHint(false);
       setFirstAttempt(true);
       setWrongShake(false);
       setCorrectFlash(false);
+      setTileBounceIndex(null);
+      setCascadeIndices([]);
     },
     [words],
   );
@@ -125,9 +163,15 @@ export function WordScramble() {
     if (gameState !== "playing") return;
     if (tiles[tileIndex].used) return;
 
-    // Find first empty slot
-    const emptySlotIndex = answerSlots.findIndex((s) => s.letter === null);
+    // Find first empty non-hinted slot
+    const emptySlotIndex = answerSlots.findIndex(
+      (s) => s.letter === null && !s.hinted,
+    );
     if (emptySlotIndex === -1) return;
+
+    // Trigger bounce animation on the target slot
+    setTileBounceIndex(emptySlotIndex);
+    setTimeout(() => setTileBounceIndex(null), 400);
 
     setTiles((prev) =>
       prev.map((t, i) => (i === tileIndex ? { ...t, used: true } : t)),
@@ -135,7 +179,7 @@ export function WordScramble() {
     setAnswerSlots((prev) =>
       prev.map((s, i) =>
         i === emptySlotIndex
-          ? { letter: tiles[tileIndex].letter, tileIndex }
+          ? { ...s, letter: tiles[tileIndex].letter, tileIndex }
           : s,
       ),
     );
@@ -145,7 +189,8 @@ export function WordScramble() {
   function handleSlotTap(slotIndex: number) {
     if (gameState !== "playing") return;
     const slot = answerSlots[slotIndex];
-    if (slot.letter === null || slot.tileIndex === null) return;
+    // Don't allow removing hinted letters
+    if (slot.letter === null || slot.tileIndex === null || slot.hinted) return;
 
     const returnTileIndex = slot.tileIndex;
     setTiles((prev) =>
@@ -155,9 +200,75 @@ export function WordScramble() {
     );
     setAnswerSlots((prev) =>
       prev.map((s, i) =>
-        i === slotIndex ? { letter: null, tileIndex: null } : s,
+        i === slotIndex ? { ...s, letter: null, tileIndex: null } : s,
       ),
     );
+  }
+
+  // Shuffle remaining available tiles (Fisher-Yates)
+  function handleShuffle() {
+    if (gameState !== "playing") return;
+    setTiles((prev) => shuffleTiles(prev));
+  }
+
+  // Progressive hint: reveal the next unrevealed letter in the correct position
+  function handleProgressiveHint() {
+    if (gameState !== "playing" || !currentWord) return;
+    if (hintsUsed >= maxHints) return;
+
+    const target = currentWord.word.toUpperCase();
+
+    // Find the next slot that doesn't have the correct letter locked in
+    let revealIndex = -1;
+    for (let i = 0; i < answerSlots.length; i++) {
+      if (!answerSlots[i].hinted) {
+        revealIndex = i;
+        break;
+      }
+    }
+    if (revealIndex === -1) return;
+
+    const correctLetter = target[revealIndex];
+
+    // If there's a non-hinted letter already in this slot, return it to tiles
+    const existingSlot = answerSlots[revealIndex];
+    if (existingSlot.tileIndex !== null) {
+      setTiles((prev) =>
+        prev.map((t, i) =>
+          i === existingSlot.tileIndex! ? { ...t, used: false } : t,
+        ),
+      );
+    }
+
+    // Find an unused tile with the correct letter to "use up"
+    const matchingTileIndex = tiles.findIndex(
+      (t) => !t.used && t.letter === correctLetter,
+    );
+
+    if (matchingTileIndex !== -1) {
+      setTiles((prev) =>
+        prev.map((t, i) =>
+          i === matchingTileIndex ? { ...t, used: true } : t,
+        ),
+      );
+    }
+
+    // Place the correct letter with hinted flag
+    setAnswerSlots((prev) =>
+      prev.map((s, i) =>
+        i === revealIndex
+          ? {
+              letter: correctLetter,
+              tileIndex: matchingTileIndex !== -1 ? matchingTileIndex : null,
+              hinted: true,
+            }
+          : s,
+      ),
+    );
+
+    const newHintsUsed = hintsUsed + 1;
+    setHintsUsed(newHintsUsed);
+    setShowHint(true);
   }
 
   // Check the answer when all slots are filled
@@ -175,10 +286,23 @@ export function WordScramble() {
       playCorrect();
       setCorrectFlash(true);
 
+      // Cascade pop animation: stagger each slot
+      answerSlots.forEach((_, i) => {
+        setTimeout(() => {
+          setCascadeIndices((prev) => [...prev, i]);
+        }, i * 100);
+      });
+
       let wordScore = 100;
-      if (!hintUsed) {
+      if (hintsUsed === 0) {
         wordScore += 50;
         setWordsWithoutHint((prev) => prev + 1);
+      } else {
+        // Reduce score proportionally per hint used
+        // Each hint costs 50 / maxHints points from the hint bonus
+        // (so using all hints = no bonus, using none = full 50 bonus)
+        const hintPenalty = Math.round((hintsUsed / maxHints) * 50);
+        wordScore += Math.max(0, 50 - hintPenalty);
       }
       if (firstAttempt) {
         wordScore += 25;
@@ -209,10 +333,20 @@ export function WordScramble() {
       // Reset after shake animation
       setTimeout(() => {
         setWrongShake(false);
-        // Return all letters to tiles
-        setTiles((prev) => prev.map((t) => ({ ...t, used: false })));
+        // Return all non-hinted letters to tiles
+        setTiles((prev) => {
+          const next = [...prev];
+          answerSlots.forEach((slot) => {
+            if (!slot.hinted && slot.tileIndex !== null) {
+              next[slot.tileIndex] = { ...next[slot.tileIndex], used: false };
+            }
+          });
+          return next;
+        });
         setAnswerSlots((prev) =>
-          prev.map(() => ({ letter: null, tileIndex: null })),
+          prev.map((s) =>
+            s.hinted ? s : { ...s, letter: null, tileIndex: null },
+          ),
         );
       }, 600);
     }
@@ -220,7 +354,8 @@ export function WordScramble() {
     answerSlots,
     gameState,
     currentWord,
-    hintUsed,
+    hintsUsed,
+    maxHints,
     firstAttempt,
     currentWordIndex,
     words.length,
@@ -240,11 +375,10 @@ export function WordScramble() {
       if (tileIndex !== -1) {
         handleTileTap(tileIndex);
       }
-      // Backspace removes the last placed letter
+      // Backspace removes the last placed (non-hinted) letter
       if (e.key === "Backspace") {
-        // Find last filled slot
         for (let i = answerSlots.length - 1; i >= 0; i--) {
-          if (answerSlots[i].letter !== null) {
+          if (answerSlots[i].letter !== null && !answerSlots[i].hinted) {
             handleSlotTap(i);
             break;
           }
@@ -406,11 +540,27 @@ export function WordScramble() {
           {answerSlots.map((slot, i) => (
             <button
               key={`slot-${i}`}
-              className={`answer-slot ${slot.letter ? "filled" : ""} ${correctFlash && slot.letter ? "correct" : ""} ${wrongShake && slot.letter ? "wrong" : ""}`}
+              className={[
+                "answer-slot",
+                slot.letter ? "filled" : "",
+                slot.hinted ? "hinted" : "",
+                correctFlash && slot.letter ? "correct" : "",
+                wrongShake && slot.letter && !slot.hinted ? "wrong" : "",
+                tileBounceIndex === i ? "tile-bounce" : "",
+                cascadeIndices.includes(i) ? "cascade-pop" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               onClick={() => handleSlotTap(i)}
-              disabled={!slot.letter || gameState !== "playing"}
+              disabled={
+                !slot.letter || slot.hinted || gameState !== "playing"
+              }
               aria-label={
-                slot.letter ? `Placed letter ${slot.letter}` : `Empty slot ${i + 1}`
+                slot.letter
+                  ? slot.hinted
+                    ? `Hinted letter ${slot.letter}`
+                    : `Placed letter ${slot.letter}`
+                  : `Empty slot ${i + 1}`
               }
             >
               {slot.letter ?? ""}
@@ -421,14 +571,26 @@ export function WordScramble() {
         <div className="scramble-actions">
           <button
             className="btn btn-secondary scramble-hint-btn"
-            onClick={() => {
-              setHintUsed(true);
-              setShowHint(true);
-            }}
-            disabled={gameState !== "playing"}
+            onClick={handleProgressiveHint}
+            disabled={gameState !== "playing" || hintsUsed >= maxHints}
             aria-label="Show hint"
+            data-testid="hint-button"
           >
-            <span aria-hidden="true">&#128161;</span> Hint
+            <span aria-hidden="true">&#128161;</span> Hint{" "}
+            {currentWord && (
+              <span className="hint-count">
+                ({hintsUsed}/{maxHints})
+              </span>
+            )}
+          </button>
+          <button
+            className="btn btn-secondary scramble-shuffle-btn"
+            onClick={handleShuffle}
+            disabled={gameState !== "playing"}
+            aria-label="Shuffle letters"
+            data-testid="shuffle-button"
+          >
+            <span aria-hidden="true">&#128256;</span> Shuffle
           </button>
         </div>
 

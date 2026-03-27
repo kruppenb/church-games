@@ -1140,10 +1140,45 @@ h1, h2, h3, h4, h5, h6 {
 
 .scramble-actions {
   margin-top: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
 }
 
 .scramble-hint-btn {
   font-size: 0.9rem;
+}
+
+.scramble-shuffle-btn {
+  font-size: 0.9rem;
+}
+
+.hint-count {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* Hinted slot: gold glow to show it was revealed by a hint */
+.answer-slot.hinted {
+  border-color: var(--color-gold);
+  background: rgba(255, 215, 0, 0.12);
+  color: var(--color-gold);
+  cursor: default;
+}
+
+/* Tile bounce-into-slot animation (overshoot spring) */
+.answer-slot.tile-bounce {
+  animation: tileBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Cascade pop for correct answer reveal (like Wordle flip) */
+.answer-slot.cascade-pop {
+  animation: cascadePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Wrong shake on individual tiles (more dramatic than container shake) */
+.answer-slot.wrong:not(.hinted) {
+  animation: tileWrongShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
 }
 
 .hint-bubble {
@@ -2000,6 +2035,35 @@ h1, h2, h3, h4, h5, h6 {
   0% { transform: scale(1); box-shadow: 0 0 0 transparent; }
   50% { transform: scale(1.08); box-shadow: 0 0 25px var(--color-success-glow); }
   100% { transform: scale(1); box-shadow: 0 0 0 transparent; }
+}
+
+/* Bounce-in with overshoot for letter placement */
+@keyframes tileBounceIn {
+  0% { transform: scale(0.5); opacity: 0.5; }
+  50% { transform: scale(1.2); }
+  70% { transform: scale(0.92); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Cascade pop for correct answer (Wordle-style flip reveal) */
+@keyframes cascadePop {
+  0% { transform: scale(1) rotateX(0deg); background: rgba(0, 212, 255, 0.1); }
+  30% { transform: scale(1.1) rotateX(90deg); }
+  60% { transform: scale(1.2) rotateX(0deg); background: rgba(0, 255, 136, 0.25); border-color: var(--color-success); color: var(--color-success); }
+  80% { transform: scale(0.95); }
+  100% { transform: scale(1); background: rgba(0, 255, 136, 0.2); border-color: var(--color-success); color: var(--color-success); }
+}
+
+/* Dramatic wrong shake per tile */
+@keyframes tileWrongShake {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-8px) rotate(-2deg); }
+  30% { transform: translateX(8px) rotate(2deg); }
+  45% { transform: translateX(-6px) rotate(-1deg); }
+  60% { transform: translateX(6px) rotate(1deg); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
 }
 
 /* ============================================================
