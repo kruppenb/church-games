@@ -23,6 +23,9 @@ import {
   getAbilityDescription,
   getDifficultyBorder,
   getDifficultyLabel,
+  getAiPowerRange,
+  loadCollection,
+  addToCollection,
 } from "./logic/card-logic";
 import type { Card, BattleState, ClashResult } from "./logic/card-logic";
 import "./CardBattler.css";
@@ -104,6 +107,114 @@ function CardBack() {
   );
 }
 
+// --- Enemy Intent Component ---
+
+function EnemyIntentCard({ aiHand }: { aiHand: Card[] }) {
+  const range = getAiPowerRange(aiHand);
+  const rangeText =
+    range.min === range.max ? `${range.min}` : `${range.min}-${range.max}`;
+
+  return (
+    <div className="card-enemy-intent">
+      <div className="card-enemy-intent-card">
+        <span className="card-enemy-intent-question">?</span>
+        <span className="card-enemy-intent-hint">
+          Power: {rangeText}
+        </span>
+      </div>
+      <span className="card-enemy-intent-label">Next play</span>
+    </div>
+  );
+}
+
+// --- Particle Burst Component ---
+
+function ParticleBurst({ winner }: { winner: "player" | "ai" }) {
+  const cls = winner === "player" ? "card-particle--win" : "card-particle--lose";
+  return (
+    <div className="card-particles">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className={`card-particle ${cls}`} />
+      ))}
+    </div>
+  );
+}
+
+// --- Card Gallery Component ---
+
+function CardGallery({
+  allCards,
+  onClose,
+}: {
+  allCards: Card[];
+  onClose: () => void;
+}) {
+  const collection = loadCollection();
+
+  // Deduplicate cards by name for the gallery
+  const uniqueCards = useMemo(() => {
+    const seen = new Set<string>();
+    return allCards.filter((card) => {
+      if (seen.has(card.name)) return false;
+      seen.add(card.name);
+      return true;
+    });
+  }, [allCards]);
+
+  const discoveredCount = uniqueCards.filter((c) =>
+    collection.has(c.name),
+  ).length;
+  const totalCount = uniqueCards.length;
+  const pct = totalCount > 0 ? (discoveredCount / totalCount) * 100 : 0;
+
+  return (
+    <div className="card-gallery-overlay" onClick={onClose}>
+      <div
+        className="card-gallery-panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-gallery-header">
+          <h2 className="card-gallery-title">Card Book</h2>
+          <button className="card-gallery-close" onClick={onClose}>
+            &times;
+          </button>
+        </div>
+
+        <div className="card-gallery-progress">
+          <span className="card-gallery-progress-text">
+            {discoveredCount}/{totalCount} cards discovered
+          </span>
+          <div className="card-gallery-progress-bar">
+            <div
+              className="card-gallery-progress-fill"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="card-gallery-grid">
+          {uniqueCards.map((card) => {
+            const discovered = collection.has(card.name);
+            return (
+              <div
+                key={card.id}
+                className={`card-gallery-item ${
+                  !discovered ? "card-gallery-item--undiscovered" : ""
+                }`}
+              >
+                <CardVisual card={card} />
+                {!discovered && (
+                  <div className="card-undiscovered-overlay">?</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- HP Bar Component ---
 
 function HpBar({
@@ -157,6 +268,12 @@ export function CardBattler() {
   // Track whether current question is a bonus question
   const [isBonusQuestion, setIsBonusQuestion] = useState(false);
 
+  // Card gallery state
+  const [showGallery, setShowGallery] = useState(false);
+
+  // Clash animation state: tracks who won the clash for projectile direction
+  const [clashWinner, setClashWinner] = useState<"player" | "ai" | "tie" | null>(null);
+
   // Timer ref for auto-advancing states
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -183,6 +300,9 @@ export function CardBattler() {
 
     const { playerHand, aiHand, remainingPool: rp } = dealHands(allCards);
     setRemainingPool(rp);
+
+    // Save dealt player cards to collection (player can see them)
+    addToCollection(playerHand);
 
     if (difficulty === "big-kids") {
       // Big kids get mulligan
@@ -299,6 +419,18 @@ export function CardBattler() {
       setClashResult(result);
       setGameState("clash");
 
+      // Determine clash winner for projectile animation
+      if (result.aiDamage > result.playerDamage) {
+        setClashWinner("player");
+      } else if (result.playerDamage > result.aiDamage) {
+        setClashWinner("ai");
+      } else {
+        setClashWinner("tie");
+      }
+
+      // Save both cards to collection
+      addToCollection([playerCard, aiCard]);
+
       // Show clash animation then result
       timerRef.current = setTimeout(() => {
         setGameState("clash-result");
@@ -409,6 +541,7 @@ export function CardBattler() {
     setShowCelebration(false);
     setStars(0);
     setIsBonusQuestion(false);
+    setClashWinner(null);
   }, []);
 
   // --- Loading / Error ---
@@ -454,6 +587,12 @@ export function CardBattler() {
   if (gameState === "intro") {
     return (
       <div className="card-container">
+        {showGallery && (
+          <CardGallery
+            allCards={allCards}
+            onClose={() => setShowGallery(false)}
+          />
+        )}
         <div className="card-intro">
           <a href="#/" className="quiz-back-link">
             &larr; Back
@@ -470,6 +609,12 @@ export function CardBattler() {
           </p>
           <button className="btn btn-primary btn-large" onClick={handleStart}>
             Start Battle
+          </button>
+          <button
+            className="btn-card-book"
+            onClick={() => setShowGallery(true)}
+          >
+            {"\uD83D\uDCD6"} Card Book
           </button>
         </div>
       </div>
@@ -627,11 +772,14 @@ export function CardBattler() {
           side="ai"
         />
 
-        {/* AI Hand (card backs) */}
+        {/* AI Hand (card backs) + Enemy Intent */}
         <div className="card-hand-row">
           {battleState.aiHand.map((_, i) => (
             <CardBack key={i} />
           ))}
+          {gameState === "select-card" && battleState.aiHand.length > 0 && (
+            <EnemyIntentCard aiHand={battleState.aiHand} />
+          )}
         </div>
 
         {/* Peek card from Draw ability */}
@@ -643,7 +791,7 @@ export function CardBattler() {
         )}
 
         {/* Arena (played cards) */}
-        <div className="card-arena">
+        <div className={`card-arena ${gameState === "clash" ? "card-arena--clash-active" : ""}`}>
           {/* AI played card */}
           <div className="card-arena-slot">
             {battleState.aiPlayedCard &&
@@ -654,13 +802,17 @@ export function CardBattler() {
               gameState === "clash-result") ? (
               <CardVisual
                 card={battleState.aiPlayedCard}
-                className={
+                className={`${
                   gameState === "ai-reveal"
                     ? "card-ai-reveal"
                     : gameState === "clash"
                       ? "card-clash-shake"
                       : ""
-                }
+                } ${
+                  gameState === "clash" && clashWinner === "player"
+                    ? "card-item--hit-recoil"
+                    : ""
+                }`}
               />
             ) : null}
           </div>
@@ -668,6 +820,33 @@ export function CardBattler() {
           {/* Divider */}
           {battleState.playerPlayedCard && battleState.aiPlayedCard && (
             <div className="card-arena-divider">{"\u2694\uFE0F"}</div>
+          )}
+
+          {/* Attack projectile */}
+          {gameState === "clash" && clashWinner && clashWinner !== "tie" && (
+            <div
+              className={`card-projectile ${
+                clashWinner === "player"
+                  ? "card-projectile--player-wins"
+                  : "card-projectile--ai-wins"
+              }`}
+            />
+          )}
+
+          {/* Particle burst on impact */}
+          {gameState === "clash" && clashWinner && clashWinner !== "tie" && (
+            <ParticleBurst winner={clashWinner} />
+          )}
+
+          {/* Impact flash */}
+          {gameState === "clash" && clashWinner && clashWinner !== "tie" && (
+            <div
+              className={`card-impact-flash ${
+                clashWinner === "player"
+                  ? "card-impact-flash--player-wins"
+                  : "card-impact-flash--ai-wins"
+              }`}
+            />
           )}
 
           {/* Clash result overlay */}
@@ -726,6 +905,10 @@ export function CardBattler() {
                     : clashResult?.abilityTriggered
                       ? "card-ability-glow"
                       : ""
+                } ${
+                  gameState === "clash" && clashWinner === "ai"
+                    ? "card-item--hit-recoil"
+                    : ""
                 }`}
               />
             ) : null}

@@ -514,3 +514,63 @@ export function getDifficultyBorder(
       return "gold";
   }
 }
+
+// --- AI Power Range (Enemy Intent) ---
+
+/**
+ * Computes the min and max power of the AI hand for enemy intent display.
+ * Returns a range string like "3-5" or "4" if all same power.
+ */
+export function getAiPowerRange(aiHand: Card[]): { min: number; max: number } {
+  if (aiHand.length === 0) return { min: 0, max: 0 };
+  const powers = aiHand.map((c) => c.power);
+  return {
+    min: Math.min(...powers),
+    max: Math.max(...powers),
+  };
+}
+
+// --- Card Collection (localStorage persistence) ---
+
+const COLLECTION_STORAGE_KEY = "scripture-cards-collection";
+
+/**
+ * Loads discovered card IDs from localStorage.
+ */
+export function loadCollection(): Set<string> {
+  try {
+    const stored = localStorage.getItem(COLLECTION_STORAGE_KEY);
+    if (stored) {
+      const arr = JSON.parse(stored);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return new Set();
+}
+
+/**
+ * Saves discovered card names to localStorage. Uses card names (not IDs)
+ * since IDs are generated fresh each game, but names come from termPairs.
+ */
+export function saveCollection(names: Set<string>): void {
+  try {
+    localStorage.setItem(COLLECTION_STORAGE_KEY, JSON.stringify([...names]));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Merges newly seen cards into the collection and persists.
+ * Returns the updated set.
+ */
+export function addToCollection(cards: Card[]): Set<string> {
+  const collection = loadCollection();
+  for (const card of cards) {
+    collection.add(card.name);
+  }
+  saveCollection(collection);
+  return collection;
+}
