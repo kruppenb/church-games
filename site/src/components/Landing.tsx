@@ -93,9 +93,8 @@ const QUIZ_ID = "quiz-showdown";
 const ROTATABLE_IDS = GAMES.filter((g) => g.id !== QUIZ_ID).map((g) => g.id);
 
 function StarDisplay({ stars }: { stars: number }) {
-  if (stars <= 0) return null;
   return (
-    <div className="game-card-stars">
+    <div className="game-card-stars" style={stars <= 0 ? { visibility: "hidden" } : undefined}>
       {[1, 2, 3].map((s) => (
         <span
           key={s}
