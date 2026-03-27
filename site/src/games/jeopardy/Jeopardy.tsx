@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
@@ -16,15 +16,32 @@ interface JeopardyCell {
   isDailyDouble: boolean;
 }
 
-type GameState = "intro" | "board" | "question" | "feedback" | "complete";
+type GameState =
+  | "intro"
+  | "board"
+  | "daily-double"
+  | "question"
+  | "feedback"
+  | "final-wager"
+  | "final-question"
+  | "final-feedback"
+  | "complete";
 type PlayerCount = 1 | 2;
 
 const VALUES = [100, 200, 300, 400, 500];
 const ANSWER_LABELS = ["A", "B", "C", "D"];
 
+/** Wager preset options for Final Jeopardy */
+const WAGER_PRESETS = [
+  { label: "25%", fraction: 0.25 },
+  { label: "50%", fraction: 0.5 },
+  { label: "ALL IN!", fraction: 1.0 },
+] as const;
+
 /**
  * Builds 5 category columns from the available questions.
  * Each column gets 5 questions mapped to the 5 value tiers.
+ * Reserves one extra question for Final Jeopardy if available.
  *
  * Strategy:
  * 1. Sort questions by difficulty (easy first, then medium, then hard).
@@ -35,15 +52,15 @@ const ANSWER_LABELS = ["A", "B", "C", "D"];
 function buildBoard(
   questions: Question[],
   theme: string,
-): { categories: string[]; cells: JeopardyCell[] } {
+): { categories: string[]; cells: JeopardyCell[]; finalQuestion: Question } {
   // Define 5 named categories based on question categories + theme
   const categoryNames = [
     "Recall",
     "Understanding",
     "Application",
     // Use first phrase of theme (before dash/colon) to keep header short
-    theme.split(/\s*[—–:\-]\s*/)[0].trim().charAt(0).toUpperCase() +
-      theme.split(/\s*[—–:\-]\s*/)[0].trim().slice(1),
+    theme.split(/\s*[---:\-]\s*/)[0].trim().charAt(0).toUpperCase() +
+      theme.split(/\s*[---:\-]\s*/)[0].trim().slice(1),
     "Challenge",
   ];
 
@@ -57,7 +74,11 @@ function buildBoard(
     (a, b) => difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty],
   );
 
-  // We need exactly 25 questions. If not enough, cycle.
+  // Reserve the hardest question for Final Jeopardy (last in sorted = hardest)
+  // Use the last unique question for the final round
+  const finalQuestion = sorted[sorted.length - 1];
+
+  // We need exactly 25 questions for the board. If not enough, cycle.
   const needed = 25;
   const expanded: Question[] = [];
   for (let i = 0; i < needed; i++) {
@@ -95,7 +116,7 @@ function buildBoard(
     }
   }
 
-  return { categories: categoryNames, cells };
+  return { categories: categoryNames, cells, finalQuestion };
 }
 
 export function Jeopardy() {
@@ -114,6 +135,16 @@ export function Jeopardy() {
   const [feedbackPoints, setFeedbackPoints] = useState(0);
   const { streak, streakJustBroke, recordAnswer, reset: resetStreak } = useComboStreak();
 
+  // Board-to-question zoom: track clicked cell position
+  const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  // Final Jeopardy state
+  const [finalQuestion, setFinalQuestion] = useState<Question | null>(null);
+  const [finalWagers, setFinalWagers] = useState<[number, number]>([0, 0]);
+  const [finalWagerPlayer, setFinalWagerPlayer] = useState<0 | 1>(0);
+  const [finalSelectedIndex, setFinalSelectedIndex] = useState<number | null>(null);
+
   // Filter questions based on difficulty setting
   const filteredQuestions = useMemo(() => {
     if (!lesson) return [];
@@ -131,25 +162,51 @@ export function Jeopardy() {
 
   function handleStart() {
     if (!lesson) return;
-    const { categories: cats, cells: newCells } = buildBoard(
+    const { categories: cats, cells: newCells, finalQuestion: fq } = buildBoard(
       filteredQuestions,
       lesson.meta.theme,
     );
     setCategories(cats);
     setCells(newCells);
+    setFinalQuestion(fq);
     setScores([0, 0]);
     setCurrentPlayer(0);
     setActiveCell(null);
     setSelectedIndex(null);
+    setZoomOrigin(null);
+    setFinalWagers([0, 0]);
+    setFinalWagerPlayer(0);
+    setFinalSelectedIndex(null);
     resetStreak();
     setGameState("board");
   }
 
-  function handleCellClick(index: number) {
+  function handleCellClick(index: number, event: React.MouseEvent<HTMLButtonElement>) {
     if (cells[index].answered) return;
+
+    // Capture the clicked cell's position for zoom animation
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    // Convert to viewport percentage for transform-origin
+    const originX = (centerX / window.innerWidth) * 100;
+    const originY = (centerY / window.innerHeight) * 100;
+    setZoomOrigin({ x: originX, y: originY });
+
     setActiveCell(index);
     setSelectedIndex(null);
-    setGameState("question");
+
+    // If Daily Double, show the dramatic banner first
+    if (cells[index].isDailyDouble) {
+      setGameState("daily-double");
+      // Auto-advance to question after the dramatic reveal
+      setTimeout(() => {
+        setGameState("question");
+      }, 1500);
+    } else {
+      setGameState("question");
+    }
   }
 
   const handleAnswer = useCallback(
@@ -199,18 +256,97 @@ export function Jeopardy() {
   const handleFeedbackDismiss = useCallback(() => {
     const allAnswered = cells.every((c) => c.answered);
     if (allAnswered) {
-      playCelebration();
-      setGameState("complete");
+      // Board cleared -- transition to Final Jeopardy!
+      if (finalQuestion) {
+        setFinalWagerPlayer(0);
+        setFinalWagers([0, 0]);
+        setFinalSelectedIndex(null);
+        setGameState("final-wager");
+      } else {
+        playCelebration();
+        setGameState("complete");
+      }
     } else {
       setActiveCell(null);
       setSelectedIndex(null);
+      setZoomOrigin(null);
       if (playerCount === 2) {
         setCurrentPlayer((prev) => (prev === 0 ? 1 : 0));
         resetStreak();
       }
       setGameState("board");
     }
-  }, [cells, playerCount, resetStreak]);
+  }, [cells, playerCount, resetStreak, finalQuestion]);
+
+  // Final Jeopardy: handle wager selection
+  function handleFinalWager(fraction: number) {
+    const playerScore = scores[finalWagerPlayer];
+    const wager = Math.max(Math.round(playerScore * fraction), 0);
+    const updated: [number, number] = [...finalWagers];
+    updated[finalWagerPlayer] = wager;
+    setFinalWagers(updated);
+
+    if (playerCount === 2 && finalWagerPlayer === 0) {
+      // Player 1 wagered, now Player 2 wagers
+      setFinalWagerPlayer(1);
+    } else {
+      // All wagers placed, show the question
+      // In 1-player mode, Player 1 answers
+      // In 2-player mode, both see the question and Player 1 answers first
+      setCurrentPlayer(0);
+      setGameState("final-question");
+    }
+  }
+
+  // Final Jeopardy: handle answer
+  const handleFinalAnswer = useCallback(
+    (optionIndex: number) => {
+      if (!finalQuestion || finalSelectedIndex !== null) return;
+      setFinalSelectedIndex(optionIndex);
+
+      const correct = optionIndex === finalQuestion.correctIndex;
+
+      if (playerCount === 1) {
+        // Single player: apply wager
+        if (correct) {
+          playCorrect();
+          setScores((prev) => [prev[0] + finalWagers[0], prev[1]]);
+          setFeedbackCorrect(true);
+          setFeedbackPoints(finalWagers[0]);
+        } else {
+          playWrong();
+          setScores((prev) => [Math.max(prev[0] - finalWagers[0], 0), prev[1]]);
+          setFeedbackCorrect(false);
+          setFeedbackPoints(finalWagers[0]);
+        }
+      } else {
+        // 2-player: both wager on the same question, same answer
+        const newScores: [number, number] = [...scores];
+        if (correct) {
+          playCorrect();
+          newScores[0] += finalWagers[0];
+          newScores[1] += finalWagers[1];
+        } else {
+          playWrong();
+          newScores[0] = Math.max(newScores[0] - finalWagers[0], 0);
+          newScores[1] = Math.max(newScores[1] - finalWagers[1], 0);
+        }
+        setScores(newScores);
+        setFeedbackCorrect(correct);
+        setFeedbackPoints(correct ? finalWagers[0] + finalWagers[1] : finalWagers[0] + finalWagers[1]);
+      }
+
+      setTimeout(() => {
+        setGameState("final-feedback");
+      }, 800);
+    },
+    [finalQuestion, finalSelectedIndex, finalWagers, scores, playerCount],
+  );
+
+  const handleFinalFeedbackDismiss = useCallback(() => {
+    playCelebration();
+    setGameState("complete");
+  }, []);
 
   // --- Loading / Error states ---
   if (loading) {
@@ -347,6 +483,11 @@ export function Jeopardy() {
   // --- Board + Question overlay ---
   const activeCellData = activeCell !== null ? cells[activeCell] : null;
 
+  // Zoom animation style: transform-origin from clicked cell position
+  const zoomStyle = zoomOrigin
+    ? { transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%` } as React.CSSProperties
+    : undefined;
+
   return (
     <div className="jeopardy-container">
       <a href="#/" className="quiz-back-link">
@@ -371,6 +512,7 @@ export function Jeopardy() {
       )}
 
       <div
+        ref={boardRef}
         className="jeopardy-board"
         style={{
           gridTemplateColumns: "repeat(5, 1fr)",
@@ -389,7 +531,7 @@ export function Jeopardy() {
           <button
             key={`cell-${index}`}
             className={`jeopardy-cell ${cell.answered ? "jeopardy-cell-answered" : ""}`}
-            onClick={() => handleCellClick(index)}
+            onClick={(e) => handleCellClick(index, e)}
             disabled={cell.answered}
             aria-label={`${categories[cell.categoryIndex]} for $${cell.value}`}
           >
@@ -398,16 +540,27 @@ export function Jeopardy() {
         ))}
       </div>
 
-      {/* Question overlay */}
+      {/* Daily Double dramatic reveal */}
+      {gameState === "daily-double" && (
+        <div className="jeopardy-question-overlay jeopardy-dd-overlay" style={zoomStyle}>
+          <div className="jeopardy-dd-banner">
+            <div className="jeopardy-dd-flash" />
+            <div className="jeopardy-dd-text">DAILY DOUBLE!</div>
+            <div className="jeopardy-dd-subtitle">Worth double points!</div>
+          </div>
+        </div>
+      )}
+
+      {/* Question overlay with zoom animation */}
       {gameState === "question" && activeCellData && (
-        <div className="jeopardy-question-overlay">
+        <div className="jeopardy-question-overlay jeopardy-zoom-in" style={zoomStyle}>
           <div className="jeopardy-question-panel">
             <div className="jeopardy-question-value">
               ${activeCellData.value}
+              {activeCellData.isDailyDouble && (
+                <span className="jeopardy-question-dd-badge">x2</span>
+              )}
             </div>
-            {activeCellData.isDailyDouble && (
-              <div className="jeopardy-daily-double">DAILY DOUBLE!</div>
-            )}
             <div className="jeopardy-question-text">
               {activeCellData.question.text}
             </div>
@@ -440,7 +593,7 @@ export function Jeopardy() {
         </div>
       )}
 
-      {/* Feedback overlay — shows after answering */}
+      {/* Feedback overlay -- shows after answering */}
       {gameState === "feedback" && (
         <div
           className="jeopardy-question-overlay"
@@ -472,6 +625,123 @@ export function Jeopardy() {
               </>
             )}
             <div className="jeopardy-feedback-hint">Tap to continue</div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Jeopardy: Wager screen */}
+      {gameState === "final-wager" && finalQuestion && (
+        <div className="jeopardy-question-overlay jeopardy-final-overlay">
+          <div className="jeopardy-final-panel">
+            <div className="jeopardy-final-banner">FINAL JEOPARDY!</div>
+            <div className="jeopardy-final-category">
+              {lesson.meta.title}
+            </div>
+            {playerCount === 2 && (
+              <div className="jeopardy-final-wager-player">
+                Player {finalWagerPlayer + 1} — Place Your Wager
+              </div>
+            )}
+            <div className="jeopardy-final-current-score">
+              Your Score: ${scores[finalWagerPlayer]}
+            </div>
+            <div className="jeopardy-wager-options">
+              {WAGER_PRESETS.map((preset) => {
+                const wagerAmount = Math.max(Math.round(scores[finalWagerPlayer] * preset.fraction), 0);
+                return (
+                  <button
+                    key={preset.label}
+                    className="btn jeopardy-wager-btn"
+                    onClick={() => handleFinalWager(preset.fraction)}
+                  >
+                    <span className="jeopardy-wager-label">{preset.label}</span>
+                    <span className="jeopardy-wager-amount">${wagerAmount}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Jeopardy: Question */}
+      {gameState === "final-question" && finalQuestion && (
+        <div className="jeopardy-question-overlay jeopardy-final-overlay">
+          <div className="jeopardy-question-panel jeopardy-final-question-panel">
+            <div className="jeopardy-final-badge">FINAL JEOPARDY</div>
+            <div className="jeopardy-question-text">
+              {finalQuestion.text}
+            </div>
+            <div className="quiz-answers">
+              {finalQuestion.options.map((option, idx) => {
+                let btnClass = "quiz-answer-btn";
+                if (finalSelectedIndex !== null) {
+                  if (idx === finalQuestion.correctIndex) {
+                    btnClass += " quiz-answer-correct";
+                  } else if (idx === finalSelectedIndex && idx !== finalQuestion.correctIndex) {
+                    btnClass += " quiz-answer-wrong";
+                  }
+                }
+                return (
+                  <button
+                    key={idx}
+                    className={btnClass}
+                    onClick={() => handleFinalAnswer(idx)}
+                    disabled={finalSelectedIndex !== null}
+                  >
+                    <span className="quiz-answer-label">
+                      {ANSWER_LABELS[idx]}
+                    </span>
+                    <span className="quiz-answer-text">{option}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Jeopardy: Feedback */}
+      {gameState === "final-feedback" && (
+        <div
+          className="jeopardy-question-overlay"
+          onClick={handleFinalFeedbackDismiss}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleFinalFeedbackDismiss();
+          }}
+        >
+          <div className="jeopardy-feedback-panel">
+            {feedbackCorrect ? (
+              <>
+                <div className="jeopardy-feedback-icon jeopardy-feedback-correct">&#10003;</div>
+                <div className="jeopardy-feedback-title jeopardy-feedback-correct">
+                  {playerCount === 2 ? "Both Players Win!" : "Correct!"}
+                </div>
+                <div className="jeopardy-feedback-points">
+                  {playerCount === 2
+                    ? `P1: +$${finalWagers[0]} / P2: +$${finalWagers[1]}`
+                    : `+$${finalWagers[0]}`}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="jeopardy-feedback-icon jeopardy-feedback-wrong">&#10007;</div>
+                <div className="jeopardy-feedback-title jeopardy-feedback-wrong">
+                  {playerCount === 2 ? "Both Players Lose!" : "Wrong!"}
+                </div>
+                <div className="jeopardy-feedback-subtitle">
+                  The answer was: {finalQuestion?.options[finalQuestion.correctIndex]}
+                </div>
+                <div className="jeopardy-feedback-subtitle">
+                  {playerCount === 2
+                    ? `P1: -$${finalWagers[0]} / P2: -$${finalWagers[1]}`
+                    : `-$${finalWagers[0]}`}
+                </div>
+              </>
+            )}
+            <div className="jeopardy-feedback-hint">Tap to see final results</div>
           </div>
         </div>
       )}
