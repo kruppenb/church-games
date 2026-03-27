@@ -284,6 +284,13 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   margin-bottom: var(--space-xl);
   flex-wrap: wrap;
+  align-items: stretch;
+}
+.hero-section > * {
+  display: flex;
+}
+.hero-section .game-card-hero {
+  height: 100%;
 }
 
 .game-card-hero {
