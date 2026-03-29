@@ -1,670 +1,779 @@
 {
   "meta": {
-    "week": "2026-03-15",
-    "title": "Be Humble / Love Your Enemies",
+    "week": "2026-03-29",
+    "title": "Palm Sunday / Jesus Washes His Disciples' Feet",
     "verseReference": "Philippians 2:3",
     "verseText": "Don't do anything only to get ahead. Don't do it because you are proud. Instead, be humble. Value others more than yourselves.",
-    "theme": "Upside-Down Love — Loving others like Jesus even when it's hard",
-    "spotlightGame": "quiz-show",
-    "generatedAt": "2026-03-15T00:00:00.000Z"
+    "theme": "Jesus showed us how to be humble",
+    "spotlightGame": "bible-brawler",
+    "generatedAt": "2026-03-28T12:00:00.000Z",
+    "jeopardyCategories": [
+      "Palm Sunday",
+      "Humble King",
+      "Feet Washing",
+      "Memory Verse",
+      "Living It Out"
+    ]
   },
   "questions": [
     {
       "id": "q1",
-      "text": "What Bible book is today's story from?",
+      "text": "What city was Jesus traveling toward in today's story?",
       "options": [
-        "Genesis",
-        "Matthew",
-        "Luke",
-        "John"
+        "Bethlehem",
+        "Jerusalem",
+        "Nazareth",
+        "Jericho"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It's the first book of the New Testament.",
-      "explanation": "Today's lesson comes from Matthew 5:38-48, where Jesus teaches about loving your enemies.",
+      "hint": "It's the city where Passover was celebrated.",
+      "explanation": "Jesus and His disciples were traveling toward Jerusalem where people were gathering for Passover.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q2",
-      "text": "Where was Jesus when He taught the crowd about loving your enemies?",
+      "text": "What holiday were the people getting ready for when Jesus arrived?",
       "options": [
-        "In a boat",
-        "At the temple",
-        "On a mountainside",
-        "In someone's house"
+        "Christmas",
+        "Easter",
+        "Passover",
+        "Pentecost"
       ],
       "correctIndex": 2,
       "difficulty": "easy",
-      "hint": "Think about going UP to talk to a big group.",
-      "explanation": "Jesus went up on a mountainside and a huge crowd gathered to listen to His teaching.",
+      "hint": "This holiday remembers when God freed the Israelites from Egypt.",
+      "explanation": "The city was packed with people getting ready for Passover.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q3",
-      "text": "What is today's Bottom Line?",
+      "text": "What did the crowds wave as Jesus entered Jerusalem?",
       "options": [
-        "Be nice to your friends",
-        "Love like Jesus even when it's hard",
-        "Always try to be first",
-        "Only love people who love you"
+        "Flags",
+        "Palm branches",
+        "Blankets",
+        "Torches"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It's about loving like someone special.",
-      "explanation": "The Bottom Line is 'Love like Jesus even when it's hard.' Jesus calls us to love everyone, not just the people who are easy to love.",
+      "hint": "These come from a type of tree.",
+      "explanation": "The people took branches from palm trees and went out to meet Jesus.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q4",
-      "text": "What does the word 'humble' mean in today's lesson?",
+      "text": "What did the crowds shout when Jesus entered Jerusalem?",
       "options": [
-        "Being shy and quiet",
-        "Putting others first",
-        "Thinking you're the best",
-        "Not talking to anyone"
+        "Hallelujah",
+        "Amen",
+        "Hosanna",
+        "Glory"
       ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It's the opposite of being proud.",
-      "explanation": "Being humble means putting others first, not trying to be the most important person in the room.",
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It means 'Save us, we pray!'",
+      "explanation": "The crowds shouted 'Hosanna!' which means 'Save us, we pray!'",
       "format": "multiple-choice",
-      "category": "understanding"
+      "category": "recall"
     },
     {
       "id": "q5",
-      "text": "Jesus taught us to love our enemies.",
+      "text": "What animal did Jesus ride into Jerusalem?",
       "options": [
-        "True",
-        "True, and it's easy",
-        "False",
-        "False, only love friends"
+        "A horse",
+        "A camel",
+        "A young donkey",
+        "A chariot"
       ],
-      "correctIndex": 0,
+      "correctIndex": 2,
       "difficulty": "easy",
-      "explanation": "Jesus clearly taught in Matthew 5 that we should love our enemies, not just the people who are nice to us.",
-      "format": "true-false",
+      "hint": "It's a humble animal, not one a powerful king would usually ride.",
+      "explanation": "Jesus found a young donkey and sat on it as He entered Jerusalem, fulfilling Scripture.",
+      "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q6",
-      "text": "According to the memory verse, we should value _______ more than ourselves.",
+      "text": "True or False: Jesus rode into Jerusalem on a big white horse.",
       "options": [
-        "money",
-        "others",
-        "toys",
-        "ourselves"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "Think about the people around you.",
-      "explanation": "Philippians 2:3 says to 'value others more than yourselves,' reminding us to put other people's needs and feelings before our own.",
-      "format": "fill-blank",
+      "hint": "Think about what kind of animal showed humility.",
+      "explanation": "Jesus rode a young donkey, not a horse. This showed His humility because a donkey was a humble animal.",
+      "format": "true-false",
       "category": "recall"
     },
     {
       "id": "q7",
-      "text": "What is the name of the series this lesson is part of?",
+      "text": "What did Jesus do for His disciples at the special meal?",
       "options": [
-        "Right Side Up",
-        "Inside Out",
-        "Upside Down",
-        "Flip Around"
+        "Cooked their food",
+        "Washed their feet",
+        "Sang them a song",
+        "Gave them gifts"
       ],
-      "correctIndex": 2,
+      "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It's the opposite of right side up!",
-      "explanation": "The series is called 'Upside Down' because Jesus teaches us to live in ways that are the opposite of what the world expects.",
+      "hint": "This was a job usually done by a servant.",
+      "explanation": "At the special meal, Jesus knelt down and washed His disciples' feet, doing the job of a servant.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q8",
-      "text": "Why does Jesus' teaching feel 'upside down'?",
+      "text": "What does 'Hosanna' mean?",
       "options": [
-        "Because He stood on His head",
-        "Because it's the opposite of what the world usually does",
-        "Because the Bible is confusing",
-        "Because He only talked to kids"
+        "Praise God",
+        "Thank you",
+        "Save us, we pray",
+        "Hello King"
       ],
-      "correctIndex": 1,
+      "correctIndex": 2,
       "difficulty": "medium",
-      "hint": "Think about how the world usually acts versus how Jesus says to act.",
-      "explanation": "Jesus' teaching feels upside down because He asks us to do the opposite of what feels natural — like loving people who are mean to us instead of being mean back.",
+      "hint": "The people were asking for help.",
+      "explanation": "Hosanna means 'Save us, we pray!' The crowds were calling out to Jesus for salvation.",
       "format": "multiple-choice",
       "category": "understanding"
     },
     {
       "id": "q9",
-      "text": "We only need to be kind to people who are kind to us first.",
+      "text": "Why did Jesus ride a donkey instead of a horse?",
       "options": [
-        "True",
-        "True, the Bible says so",
-        "False",
-        "False, but only sometimes"
+        "He was afraid of horses",
+        "There were no horses available",
+        "To show He was a humble king",
+        "Donkeys were faster"
       ],
       "correctIndex": 2,
       "difficulty": "medium",
-      "explanation": "This is false. Jesus taught that real love means choosing kindness even when someone isn't kind to us first. That's what makes it upside-down love!",
-      "format": "true-false",
+      "hint": "Think about today's Bottom Line.",
+      "explanation": "Jesus chose a humble donkey to show that He came as a humble, servant king, not a powerful warrior king.",
+      "format": "multiple-choice",
       "category": "understanding"
     },
     {
       "id": "q10",
-      "text": "The memory verse says: 'Don't do anything only to get _______.'",
+      "text": "True or False: Washing someone's feet was considered a very important and honorable job.",
       "options": [
-        "behind",
-        "ahead",
-        "home",
-        "along"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
       "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "It's about trying to be in front of everyone else.",
-      "explanation": "Philippians 2:3 starts by telling us not to do things just to get ahead of others — that's a selfish motivation.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q11",
-      "text": "Who helps us love people who are hard to love?",
-      "options": [
-        "Our best friend",
-        "Our teacher",
-        "God / The Holy Spirit",
-        "A superhero"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "We can't do it on our own — we need help from above!",
-      "explanation": "The lesson teaches that we can't love our enemies on our own. God and the Holy Spirit help us choose love and kindness when it's hard.",
-      "format": "multiple-choice",
+      "difficulty": "medium",
+      "hint": "Think about who usually did this job.",
+      "explanation": "Washing feet was actually a lowly servant's job. That's what made it so amazing that Jesus, the King, chose to do it.",
+      "format": "true-false",
       "category": "understanding"
     },
     {
-      "id": "q12",
-      "text": "What can you do when someone is hard to love?",
+      "id": "q11",
+      "text": "What is this week's Bottom Line?",
       "options": [
-        "Ignore them forever",
-        "Be mean back to them",
-        "Pause and talk to God about it",
-        "Tell everyone they're mean"
+        "Jesus showed us how to be brave",
+        "Jesus showed us how to be humble",
+        "Jesus showed us how to be strong",
+        "Jesus showed us how to be smart"
       ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "It involves talking to someone who always listens.",
-      "explanation": "When someone frustrates us, we can pause and pray. We can ask God to give us patience and help us respond with love instead of anger.",
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's about putting others first.",
+      "explanation": "The Bottom Line is 'Jesus showed us how to be humble.' Humility means putting others first.",
       "format": "multiple-choice",
-      "category": "application"
+      "category": "recall"
+    },
+    {
+      "id": "q12",
+      "text": "What book of the Bible is today's story found in?",
+      "options": [
+        "Matthew",
+        "Mark",
+        "Luke",
+        "John"
+      ],
+      "correctIndex": 3,
+      "difficulty": "medium",
+      "hint": "This book was written by one of Jesus' closest friends.",
+      "explanation": "Today's story comes from the book of John, chapters 12 and 13.",
+      "format": "multiple-choice",
+      "category": "recall"
     },
     {
       "id": "q13",
-      "text": "What does it mean to 'value others more than yourselves'?",
+      "text": "What does it mean to be humble?",
       "options": [
-        "Let other people always win at games",
-        "Treat people like they matter",
-        "Think you're not important at all",
-        "Give away all your stuff"
+        "Being weak and scared",
+        "Putting others first instead of yourself",
+        "Never talking to anyone",
+        "Always losing on purpose"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "It's about how you treat the people around you.",
-      "explanation": "Valuing others more than yourself means treating people like they matter — showing them respect, kindness, and love, because they DO matter to God.",
+      "hint": "Think about what Jesus did for His friends.",
+      "explanation": "Being humble means putting others first instead of trying to be the most important. Jesus showed this by serving His disciples.",
       "format": "multiple-choice",
       "category": "understanding"
     },
     {
       "id": "q14",
-      "text": "When we choose to love someone who is hard to love, people will see that we follow Jesus.",
+      "text": "Jesus showed us that real greatness comes from being _____ and willing to help others.",
       "options": [
-        "True",
-        "True, love is powerful",
-        "False",
-        "False, nobody notices"
+        "rich and famous",
+        "loud and bossy",
+        "kind and gentle",
+        "fast and strong"
       ],
-      "correctIndex": 0,
+      "correctIndex": 2,
       "difficulty": "medium",
-      "explanation": "When people see us choosing love when it's hard, they can tell we're different. They see we're followers of Jesus because that kind of love is powerful and unusual.",
-      "format": "true-false",
+      "hint": "Think about how Jesus treated His friends.",
+      "explanation": "Jesus showed that real greatness comes from being kind, gentle, and willing to help others, even when it's hard.",
+      "format": "fill-blank",
       "category": "understanding"
     },
     {
       "id": "q15",
-      "text": "What is one way you can show upside-down love at school?",
-      "options": [
-        "Only play with your best friends",
-        "Say something kind to someone who was mean to you",
-        "Ignore everyone at recess",
-        "Try to be the most popular kid"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Think about what Jesus would do.",
-      "explanation": "Saying something kind to someone who was mean to you is a perfect example of upside-down love — responding with kindness instead of meanness.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q16",
-      "text": "The memory verse comes from the book of _______.",
-      "options": [
-        "Matthew",
-        "Philippians",
-        "Psalms",
-        "Romans"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It starts with the letter P.",
-      "explanation": "The monthly memory verse is Philippians 2:3, written by the apostle Paul.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q17",
-      "text": "What did Jesus' teaching sound like to the people listening?",
-      "options": [
-        "Boring and ordinary",
-        "Completely different from how they usually lived",
-        "Exactly what they expected",
-        "Just like what their other teachers said"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It was surprising to them!",
-      "explanation": "Jesus' teaching sounded completely different from the way people were used to living. He talked about humility, kindness, and loving difficult people — ideas that shocked the crowd.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q18",
-      "text": "Loving your enemies is something you can easily do all by yourself.",
+      "text": "True or False: Jesus came to Jerusalem to show off His power.",
       "options": [
         "True",
-        "True, it's simple",
         "False",
-        "False, we need God's help"
+        "True",
+        "False"
       ],
-      "correctIndex": 3,
-      "difficulty": "medium",
-      "explanation": "Loving our enemies is NOT easy and we can't do it alone. We need God's help! The Holy Spirit lives inside believers and gives us the strength to love when it's hard.",
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Remember why Jesus rode a donkey.",
+      "explanation": "Jesus didn't come to show off His power. He came to show love and to serve others.",
       "format": "true-false",
       "category": "understanding"
     },
     {
-      "id": "q19",
-      "text": "Instead of being proud, the memory verse says to be _______.",
+      "id": "q16",
+      "text": "Who helps us to be humble like Jesus?",
       "options": [
-        "humble",
-        "loud",
-        "strong",
-        "fast"
+        "Our teachers",
+        "Our friends",
+        "The Holy Spirit",
+        "Superheroes"
       ],
-      "correctIndex": 0,
-      "difficulty": "easy",
-      "hint": "It's the opposite of being full of yourself.",
-      "explanation": "Philippians 2:3 says 'Instead, be humble.' Humble means putting others first and not thinking you're better than everyone else.",
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "This helper lives inside every believer.",
+      "explanation": "The Holy Spirit lives inside us and helps us to be humble and to serve others like Jesus did.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q17",
+      "text": "The memory verse for this month is found in _____.",
+      "options": [
+        "John 12:13",
+        "Philippians 2:3",
+        "Genesis 1:1",
+        "Psalm 23:1"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's a letter Paul wrote to a church.",
+      "explanation": "The monthly memory verse is Philippians 2:3, which tells us to be humble and value others more than ourselves.",
       "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q18",
+      "text": "According to the memory verse, we should value others _____ than ourselves.",
+      "options": [
+        "less",
+        "the same",
+        "more",
+        "not at all"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It's the opposite of being selfish.",
+      "explanation": "Philippians 2:3 says to 'value others more than yourselves,' which is what humility looks like.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q19",
+      "text": "What miracle had Jesus done for His friend Lazarus?",
+      "options": [
+        "Healed his blindness",
+        "Brought him back to life",
+        "Helped him walk",
+        "Cured his leprosy"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "This was one of Jesus' most amazing miracles.",
+      "explanation": "Jesus had brought His friend Lazarus back to life, which was one reason the crowds were so excited to see Him.",
+      "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q20",
-      "text": "If someone takes your spot in line, what would 'upside-down love' look like?",
+      "text": "True or False: The crowds were bored when Jesus arrived in Jerusalem.",
       "options": [
-        "Push them out of the way",
-        "Yell at them",
-        "Let it go and choose to be kind",
-        "Tell the teacher so they get in trouble"
-      ],
-      "correctIndex": 2,
-      "difficulty": "hard",
-      "hint": "Think about what Jesus would want you to do.",
-      "explanation": "Upside-down love means choosing kindness even when someone does something unfair. Letting it go and being kind is how we respond like Jesus.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q21",
-      "text": "What came to live inside of us when we began following Jesus?",
-      "options": [
-        "An angel",
-        "The Holy Spirit",
-        "A special power",
-        "Extra bravery"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
       "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It's God's own Spirit.",
-      "explanation": "When we began following Jesus, the Holy Spirit came to live inside of us. The Holy Spirit helps us love others the way Jesus does.",
-      "format": "multiple-choice",
+      "difficulty": "easy",
+      "hint": "Think about how you'd react if you saw someone who could do miracles!",
+      "explanation": "The crowds were not bored at all! They cheered, waved palm branches, and shouted 'Hosanna!' when Jesus arrived.",
+      "format": "true-false",
       "category": "recall"
     },
     {
-      "id": "q22",
-      "text": "Which chapter and verses in Matthew does today's lesson come from?",
+      "id": "q21",
+      "text": "What kind of king did the people expect to come?",
       "options": [
-        "Matthew 1:1-10",
-        "Matthew 5:38-48",
-        "Matthew 10:1-5",
-        "Matthew 28:1-10"
+        "A humble servant king",
+        "A powerful warrior king",
+        "A funny king",
+        "A sleeping king"
       ],
       "correctIndex": 1,
       "difficulty": "hard",
-      "hint": "It's in chapter 5.",
-      "explanation": "Today's Bible story comes from Matthew 5:38-48, part of Jesus' famous teaching on the mountainside.",
+      "hint": "Jesus surprised everyone by being different.",
+      "explanation": "People expected a powerful king who would use force, but Jesus came as a humble servant king riding a donkey instead of a war horse.",
       "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q22",
+      "text": "This month's theme is called _____.",
+      "options": [
+        "Right Side Up",
+        "Inside Out",
+        "Upside Down",
+        "Topsy Turvy"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "It means doing things differently from what the world expects.",
+      "explanation": "The monthly theme is 'Upside Down' because living like Jesus means doing things the opposite of what the world expects.",
+      "format": "fill-blank",
       "category": "recall"
     },
     {
       "id": "q23",
-      "text": "You should only pray for people who are nice to you.",
+      "text": "Which of these is a way you can be humble like Jesus?",
       "options": [
-        "True",
-        "True, mean people don't deserve prayer",
-        "False",
-        "False, pray only for yourself"
+        "Always making sure you go first",
+        "Letting a friend pick the game to play",
+        "Bragging about your grades",
+        "Ignoring people who need help"
       ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "explanation": "This is false! Jesus taught us to pray for people who upset us too. Praying for those who are hard to love is one way we can show upside-down love.",
-      "format": "true-false",
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Think about putting others first.",
+      "explanation": "Letting a friend choose shows humility because you're putting their wishes ahead of your own, just like Jesus put others first.",
+      "format": "multiple-choice",
       "category": "application"
     },
     {
       "id": "q24",
-      "text": "What happens when we practice choosing kindness even when it feels awkward?",
+      "text": "If your friend is struggling to carry their books, what would a humble person do?",
       "options": [
-        "Nothing changes",
-        "We get weaker",
-        "We grow stronger in our faith",
-        "It gets harder every time"
+        "Laugh at them",
+        "Walk away quickly",
+        "Offer to help carry some books",
+        "Tell them to be stronger"
       ],
       "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "Practice makes you better!",
-      "explanation": "Just like practicing anything that feels awkward at first makes you stronger, choosing kindness even when it's hard makes our faith grow stronger over time.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q25",
-      "text": "When someone hurts your feelings, Jesus wants you to pour out _______ in response.",
-      "options": [
-        "anger",
-        "revenge",
-        "love",
-        "sadness"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "It's the most powerful thing you can give.",
-      "explanation": "Jesus wants us to pour out love in response to hurt. That's what upside-down love looks like — choosing love even when we've been hurt.",
-      "format": "fill-blank",
-      "category": "understanding"
-    },
-    {
-      "id": "q26",
-      "text": "Your friend said something mean about you. What should you do?",
-      "options": [
-        "Say something meaner back",
-        "Tell everyone what they did",
-        "Pray for them and choose to respond with kindness",
-        "Stop being their friend forever"
-      ],
-      "correctIndex": 2,
-      "difficulty": "hard",
+      "difficulty": "easy",
       "hint": "What would Jesus do?",
-      "explanation": "Praying for someone who hurts us and choosing kindness is exactly what Jesus taught. It's hard, but with God's help, we can show upside-down love.",
+      "explanation": "A humble person helps others, just like Jesus served His disciples by washing their feet. Offering to help carry books puts your friend's needs first.",
       "format": "multiple-choice",
       "category": "application"
     },
     {
-      "id": "q27",
-      "text": "The lesson says choosing to love when it's hard is actually _______ to Jesus.",
+      "id": "q25",
+      "text": "At recess, everyone wants to be team captain. How can you show humility?",
       "options": [
-        "impossible",
-        "disobedience",
-        "obedience",
-        "weakness"
+        "Argue until you get picked",
+        "Let someone else be captain this time",
+        "Quit and go play alone",
+        "Tell the teacher it's not fair"
       ],
-      "correctIndex": 2,
-      "difficulty": "hard",
-      "hint": "It means doing what Jesus asked.",
-      "explanation": "Choosing kindness when someone frustrates you is actually obedience to Jesus. He commands us to love our enemies, and when we do it, we're obeying Him.",
-      "format": "fill-blank",
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Remember, humility means putting others first.",
+      "explanation": "Letting someone else have a turn shows humility. Jesus could have demanded to be served, but He chose to serve instead.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q26",
+      "text": "Why is it sometimes hard to be humble?",
+      "options": [
+        "Because the world tells us to get ahead and be important",
+        "Because being humble is wrong",
+        "Because nobody notices humble people",
+        "Because God doesn't want us to be humble"
+      ],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "hint": "Think about what the lesson said about the world's message.",
+      "explanation": "The world tells us we should always try to win and be the best, which makes humility hard. But Jesus showed us a better way.",
+      "format": "multiple-choice",
       "category": "understanding"
     },
     {
-      "id": "q28",
-      "text": "Jesus only taught us to love people who are easy to love.",
+      "id": "q27",
+      "text": "True or False: Only adults need to practice being humble.",
       "options": [
         "True",
-        "True, that's all He asked",
         "False",
-        "False, but enemies are optional"
+        "True",
+        "False"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Does Jesus want ALL His followers to be humble?",
+      "explanation": "Everyone, including kids, can and should practice humility. Jesus wants all of His followers to put others first.",
+      "format": "true-false",
+      "category": "application"
+    },
+    {
+      "id": "q28",
+      "text": "When we are humble and serve others, we are showing the world what _____ is like.",
+      "options": [
+        "school",
+        "sports",
+        "Jesus",
+        "television"
       ],
       "correctIndex": 2,
       "difficulty": "easy",
-      "explanation": "False! Jesus specifically taught us to love our ENEMIES — the people who are hardest to love. That's what makes His teaching so upside down!",
-      "format": "true-false",
-      "category": "recall"
+      "hint": "We are reflecting someone very important.",
+      "explanation": "Every time we are humble, we show the world what Jesus is like. We represent Him to everyone around us.",
+      "format": "fill-blank",
+      "category": "application"
     },
     {
       "id": "q29",
-      "text": "How can showing love to someone who is mean help them?",
+      "text": "Your little sibling wants to play a game you think is boring. What's the humble choice?",
       "options": [
-        "It won't help them at all",
-        "They might see Jesus through your kindness",
-        "It will make them feel guilty",
-        "It's not supposed to help them"
+        "Say no and play your own game",
+        "Play their game cheerfully",
+        "Tell them their game is dumb",
+        "Hide so they can't find you"
       ],
       "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "Your love can point them to someone greater.",
-      "explanation": "When people see you choosing love when it's hard, they can see that you're different — a follower of Jesus. Your kindness might help them want to know Jesus too.",
+      "difficulty": "medium",
+      "hint": "What would Jesus do for someone He loves?",
+      "explanation": "Playing their game cheerfully puts their joy ahead of your own preferences, just like Jesus put others ahead of Himself.",
       "format": "multiple-choice",
       "category": "application"
     },
     {
       "id": "q30",
-      "text": "What three things did Jesus talk about in His mountainside teaching?",
+      "text": "According to the lesson, Jesus is the King of the entire _____.",
       "options": [
-        "Power, wealth, and fame",
-        "Humility, kindness, and loving others",
-        "Sports, music, and art",
-        "Rules, punishments, and rewards"
+        "country",
+        "city",
+        "universe",
+        "school"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "It's bigger than a country or a planet!",
+      "explanation": "Jesus is the King of the entire universe, yet He chose to serve others humbly instead of demanding to be served.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q31",
+      "text": "What did the Scripture say about the City of Zion when Jesus arrived?",
+      "options": [
+        "Be very excited",
+        "Do not be afraid",
+        "Start running",
+        "Close the gates"
       ],
       "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "They're all about how to treat people.",
-      "explanation": "On the mountainside, Jesus talked about humility, kindness, and loving others — even people who were difficult to love.",
+      "difficulty": "hard",
+      "hint": "The Scripture had a comforting message.",
+      "explanation": "John 12:15 says 'City of Zion, do not be afraid. See, your king is coming. He is sitting on a donkey's colt.'",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
-      "id": "q31",
-      "text": "According to the lesson, what can you ask God for when someone makes you mad?",
+      "id": "q32",
+      "text": "True or False: Jesus washed His disciples' feet to show that serving others is important.",
       "options": [
-        "Revenge",
-        "Patience instead of anger",
-        "A new friend",
-        "To move to a new school"
+        "True",
+        "False",
+        "True",
+        "False"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "This was a powerful example of humility.",
+      "explanation": "True! Jesus washed His disciples' feet to show them that serving others is an important part of following God. He led by example.",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q33",
+      "text": "You got the highest score on a test. How can you be humble about it?",
+      "options": [
+        "Tell everyone how smart you are",
+        "Thank God and encourage friends who struggled",
+        "Post about it everywhere",
+        "Make fun of lower scores"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "It's the opposite of anger.",
-      "explanation": "When someone makes us mad, we can ask God to give us patience instead of anger. God is always ready to help us respond with love.",
+      "hint": "Humility doesn't mean hiding your success—it means not bragging.",
+      "explanation": "Being humble means not bragging. You can be grateful and also encourage others, just like Jesus lifted people up instead of putting them down.",
       "format": "multiple-choice",
       "category": "application"
     },
     {
-      "id": "q32",
-      "text": "The verse says don't do anything because you are _______.",
+      "id": "q34",
+      "text": "In today's story, Jesus chose to _____ instead of being served.",
       "options": [
-        "tired",
-        "hungry",
-        "proud",
-        "scared"
+        "hide",
+        "sleep",
+        "serve",
+        "leave"
       ],
       "correctIndex": 2,
       "difficulty": "easy",
-      "hint": "It's a feeling of thinking you're better than others.",
-      "explanation": "Philippians 2:3 warns us not to do things because we are proud. Pride makes us think we're better than others, but God wants us to be humble.",
+      "hint": "He did the opposite of what a king normally does.",
+      "explanation": "Jesus chose to serve instead of being served. He washed His disciples' feet, showing that true greatness comes from serving others.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q35",
+      "text": "What were some of the amazing things Jesus had done that made the crowds so excited?",
+      "options": [
+        "He made sick people well and calmed storms",
+        "He built houses and planted gardens",
+        "He won races and played games",
+        "He wrote books and sang songs"
+      ],
+      "correctIndex": 0,
+      "difficulty": "medium",
+      "hint": "Think about the miracles mentioned in the story.",
+      "explanation": "The crowds were excited because Jesus had healed the sick, calmed storms, and even raised Lazarus from the dead.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q36",
+      "text": "According to the memory verse, we shouldn't do things only to get _____.",
+      "options": [
+        "tired",
+        "ahead",
+        "home",
+        "started"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It's about selfish ambition.",
+      "explanation": "Philippians 2:3 says 'Don't do anything only to get ahead' — we should not act out of selfish ambition but out of humility.",
       "format": "fill-blank",
       "category": "recall"
     },
     {
-      "id": "q33",
-      "text": "Why is loving your enemies one of the most powerful ways to live like Jesus?",
+      "id": "q37",
+      "text": "A new kid sits alone at lunch. What's the humble, Jesus-like thing to do?",
       "options": [
-        "Because it makes you famous",
-        "Because it's easy and everyone does it",
-        "Because it shows the world something totally different and points people to Jesus",
-        "Because enemies will always become your best friends"
-      ],
-      "correctIndex": 2,
-      "difficulty": "hard",
-      "hint": "It shows the world something they don't usually see.",
-      "explanation": "Loving your enemies is powerful because it's so unusual — it shows the world that you're living differently, and it points people to Jesus and His love.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q34",
-      "text": "A kid at recess won't let you play. What is an upside-down love response?",
-      "options": [
-        "Go tell on them right away",
-        "Say 'That's okay' and ask someone else to play, then invite them again tomorrow",
-        "Call them a name",
-        "Never go to recess again"
+        "Ignore them",
+        "Sit with them and introduce yourself",
+        "Point and whisper about them",
+        "Wait for someone else to help"
       ],
       "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "Respond with kindness, not anger.",
-      "explanation": "Showing grace and trying again later is upside-down love in action. You're choosing kindness instead of revenge, just like Jesus taught.",
+      "difficulty": "easy",
+      "hint": "Jesus always noticed people who were left out.",
+      "explanation": "Sitting with the new kid and being friendly puts their needs first, just like Jesus always noticed and cared for people who were overlooked.",
       "format": "multiple-choice",
       "category": "application"
     },
     {
-      "id": "q35",
-      "text": "God's love for us never gives up.",
+      "id": "q38",
+      "text": "True or False: Being humble means you can never feel good about yourself.",
       "options": [
         "True",
-        "True, His love is forever",
         "False",
-        "False, only when we're good"
+        "True",
+        "False"
       ],
-      "correctIndex": 0,
-      "difficulty": "easy",
-      "explanation": "The prayer in today's lesson thanks God for loving us with a love that never gives up. No matter what, God keeps loving us!",
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Humility isn't about thinking less of yourself.",
+      "explanation": "False! Being humble doesn't mean feeling bad about yourself. It means valuing others and putting their needs alongside your own, just like Jesus did.",
       "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q39",
+      "text": "What did the people call Jesus as He entered Jerusalem?",
+      "options": [
+        "Teacher",
+        "The King of Israel",
+        "A servant",
+        "A friend"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "They recognized Him as their ruler.",
+      "explanation": "The crowds shouted 'Blessed is the King of Israel!' recognizing Jesus as their King as He entered Jerusalem.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q40",
+      "text": "How does Jesus help us be humble every day?",
+      "options": [
+        "He sends us a letter",
+        "He goes with us every minute and helps through the Holy Spirit",
+        "He makes us forget about ourselves",
+        "He takes away all our talents"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "We have a helper who is always with us.",
+      "explanation": "Jesus goes with us every minute of every day through the Holy Spirit, who lives inside believers and helps us to be humble and serve others.",
+      "format": "multiple-choice",
       "category": "understanding"
     }
   ],
   "termPairs": [
+    {
+      "term": "Hosanna",
+      "definition": "Save us, we pray!",
+      "difficulty": "easy"
+    },
     {
       "term": "Humble",
       "definition": "Putting others first instead of yourself",
       "difficulty": "easy"
     },
     {
-      "term": "Upside Down",
-      "definition": "Living the opposite way the world expects — the way Jesus teaches",
+      "term": "Palm branches",
+      "definition": "What the crowds waved when Jesus arrived",
       "difficulty": "easy"
     },
     {
-      "term": "Enemies",
-      "definition": "People who are not kind to us or who we don't get along with",
+      "term": "Donkey",
+      "definition": "The humble animal Jesus rode into Jerusalem",
       "difficulty": "easy"
     },
     {
-      "term": "Holy Spirit",
-      "definition": "God's Spirit who lives inside believers and helps them love others",
+      "term": "Jerusalem",
+      "definition": "The city Jesus entered on Palm Sunday",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Passover",
+      "definition": "The holiday the people were celebrating",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Foot washing",
+      "definition": "The servant's job Jesus did for His disciples",
       "difficulty": "medium"
     },
     {
       "term": "Philippians 2:3",
-      "definition": "The memory verse about being humble and valuing others",
+      "definition": "The memory verse about being humble",
       "difficulty": "medium"
     },
     {
-      "term": "Matthew 5:38-48",
-      "definition": "The Bible passage where Jesus teaches about loving your enemies",
+      "term": "Lazarus",
+      "definition": "The friend Jesus brought back to life",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Holy Spirit",
+      "definition": "The helper who lives inside us and helps us be humble",
       "difficulty": "hard"
     },
     {
-      "term": "Proud",
-      "definition": "Thinking you are better than everyone else",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Value Others",
-      "definition": "Treating people like they matter",
+      "term": "Palm Sunday",
+      "definition": "The day Jesus entered Jerusalem as crowds cheered",
       "difficulty": "medium"
     },
     {
-      "term": "Patience",
-      "definition": "What we can ask God for instead of anger",
-      "difficulty": "medium"
-    },
-    {
-      "term": "Obedience",
-      "definition": "Choosing to do what Jesus asks even when it's hard",
-      "difficulty": "medium"
-    },
-    {
-      "term": "Mountainside",
-      "definition": "The place where Jesus taught a huge crowd about upside-down love",
-      "difficulty": "hard"
-    },
-    {
-      "term": "Bottom Line",
-      "definition": "Love like Jesus even when it's hard",
+      "term": "Servant",
+      "definition": "Someone who puts others' needs first",
       "difficulty": "easy"
     }
   ],
   "keyWords": [
     {
       "word": "HUMBLE",
-      "hint": "Putting others first; the opposite of proud",
+      "hint": "Putting others first instead of yourself",
       "difficulty": "easy"
     },
     {
-      "word": "ENEMIES",
-      "hint": "People who are not kind to us",
-      "difficulty": "easy"
-    },
-    {
-      "word": "LOVE",
-      "hint": "What Jesus tells us to show even to difficult people",
-      "difficulty": "easy"
-    },
-    {
-      "word": "JESUS",
-      "hint": "He taught on a mountainside about a new way to live",
-      "difficulty": "easy"
-    },
-    {
-      "word": "KINDNESS",
-      "hint": "Choosing to be nice even when someone is mean",
-      "difficulty": "easy"
-    },
-    {
-      "word": "PROUD",
-      "hint": "Thinking you are better than others; the memory verse warns against this",
+      "word": "HOSANNA",
+      "hint": "The crowd shouted this word meaning 'Save us!'",
       "difficulty": "medium"
     },
     {
-      "word": "PATIENCE",
-      "hint": "What to ask God for instead of anger",
+      "word": "JERUSALEM",
+      "hint": "The city Jesus entered on a donkey",
       "difficulty": "medium"
     },
     {
-      "word": "MATTHEW",
-      "hint": "The Bible book where today's story is found",
+      "word": "DONKEY",
+      "hint": "The animal Jesus rode instead of a horse",
+      "difficulty": "easy"
+    },
+    {
+      "word": "SERVANT",
+      "hint": "Jesus took on this role by washing feet",
       "difficulty": "medium"
+    },
+    {
+      "word": "PALM",
+      "hint": "The type of branches the crowds waved",
+      "difficulty": "easy"
+    },
+    {
+      "word": "PASSOVER",
+      "hint": "The holiday everyone was celebrating",
+      "difficulty": "medium"
+    },
+    {
+      "word": "LAZARUS",
+      "hint": "Jesus brought this friend back to life",
+      "difficulty": "hard"
+    },
+    {
+      "word": "DISCIPLES",
+      "hint": "Jesus' closest followers whose feet He washed",
+      "difficulty": "medium"
+    },
+    {
+      "word": "WORSHIP",
+      "hint": "Lifting our voices and serving others for God",
+      "difficulty": "medium"
+    },
+    {
+      "word": "GREATNESS",
+      "hint": "Jesus showed this comes from kindness, not power",
+      "difficulty": "hard"
     },
     {
       "word": "PHILIPPIANS",
@@ -672,97 +781,83 @@
       "difficulty": "hard"
     },
     {
-      "word": "OBEDIENCE",
-      "hint": "Doing what Jesus asks, even when it's not easy",
+      "word": "KINGDOM",
+      "hint": "Jesus wants us to make the world look like His _____",
       "difficulty": "hard"
     },
     {
-      "word": "MOUNTAIN",
-      "hint": "Jesus went up on one of these to teach the crowd",
-      "difficulty": "medium"
-    },
-    {
-      "word": "HOLY SPIRIT",
-      "hint": "God's Spirit who came to live inside believers",
-      "difficulty": "hard"
-    },
-    {
-      "word": "FORGIVE",
-      "hint": "Letting go of anger toward someone who hurt you",
-      "difficulty": "medium"
-    },
-    {
-      "word": "WORSHIP",
-      "hint": "Singing and praising God together",
+      "word": "SPIRIT",
+      "hint": "The Holy _____ helps us to be humble",
       "difficulty": "easy"
     }
   ],
   "story": {
-    "summary": "Jesus went up on a mountainside and taught a huge crowd of people a completely new way of living. Instead of getting revenge or only being kind to friends, Jesus said to love your enemies, choose kindness when people are mean, and be humble by putting others first. This 'upside-down' teaching shocked everyone because it was so different from how the world usually works. But Jesus promised that God's Holy Spirit would help us live this way — and when we do, people can see we are followers of Jesus.",
+    "summary": "As Jesus traveled toward Jerusalem for Passover, huge crowds gathered to welcome Him. They waved palm branches and shouted 'Hosanna!' calling Him the King of Israel. But Jesus surprised everyone by riding in on a humble donkey instead of a powerful horse. Later, at a special meal with His disciples, Jesus did something even more surprising—He knelt down and washed their feet, doing the job of a lowly servant. Jesus, the King of the universe, showed us that true greatness comes from being humble and putting others first.",
     "scenes": [
       {
-        "title": "Jesus Teaches on the Mountain",
-        "description": "One day, Jesus went up on a mountainside and a huge crowd of people came to listen. What He said sounded completely different from the way people were used to living. He talked about humility, kindness, and loving others — even people who were difficult to love.",
+        "title": "The Journey to Jerusalem",
+        "description": "Jesus and His disciples traveled toward Jerusalem. The city was packed with people getting ready for Passover. Everyone had heard about Jesus—how He healed the sick, calmed storms, and even brought Lazarus back to life. Excitement was building as word spread that Jesus was coming.",
         "questionIds": [
           "q1",
           "q2",
-          "q22",
-          "q30",
-          "q17"
-        ]
-      },
-      {
-        "title": "The Upside-Down Way to Live",
-        "description": "Jesus taught that instead of getting even with people who are mean, we should choose love. Instead of only being kind to our friends, we should love our enemies too. This teaching flipped everything upside down! It was the total opposite of what people expected.",
-        "questionIds": [
-          "q5",
-          "q8",
-          "q28",
-          "q33",
-          "q7"
-        ]
-      },
-      {
-        "title": "Be Humble and Value Others",
-        "description": "The memory verse from Philippians 2:3 teaches the same upside-down idea: don't try to get ahead, don't be proud, be humble, and value others more than yourself. Being humble means putting others first and treating everyone like they matter.",
-        "questionIds": [
-          "q4",
-          "q6",
-          "q10",
-          "q13",
-          "q16",
           "q19",
-          "q32"
+          "q35"
         ]
       },
       {
-        "title": "We Need God's Help",
-        "description": "Loving people who are hard to love isn't something we can do by ourselves. We need God's help! The Holy Spirit lives inside every believer and gives us the strength to be patient, kind, and loving. When we pause and pray, God gives us what we need to show upside-down love.",
-        "questionIds": [
-          "q11",
-          "q18",
-          "q21",
-          "q24",
-          "q31"
-        ]
-      },
-      {
-        "title": "Living Upside-Down Love Every Day",
-        "description": "When people see us choosing love even when it's hard, they know we're different — they can see we follow Jesus. We can say kind words instead of mean ones, pray for people who upset us, and forgive those who hurt our feelings. Every act of upside-down love makes us look more like Jesus.",
+        "title": "The Triumphal Entry",
+        "description": "As Jesus got close to the city, crowds gathered on the road. They took branches from palm trees and went out to meet Him. They shouted 'Hosanna! Blessed is the one who comes in the name of the Lord! Blessed is the King of Israel!' The people cheered and celebrated His arrival.",
         "questionIds": [
           "q3",
-          "q9",
-          "q12",
-          "q14",
-          "q15",
+          "q4",
+          "q8",
           "q20",
+          "q31",
+          "q39"
+        ]
+      },
+      {
+        "title": "The Humble King on a Donkey",
+        "description": "Instead of riding a powerful war horse like people expected a king to ride, Jesus found a young donkey and sat on it. This fulfilled what Scripture had promised. Jesus showed that He was a different kind of King—a humble King who came to serve, not to show off His power.",
+        "questionIds": [
+          "q5",
+          "q6",
+          "q9",
+          "q15",
+          "q21",
+          "q22"
+        ]
+      },
+      {
+        "title": "Jesus Washes His Disciples' Feet",
+        "description": "At a special meal with His disciples, Jesus did something no one expected. The King of the universe knelt down and washed His friends' feet—a job that was usually done by the lowest servant. Jesus showed His disciples that real greatness comes from being kind, gentle, and willing to help others.",
+        "questionIds": [
+          "q7",
+          "q10",
+          "q13",
+          "q14",
+          "q30",
+          "q32",
+          "q34"
+        ]
+      },
+      {
+        "title": "Living Humbly Like Jesus",
+        "description": "Jesus showed us that being humble means putting others first. He is the King of the entire universe, but He chose to serve instead of being served. Through the Holy Spirit, Jesus helps us to be humble every day. Every time we put others first, we show the world what Jesus is like.",
+        "questionIds": [
+          "q11",
+          "q16",
           "q23",
+          "q24",
           "q25",
           "q26",
           "q27",
+          "q28",
           "q29",
-          "q34",
-          "q35"
+          "q33",
+          "q37",
+          "q38",
+          "q40"
         ]
       }
     ]
