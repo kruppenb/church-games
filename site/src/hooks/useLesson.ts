@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
-import type { LessonConfig } from "@/types/lesson";
+import type { LessonConfig, Question } from "@/types/lesson";
 
 type LessonSource = "current" | "fallback" | "draft";
+
+/** Normalize true-false questions: trim duplicated options to just ["True","False"]. */
+function normalizeQuestions(questions: Question[]): Question[] {
+  return questions.map((q) => {
+    if (q.format === "true-false" && q.options.length > 2) {
+      return { ...q, options: q.options.slice(0, 2) };
+    }
+    return q;
+  });
+}
+
+/** Clean up lesson data (e.g. fix duplicated true-false options from pipeline). */
+function normalizeLesson(lesson: LessonConfig): LessonConfig {
+  return { ...lesson, questions: normalizeQuestions(lesson.questions) };
+}
 
 interface UseLessonResult {
   lesson: LessonConfig | null;
@@ -29,7 +44,7 @@ export function useLesson(): UseLessonResult {
         let data: LessonConfig;
 
         if (isDraft) {
-          data = await fetchDraft();
+          data = normalizeLesson(await fetchDraft());
           if (!cancelled) {
             setLesson(data);
             setSource("draft");
@@ -41,7 +56,7 @@ export function useLesson(): UseLessonResult {
         try {
           const resp = await fetch(withBase("/lessons/current.json"));
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          data = (await resp.json()) as LessonConfig;
+          data = normalizeLesson((await resp.json()) as LessonConfig);
           if (!cancelled) {
             setLesson(data);
             setSource("current");
@@ -53,7 +68,7 @@ export function useLesson(): UseLessonResult {
           );
           if (!fallbackResp.ok)
             throw new Error(`Fallback HTTP ${fallbackResp.status}`);
-          data = (await fallbackResp.json()) as LessonConfig;
+          data = normalizeLesson((await fallbackResp.json()) as LessonConfig);
           if (!cancelled) {
             setLesson(data);
             setSource("fallback");

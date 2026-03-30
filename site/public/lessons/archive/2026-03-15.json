@@ -78,9 +78,7 @@
       "text": "Jesus taught us to love our enemies.",
       "options": [
         "True",
-        "True, and it's easy",
-        "False",
-        "False, only love friends"
+        "True, and it's easy"
       ],
       "correctIndex": 0,
       "difficulty": "easy",
@@ -141,9 +139,7 @@
       "text": "We only need to be kind to people who are kind to us first.",
       "options": [
         "True",
-        "True, the Bible says so",
-        "False",
-        "False, but only sometimes"
+        "True, the Bible says so"
       ],
       "correctIndex": 2,
       "difficulty": "medium",
@@ -220,9 +216,7 @@
       "text": "When we choose to love someone who is hard to love, people will see that we follow Jesus.",
       "options": [
         "True",
-        "True, love is powerful",
-        "False",
-        "False, nobody notices"
+        "True, love is powerful"
       ],
       "correctIndex": 0,
       "difficulty": "medium",
@@ -283,9 +277,7 @@
       "text": "Loving your enemies is something you can easily do all by yourself.",
       "options": [
         "True",
-        "True, it's simple",
-        "False",
-        "False, we need God's help"
+        "True, it's simple"
       ],
       "correctIndex": 3,
       "difficulty": "medium",
@@ -362,9 +354,7 @@
       "text": "You should only pray for people who are nice to you.",
       "options": [
         "True",
-        "True, mean people don't deserve prayer",
-        "False",
-        "False, pray only for yourself"
+        "True, mean people don't deserve prayer"
       ],
       "correctIndex": 2,
       "difficulty": "medium",
@@ -441,9 +431,7 @@
       "text": "Jesus only taught us to love people who are easy to love.",
       "options": [
         "True",
-        "True, that's all He asked",
-        "False",
-        "False, but enemies are optional"
+        "True, that's all He asked"
       ],
       "correctIndex": 2,
       "difficulty": "easy",
@@ -552,9 +540,7 @@
       "text": "God's love for us never gives up.",
       "options": [
         "True",
-        "True, His love is forever",
-        "False",
-        "False, only when we're good"
+        "True, His love is forever"
       ],
       "correctIndex": 0,
       "difficulty": "easy",
