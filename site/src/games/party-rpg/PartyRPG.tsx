@@ -26,7 +26,7 @@ export function PartyRPG() {
       parent: containerRef.current,
       width: 420,
       height: 600,
-      backgroundColor: "#fafafa",
+      backgroundColor: "#2a1f14",
       scene: [TeamSelectScene, MapScene, BattleScene],
       scale: {
         mode: Phaser.Scale.FIT,

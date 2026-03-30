@@ -37,12 +37,12 @@ import {
 const AUTO_ATTACK_INTERVAL = 500;
 /** Time between questions (seconds of gameplay, pauses during overlays). */
 const QUESTION_INTERVAL_SEC = 18;
-/** Enemy base speed (px/s). */
-const ENEMY_BASE_SPEED = 60;
+/** Enemy base speed (px/s) — kept slow so swarms feel manageable. */
+const ENEMY_BASE_SPEED = 40;
 /** Projectile speed (px/s). */
 const PROJECTILE_SPEED = 350;
-/** Base enemy spawn interval (ms) — gets faster each wave. */
-const BASE_SPAWN_INTERVAL = 1800;
+/** Base enemy spawn interval (ms) — faster spawns for bigger swarms. */
+const BASE_SPAWN_INTERVAL = 1200;
 
 const ANSWER_COLORS = [0xe53935, 0x1e88e5, 0x43a047, 0xfb8c00];
 const ANSWER_LABELS = ["A", "B", "C", "D"];
@@ -102,11 +102,11 @@ const MAGNET_SPAWN_INTERVAL = 45000; // a magnet spawns every 45s
 const MAGNET_DURATION = 5000; // magnet effect lasts 5s
 const MAGNET_COLOR = 0xff4081;
 
-/** Evolution weapon intervals */
-const EVOLVED_BAPTISM_INTERVAL = 6000;
-const EVOLVED_STORM_INTERVAL = 5000;
-const EVOLVED_AEGIS_REGEN_INTERVAL = 3000;
-const EVOLVED_VORTEX_INTERVAL = 4000;
+/** Evolution weapon intervals — must feel faster than max-level base weapons */
+const EVOLVED_BAPTISM_INTERVAL = 2500;
+const EVOLVED_STORM_INTERVAL = 2000;
+const EVOLVED_AEGIS_REGEN_INTERVAL = 2000;
+const EVOLVED_VORTEX_INTERVAL = 2000;
 
 const WEAPON_COLOR_MAP: Record<string, number> = {
   "fire-ring": 0xef5350, lightning: 0xffee58, shield: 0x42a5f5,
@@ -466,8 +466,8 @@ export class SurvivorsScene extends Phaser.Scene {
     if (this.isShowingOverlay || this.isComplete) return;
     const { width, height } = this.scale;
 
-    // Spawn count scales with wave number + wrong-answer multiplier
-    const count = Math.max(1, Math.round(1 + this.waveNumber * 0.18 + (this.state.enemySpawnMultiplier - 1) * 0.5));
+    // Spawn count: start with 2-3 enemies per tick, scales with wave
+    const count = Math.max(2, Math.round(2 + this.waveNumber * 0.2 + (this.state.enemySpawnMultiplier - 1) * 0.5));
 
     for (let i = 0; i < count; i++) {
       const side = Phaser.Math.Between(0, 3);
@@ -873,8 +873,12 @@ export class SurvivorsScene extends Phaser.Scene {
     const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.5);
     container.add(backdrop);
 
+    // For true-false questions, only show 2 options (data may duplicate to 4)
+    const isTrueFalse = question.format === "true-false" || question.options.length === 2;
+    const options = isTrueFalse ? question.options.slice(0, 2) : question.options;
+
     const panelW = Math.min(width - 40, 600);
-    const panelH = 320;
+    const panelH = isTrueFalse ? 240 : 320;
     const panelBg = this.add.rectangle(width / 2, height / 2, panelW, panelH, 0x111128, 0.95);
     panelBg.setStrokeStyle(3, 0x00d4ff);
     container.add(panelBg);
@@ -891,31 +895,60 @@ export class SurvivorsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     container.add(qText);
 
-    const btnW = (panelW - 60) / 2 - 5;
-    const btnH = 44;
-    const btnStartY = height / 2 - 10;
-    const btnStartX = width / 2 - (panelW - 60) / 4;
+    if (isTrueFalse) {
+      // Two wide buttons side by side
+      const btnW = (panelW - 80) / 2;
+      const btnH = 50;
+      const btnY = height / 2 + 20;
+      const gap = 20;
+      const totalBtnW = btnW * 2 + gap;
+      const startX = width / 2 - totalBtnW / 2 + btnW / 2;
 
-    question.options.forEach((option, idx) => {
-      const col = idx % 2;
-      const row = Math.floor(idx / 2);
-      const bx = btnStartX + col * (btnW + 10);
-      const by = btnStartY + row * (btnH + 10);
+      options.forEach((option, idx) => {
+        const bx = startX + idx * (btnW + gap);
+        const color = idx === 0 ? 0x43a047 : 0xe53935; // green for True, red for False
 
-      const btn = this.add.rectangle(bx, by, btnW, btnH, ANSWER_COLORS[idx]);
-      btn.setStrokeStyle(2, 0x000000);
-      btn.setInteractive({ useHandCursor: true });
+        const btn = this.add.rectangle(bx, btnY, btnW, btnH, color);
+        btn.setStrokeStyle(2, 0x000000);
+        btn.setInteractive({ useHandCursor: true });
 
-      const label = this.add.text(bx, by, `${ANSWER_LABELS[idx]}: ${option}`, {
-        fontSize: "13px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
-        wordWrap: { width: btnW - 16 }, align: "center",
-      }).setOrigin(0.5);
+        const label = this.add.text(bx, btnY, option, {
+          fontSize: "18px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+        }).setOrigin(0.5);
 
-      container.add(btn);
-      container.add(label);
+        container.add(btn);
+        container.add(label);
 
-      btn.on("pointerdown", () => this.handleAnswer(idx === question.correctIndex, container));
-    });
+        btn.on("pointerdown", () => this.handleAnswer(idx === question.correctIndex, container));
+      });
+    } else {
+      // Standard 2x2 grid for multiple choice
+      const btnW = (panelW - 60) / 2 - 5;
+      const btnH = 44;
+      const btnStartY = height / 2 - 10;
+      const btnStartX = width / 2 - (panelW - 60) / 4;
+
+      options.forEach((option, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const bx = btnStartX + col * (btnW + 10);
+        const by = btnStartY + row * (btnH + 10);
+
+        const btn = this.add.rectangle(bx, by, btnW, btnH, ANSWER_COLORS[idx]);
+        btn.setStrokeStyle(2, 0x000000);
+        btn.setInteractive({ useHandCursor: true });
+
+        const label = this.add.text(bx, by, `${ANSWER_LABELS[idx]}: ${option}`, {
+          fontSize: "13px", fontFamily: "sans-serif", color: "#ffffff", fontStyle: "bold",
+          wordWrap: { width: btnW - 16 }, align: "center",
+        }).setOrigin(0.5);
+
+        container.add(btn);
+        container.add(label);
+
+        btn.on("pointerdown", () => this.handleAnswer(idx === question.correctIndex, container));
+      });
+    }
 
     this.questionPanel = container;
   }
@@ -1623,17 +1656,23 @@ export class SurvivorsScene extends Phaser.Scene {
   }
 
   private collectNearbyXpOrbs(): void {
-    const pickupRadius = this.isMagnetActive ? XP_ORB_MAGNET_RADIUS : XP_ORB_PICKUP_RADIUS;
+    // Vacuum: 25% of screen pulls orbs in; magnet is screen-wide
+    const screenVacuumRadius = Math.min(this.scale.width, this.scale.height) * 0.25;
+    const pickupRadius = this.isMagnetActive ? XP_ORB_MAGNET_RADIUS : screenVacuumRadius;
+
+    // Use player center for pull origin
+    const playerCenterX = this.player.x;
+    const playerCenterY = this.player.y;
 
     for (const orbGo of this.xpOrbs.getChildren()) {
       const orb = orbGo as Phaser.GameObjects.Arc;
       if (!orb.active) continue;
 
-      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, orb.x, orb.y);
+      const dist = Phaser.Math.Distance.Between(playerCenterX, playerCenterY, orb.x, orb.y);
 
       if (dist <= pickupRadius) {
-        // Attract orb toward player
-        const angle = Phaser.Math.Angle.Between(orb.x, orb.y, this.player.x, this.player.y);
+        // Attract orb toward player center
+        const angle = Phaser.Math.Angle.Between(orb.x, orb.y, playerCenterX, playerCenterY);
         const attractSpeed = this.isMagnetActive ? XP_ORB_SPEED * 2 : XP_ORB_SPEED;
         const dx = Math.cos(angle) * attractSpeed * (1 / 60); // approximate per-frame
         const dy = Math.sin(angle) * attractSpeed * (1 / 60);

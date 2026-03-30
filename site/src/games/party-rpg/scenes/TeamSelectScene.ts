@@ -30,24 +30,32 @@ export class TeamSelectScene extends Phaser.Scene {
   create(): void {
     const { width, height } = this.scale;
 
-    // Background
-    this.cameras.main.setBackgroundColor("#fafafa");
+    // Dark parchment background matching MapScene
+    this.cameras.main.setBackgroundColor("#2a1f14");
+    this.drawParchmentTexture(width, height);
 
-    // Title
+    // Title in gold
     this.add
       .text(width / 2, 20, "Build Your Team!", {
         fontSize: "24px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#212121",
+        color: "#d4a847",
       })
       .setOrigin(0.5, 0);
 
+    // Decorative line under title
+    const titleLine = this.add.graphics();
+    titleLine.lineStyle(2, 0xd4a847, 0.5);
+    titleLine.moveTo(width / 2 - 80, 50);
+    titleLine.lineTo(width / 2 + 80, 50);
+    titleLine.strokePath();
+
     this.add
-      .text(width / 2, 50, "Choose 3 heroes for your quest", {
+      .text(width / 2, 58, "Choose 3 heroes for your quest", {
         fontSize: "13px",
         fontFamily: "sans-serif",
-        color: "#616161",
+        color: "#b8943e",
       })
       .setOrigin(0.5, 0);
 
@@ -82,10 +90,10 @@ export class TeamSelectScene extends Phaser.Scene {
     w: number,
     h: number,
   ): void {
-    // Card background
+    // Card background — dark parchment card
     const bg = this.add
-      .rectangle(x, y, w, h, 0xffffff)
-      .setStrokeStyle(2, 0xe0e0e0)
+      .rectangle(x, y, w, h, 0x3d2e1a)
+      .setStrokeStyle(2, 0x5a4430)
       .setInteractive({ useHandCursor: true });
 
     // Hero circle
@@ -97,7 +105,7 @@ export class TeamSelectScene extends Phaser.Scene {
         fontSize: "13px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#212121",
+        color: "#e8d5a8",
       })
       .setOrigin(0.5, 0);
 
@@ -106,7 +114,7 @@ export class TeamSelectScene extends Phaser.Scene {
       .text(x, y + 24, `HP: ${opt.stats.hp}  ATK: ${opt.stats.atk}`, {
         fontSize: "10px",
         fontFamily: "sans-serif",
-        color: "#616161",
+        color: "#b8943e",
       })
       .setOrigin(0.5, 0);
 
@@ -117,20 +125,20 @@ export class TeamSelectScene extends Phaser.Scene {
         fontSize: "8px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#9C27B0",
+        color: "#d4a847",
       })
       .setOrigin(0.5, 0);
 
     // Selection indicator (check mark circle)
     const check = this.add
-      .circle(x + w / 2 - 16, y - h / 2 + 16, 10, 0x4caf50)
+      .circle(x + w / 2 - 16, y - h / 2 + 16, 10, 0xd4a847)
       .setVisible(false);
     const checkMark = this.add
       .text(x + w / 2 - 16, y - h / 2 + 16, "✓", {
         fontSize: "14px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#ffffff",
+        color: "#2a1f14",
       })
       .setOrigin(0.5)
       .setVisible(false);
@@ -139,7 +147,7 @@ export class TeamSelectScene extends Phaser.Scene {
       if (this.selected.has(opt.name)) {
         // Deselect
         this.selected.delete(opt.name);
-        bg.setStrokeStyle(2, 0xe0e0e0);
+        bg.setStrokeStyle(2, 0x5a4430);
         check.setVisible(false);
         checkMark.setVisible(false);
       } else if (this.selected.size < MAX_PARTY_SIZE) {
@@ -156,10 +164,10 @@ export class TeamSelectScene extends Phaser.Scene {
 
     // Hover effects
     bg.on("pointerover", () => {
-      bg.setFillStyle(0xf5f5f5);
+      bg.setFillStyle(0x4a3a26);
     });
     bg.on("pointerout", () => {
-      bg.setFillStyle(0xffffff);
+      bg.setFillStyle(0x3d2e1a);
     });
 
     // Prevent unused variable warnings
@@ -174,7 +182,7 @@ export class TeamSelectScene extends Phaser.Scene {
     y: number,
   ): Phaser.GameObjects.Container {
     const bg = this.add
-      .rectangle(0, 0, 200, 48, 0x4caf50, 1)
+      .rectangle(0, 0, 200, 48, 0xd4a847, 1)
       .setInteractive({ useHandCursor: true });
 
     const label = this.add
@@ -182,7 +190,7 @@ export class TeamSelectScene extends Phaser.Scene {
         fontSize: "18px",
         fontFamily: "sans-serif",
         fontStyle: "bold",
-        color: "#ffffff",
+        color: "#2a1f14",
       })
       .setOrigin(0.5);
 
@@ -193,13 +201,32 @@ export class TeamSelectScene extends Phaser.Scene {
     });
 
     bg.on("pointerover", () => {
-      bg.setFillStyle(0x388e3c);
+      bg.setFillStyle(0xc49530);
     });
     bg.on("pointerout", () => {
-      bg.setFillStyle(0x4caf50);
+      bg.setFillStyle(0xd4a847);
     });
 
     return container;
+  }
+
+  private drawParchmentTexture(width: number, height: number): void {
+    const gfx = this.add.graphics();
+    gfx.lineStyle(1, 0x3d2e1a, 0.15);
+    for (let y = 0; y < height; y += 12) {
+      const wobble = Math.sin(y * 0.1) * 3;
+      gfx.beginPath();
+      gfx.moveTo(0, y + wobble);
+      gfx.lineTo(width, y + wobble * 0.5);
+      gfx.strokePath();
+    }
+    gfx.fillStyle(0x1a1108, 0.3);
+    gfx.fillRect(0, 0, width, 8);
+    gfx.fillRect(0, height - 8, width, 8);
+    gfx.fillRect(0, 0, 8, height);
+    gfx.fillRect(width - 8, 0, 8, height);
+    gfx.lineStyle(2, 0x5a4430, 0.4);
+    gfx.strokeRect(4, 4, width - 8, height - 8);
   }
 
   private startQuest(): void {

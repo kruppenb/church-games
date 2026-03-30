@@ -318,7 +318,7 @@ export class MapScene extends Phaser.Scene {
       circle.setInteractive({ useHandCursor: true });
 
       circle.on("pointerdown", () => {
-        this.showDiceRollAndTravel(node);
+        this.travelToNode(node);
       });
 
       circle.on("pointerover", () => {
@@ -344,9 +344,9 @@ export class MapScene extends Phaser.Scene {
     return container;
   }
 
-  // ---------- Dice roll + animated travel ----------
+  // ---------- Travel to node ----------
 
-  private showDiceRollAndTravel(targetNode: NodeInfo): void {
+  private travelToNode(targetNode: NodeInfo): void {
     // Disable all node interactions during animation
     this.nodeGraphics.forEach((container) => {
       container.each((child: Phaser.GameObjects.GameObject) => {
@@ -356,112 +356,7 @@ export class MapScene extends Phaser.Scene {
       });
     });
 
-    const { width, height } = this.scale;
-    const cx = width / 2;
-    const cy = height / 2 - 40;
-
-    // Semi-transparent backdrop for dice roll
-    const backdrop = this.add
-      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.4)
-      .setDepth(20);
-
-    // Dice container
-    const diceBox = this.add
-      .rectangle(0, 0, 80, 80, 0x3d2e1a)
-      .setStrokeStyle(3, 0xd4a847);
-
-    const diceText = this.add
-      .text(0, 0, "1", {
-        fontSize: "36px",
-        fontFamily: "sans-serif",
-        fontStyle: "bold",
-        color: "#ffd700",
-      })
-      .setOrigin(0.5);
-
-    const diceLabel = this.add
-      .text(0, 56, "Rolling...", {
-        fontSize: "12px",
-        fontFamily: "sans-serif",
-        fontStyle: "bold",
-        color: "#b8943e",
-      })
-      .setOrigin(0.5);
-
-    const diceContainer = this.add
-      .container(cx, cy, [diceBox, diceText, diceLabel])
-      .setDepth(21)
-      .setScale(0.3)
-      .setAlpha(0);
-
-    // Bounce in the dice
-    this.tweens.add({
-      targets: diceContainer,
-      scaleX: 1,
-      scaleY: 1,
-      alpha: 1,
-      duration: 300,
-      ease: "Back.easeOut",
-    });
-
-    // Animate dice numbers cycling (bouncing number effect)
-    // Use scheduled delays that increase toward the end for a "settling" feel
-    const finalRoll = Phaser.Math.Between(1, 6);
-    const maxRolls = 12;
-    const delays: number[] = [];
-    let cumulativeDelay = 0;
-    for (let i = 0; i < maxRolls; i++) {
-      const baseDelay = i >= maxRolls - 3 ? 80 + (i - (maxRolls - 3)) * 60 : 80;
-      cumulativeDelay += baseDelay;
-      delays.push(cumulativeDelay);
-    }
-
-    for (let r = 0; r < maxRolls; r++) {
-      this.time.delayedCall(delays[r], () => {
-        const rollIndex = r + 1;
-        const num = rollIndex < maxRolls ? Phaser.Math.Between(1, 6) : finalRoll;
-        diceText.setText(`${num}`);
-
-        // Bounce effect on each change
-        this.tweens.add({
-          targets: diceText,
-          scaleX: 1.3,
-          scaleY: 1.3,
-          duration: 40,
-          yoyo: true,
-        });
-
-        if (rollIndex === maxRolls) {
-          // Final number settled
-          diceLabel.setText(`Rolled a ${finalRoll}!`);
-          diceText.setColor("#ffffff");
-
-          // Big settle bounce
-          this.tweens.add({
-            targets: diceContainer,
-            scaleX: 1.15,
-            scaleY: 1.15,
-            duration: 150,
-            yoyo: true,
-            ease: "Bounce.easeOut",
-          });
-
-          // After a pause, fade out dice and start travel animation
-          this.time.delayedCall(800, () => {
-            this.tweens.add({
-              targets: [diceContainer, backdrop],
-              alpha: 0,
-              duration: 300,
-              onComplete: () => {
-                diceContainer.destroy();
-                backdrop.destroy();
-                this.animatePlayerTravel(targetNode);
-              },
-            });
-          });
-        }
-      });
-    }
+    this.animatePlayerTravel(targetNode);
   }
 
   private animatePlayerTravel(targetNode: NodeInfo): void {
