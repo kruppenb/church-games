@@ -88,9 +88,8 @@ const GAMES: GameCardInfo[] = [
   },
 ];
 
-// Quiz is always shown as hero. The spotlight picks one additional hero game.
-const QUIZ_ID = "quiz-showdown";
-const ROTATABLE_IDS = GAMES.filter((g) => g.id !== QUIZ_ID).map((g) => g.id);
+// Two pinned hero games shown as large cards at the top.
+const HERO_IDS = ["survivors", "jeopardy"];
 
 function StarDisplay({ stars }: { stars: number }) {
   return (
@@ -127,18 +126,8 @@ export function Landing() {
     }
   });
 
-  const rawSpotlight = lesson?.meta.spotlightGame ?? "";
-  const spotlightId = ROTATABLE_IDS.includes(rawSpotlight)
-    ? rawSpotlight
-    : ROTATABLE_IDS[0];
-
-  const heroGames = GAMES.filter(
-    (g) => g.id === QUIZ_ID || g.id === spotlightId,
-  );
-
-  const moreGames = GAMES.filter(
-    (g) => g.id !== QUIZ_ID && g.id !== spotlightId,
-  );
+  const heroGames = GAMES.filter((g) => HERO_IDS.includes(g.id));
+  const moreGames = GAMES.filter((g) => !HERO_IDS.includes(g.id));
 
   const hasAnyProgress = Object.keys(scores).length > 0;
 
@@ -181,7 +170,6 @@ export function Landing() {
       {/* Hero Section: 2 big cards */}
       <section className="hero-section">
         {heroGames.map((card, index) => {
-          const isSpotlight = card.id === spotlightId;
           const record = scores[card.id];
 
           return (
@@ -203,9 +191,6 @@ export function Landing() {
                     boxShadow: `0 0 20px ${card.color}40`,
                   }}
                 />
-                {isSpotlight && (
-                  <span className="game-card-badge">This Week</span>
-                )}
                 <span className="game-card-icon" aria-hidden="true">
                   {card.icon}
                 </span>
