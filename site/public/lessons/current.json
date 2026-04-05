@@ -1,196 +1,600 @@
 {
   "meta": {
-    "week": "2026-03-29",
-    "title": "Palm Sunday / Jesus Washes His Disciples' Feet",
-    "verseReference": "Philippians 2:3",
-    "verseText": "Don't do anything only to get ahead. Don't do it because you are proud. Instead, be humble. Value others more than yourselves.",
-    "theme": "Jesus showed us how to be humble",
+    "week": "2026-04-04",
+    "title": "Easter (Crucified and Risen) — John 18–20:23",
+    "verseReference": "Philippians 4:4",
+    "verseText": "Always be joyful because you belong to the Lord. I will say it again. Be joyful!",
+    "theme": "You can have joy because Jesus is alive",
     "spotlightGame": "bible-brawler",
-    "generatedAt": "2026-03-28T12:00:00.000Z",
+    "generatedAt": "2026-04-04T12:00:00.000Z",
     "jeopardyCategories": [
-      "Palm Sunday",
-      "Humble King",
-      "Feet Washing",
-      "Memory Verse",
-      "Living It Out"
+      "Easter People",
+      "Friday & Sunday",
+      "Joy & Promises",
+      "Bible Verses",
+      "The Empty Tomb"
     ]
   },
   "questions": [
     {
       "id": "q1",
-      "text": "What city was Jesus traveling toward in today's story?",
+      "text": "What special holiday were Jesus and His friends celebrating in Jerusalem?",
       "options": [
-        "Bethlehem",
-        "Jerusalem",
-        "Nazareth",
-        "Jericho"
+        "Christmas",
+        "Passover",
+        "Thanksgiving",
+        "Easter"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It's the city where Passover was celebrated.",
-      "explanation": "Jesus and His disciples were traveling toward Jerusalem where people were gathering for Passover.",
+      "hint": "It's a time when God's people remembered how He rescued them long ago.",
+      "explanation": "Jesus and His disciples were in Jerusalem celebrating Passover, which remembered how God rescued His people from Egypt.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q2",
-      "text": "What holiday were the people getting ready for when Jesus arrived?",
+      "text": "Which disciple brought soldiers to arrest Jesus?",
       "options": [
-        "Christmas",
-        "Easter",
-        "Passover",
-        "Pentecost"
+        "Peter",
+        "John",
+        "Judas",
+        "Thomas"
       ],
       "correctIndex": 2,
       "difficulty": "easy",
-      "hint": "This holiday remembers when God freed the Israelites from Egypt.",
-      "explanation": "The city was packed with people getting ready for Passover.",
+      "hint": "He was one of Jesus' twelve disciples.",
+      "explanation": "Judas, one of Jesus' disciples, arrived with a group of soldiers carrying torches and weapons to arrest Jesus.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q3",
-      "text": "What did the crowds wave as Jesus entered Jerusalem?",
+      "text": "What did the soldiers carry when they came to arrest Jesus?",
       "options": [
-        "Flags",
-        "Palm branches",
-        "Blankets",
-        "Torches"
+        "Flowers and gifts",
+        "Torches and weapons",
+        "Food and water",
+        "Books and scrolls"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "These come from a type of tree.",
-      "explanation": "The people took branches from palm trees and went out to meet Jesus.",
+      "hint": "They came at night and needed light.",
+      "explanation": "The soldiers carried torches and weapons when they came to arrest Jesus in the garden.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q4",
-      "text": "What did the crowds shout when Jesus entered Jerusalem?",
+      "text": "When Jesus said 'I am he,' what happened to the soldiers?",
       "options": [
-        "Hallelujah",
-        "Amen",
-        "Hosanna",
-        "Glory"
+        "They ran away",
+        "They laughed",
+        "They were knocked down",
+        "They fell asleep"
       ],
       "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "It means 'Save us, we pray!'",
-      "explanation": "The crowds shouted 'Hosanna!' which means 'Save us, we pray!'",
+      "difficulty": "medium",
+      "hint": "Jesus' words were very powerful.",
+      "explanation": "When Jesus identified Himself using God's name 'I am,' the power of that truth knocked the soldiers down.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q5",
-      "text": "What animal did Jesus ride into Jerusalem?",
+      "text": "Who was the Roman governor that questioned Jesus?",
       "options": [
-        "A horse",
-        "A camel",
-        "A young donkey",
-        "A chariot"
+        "King Herod",
+        "Pontius Pilate",
+        "Caesar Augustus",
+        "Annas"
       ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "It's a humble animal, not one a powerful king would usually ride.",
-      "explanation": "Jesus found a young donkey and sat on it as He entered Jerusalem, fulfilling Scripture.",
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "He couldn't find any reason to punish Jesus.",
+      "explanation": "Pontius Pilate was the Roman governor who questioned Jesus and found no basis for any charge against Him.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q6",
-      "text": "True or False: Jesus rode into Jerusalem on a big white horse.",
+      "text": "True or False: Pontius Pilate found Jesus guilty of doing something wrong.",
       "options": [
-        "True",
-        "False"
+        "True — Pilate found Jesus guilty",
+        "True — Pilate said Jesus was a criminal",
+        "False — Pilate found no reason to punish Jesus",
+        "False — Pilate never even spoke to Jesus"
       ],
-      "correctIndex": 1,
+      "correctIndex": 2,
       "difficulty": "easy",
-      "hint": "Think about what kind of animal showed humility.",
-      "explanation": "Jesus rode a young donkey, not a horse. This showed His humility because a donkey was a humble animal.",
+      "hint": "Think about what Pilate said to the crowd.",
+      "explanation": "Pilate told the crowd, 'I find no basis for a charge against him.' Jesus had done nothing wrong.",
       "format": "true-false",
       "category": "recall"
     },
     {
       "id": "q7",
-      "text": "What did Jesus do for His disciples at the special meal?",
+      "text": "What did the crowd shout when Pilate asked what to do with Jesus?",
       "options": [
-        "Cooked their food",
-        "Washed their feet",
-        "Sang them a song",
-        "Gave them gifts"
+        "Set Him free!",
+        "Crucify Him!",
+        "Let Him go!",
+        "We love Him!"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "This was a job usually done by a servant.",
-      "explanation": "At the special meal, Jesus knelt down and washed His disciples' feet, doing the job of a servant.",
+      "hint": "The crowd wanted something very bad to happen to Jesus.",
+      "explanation": "The crowd shouted 'Take him away! Crucify him!' even though Jesus had never done anything wrong.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q8",
-      "text": "What does 'Hosanna' mean?",
+      "text": "What is the name of the hill where Jesus was crucified?",
       "options": [
-        "Praise God",
-        "Thank you",
-        "Save us, we pray",
-        "Hello King"
+        "Mount Sinai",
+        "The Skull",
+        "Mount Olive",
+        "The Garden"
       ],
-      "correctIndex": 2,
+      "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "The people were asking for help.",
-      "explanation": "Hosanna means 'Save us, we pray!' The crowds were calling out to Jesus for salvation.",
+      "hint": "It has a spooky-sounding name.",
+      "explanation": "The soldiers led Jesus to a hill called 'the Skull' where He was nailed to a wooden cross.",
       "format": "multiple-choice",
-      "category": "understanding"
+      "category": "recall"
     },
     {
       "id": "q9",
-      "text": "Why did Jesus ride a donkey instead of a horse?",
+      "text": "What were Jesus' last words on the cross?",
       "options": [
-        "He was afraid of horses",
-        "There were no horses available",
-        "To show He was a humble king",
-        "Donkeys were faster"
+        "Help me!",
+        "I love you all",
+        "It is finished",
+        "Don't forget me"
       ],
       "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "Think about today's Bottom Line.",
-      "explanation": "Jesus chose a humble donkey to show that He came as a humble, servant king, not a powerful warrior king.",
+      "difficulty": "easy",
+      "hint": "Jesus knew He had completed everything He came to do.",
+      "explanation": "After Jesus drank, He said 'It is finished,' meaning He had completed everything God sent Him to do.",
       "format": "multiple-choice",
-      "category": "understanding"
+      "category": "recall"
     },
     {
       "id": "q10",
-      "text": "True or False: Washing someone's feet was considered a very important and honorable job.",
+      "text": "What was placed in front of Jesus' tomb after He was buried?",
       "options": [
-        "True",
-        "False"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Think about who usually did this job.",
-      "explanation": "Washing feet was actually a lowly servant's job. That's what made it so amazing that Jesus, the King, chose to do it.",
-      "format": "true-false",
-      "category": "understanding"
-    },
-    {
-      "id": "q11",
-      "text": "What is this week's Bottom Line?",
-      "options": [
-        "Jesus showed us how to be brave",
-        "Jesus showed us how to be humble",
-        "Jesus showed us how to be strong",
-        "Jesus showed us how to be smart"
+        "A wooden door",
+        "A large stone",
+        "A metal gate",
+        "A curtain"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It's about putting others first.",
-      "explanation": "The Bottom Line is 'Jesus showed us how to be humble.' Humility means putting others first.",
+      "hint": "It was very heavy and hard to move.",
+      "explanation": "A large stone was rolled in front of the entrance to Jesus' tomb.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q11",
+      "text": "Who was the first person to visit Jesus' tomb on Sunday morning?",
+      "options": [
+        "Peter",
+        "John",
+        "Mary Magdalene",
+        "Thomas"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "She wanted to bring spices to care for Jesus' body.",
+      "explanation": "Very early on Sunday morning, Mary Magdalene went to the tomb before the sun was even up.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q12",
-      "text": "What book of the Bible is today's story found in?",
+      "text": "What did Mary find when she arrived at the tomb?",
+      "options": [
+        "Jesus sitting outside",
+        "The stone rolled away and the tomb empty",
+        "Soldiers guarding the tomb",
+        "The stone still in place"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Something surprising had happened to the entrance.",
+      "explanation": "When Mary arrived, she saw the stone was rolled away, the tomb was open, and Jesus' body was gone.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q13",
+      "text": "Which two disciples ran to the tomb after Mary told them it was empty?",
+      "options": [
+        "James and John",
+        "Peter and John",
+        "Matthew and Mark",
+        "Peter and Thomas"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "They were two of Jesus' closest friends.",
+      "explanation": "Mary ran to tell Peter and John, two of Jesus' closest friends, and they both ran to the tomb as fast as they could.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q14",
+      "text": "What did Peter and John find inside the empty tomb?",
+      "options": [
+        "Nothing at all",
+        "Angels singing",
+        "Strips of cloth that had wrapped Jesus' body",
+        "A written message from Jesus"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "Something was left behind from the burial.",
+      "explanation": "When they looked inside, they saw the strips of cloth that Jesus' body had been wrapped in, but Jesus wasn't there.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q15",
+      "text": "True or False: Mary immediately recognized Jesus when He appeared to her.",
+      "options": [
+        "True — Mary knew it was Jesus right away",
+        "True — Mary had been expecting Jesus",
+        "False — Mary thought He was the gardener at first",
+        "False — Mary never saw Jesus at all"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "At first, Mary was confused about who was talking to her.",
+      "explanation": "Mary didn't recognize Jesus at first. She thought He was the gardener until Jesus said her name, 'Mary.'",
+      "format": "true-false",
+      "category": "recall"
+    },
+    {
+      "id": "q16",
+      "text": "How did Mary finally recognize that it was Jesus?",
+      "options": [
+        "She saw His face clearly",
+        "He said her name",
+        "He showed her His hands",
+        "An angel told her"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Jesus said just one word and she knew.",
+      "explanation": "When Jesus said her name, 'Mary,' she turned around and knew it was Him. Jesus is alive!",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q17",
+      "text": "What did Mary say to the disciples after seeing Jesus alive?",
+      "options": [
+        "I don't believe it",
+        "I have seen the Lord!",
+        "Come quickly!",
+        "He is gone forever"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It was the happiest news in the world.",
+      "explanation": "Mary Magdalene went to the disciples with the news and said, 'I have seen the Lord!'",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q18",
+      "text": "What is the Bottom Line for today's lesson?",
+      "options": [
+        "God loves everyone",
+        "You can have joy because Jesus is alive",
+        "Always be kind to others",
+        "Read your Bible every day"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's all about joy and Easter.",
+      "explanation": "The Bottom Line is 'You can have joy because Jesus is alive!' — the central message of Easter.",
+      "format": "multiple-choice",
+      "category": "recall"
+    },
+    {
+      "id": "q19",
+      "text": "Fill in the blank: 'Always be _____ because you belong to the Lord.' (Philippians 4:4)",
+      "options": [
+        "joyful",
+        "careful",
+        "quiet",
+        "brave"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "This word means really, really happy.",
+      "explanation": "Philippians 4:4 says 'Always be joyful because you belong to the Lord. I will say it again. Be joyful!'",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q20",
+      "text": "Fill in the blank: 'I will say it again. Be _____!' (Philippians 4:4)",
+      "options": [
+        "strong",
+        "joyful",
+        "patient",
+        "faithful"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "The verse repeats this word twice because it's so important.",
+      "explanation": "The verse emphasizes joy by repeating it: 'Always be joyful... I will say it again. Be joyful!'",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q21",
+      "text": "Why is Easter called the most joyful day ever?",
+      "options": [
+        "Because we get candy and eggs",
+        "Because spring flowers are blooming",
+        "Because Jesus rose from the dead and is alive",
+        "Because it's a day off from school"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Think about what makes Easter different from every other day.",
+      "explanation": "Easter is the most joyful day because Jesus defeated death and came back to life — that's the best news ever!",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q22",
+      "text": "Why did Jesus allow the soldiers to arrest Him even though He had the power to stop them?",
+      "options": [
+        "He was scared of them",
+        "He didn't have any power",
+        "God had a plan to save people through Him",
+        "He didn't know they were coming"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "God had a special plan that Jesus came to complete.",
+      "explanation": "Jesus knew everything that was going to happen. He allowed it because God had a plan to rescue and save people through Him.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q23",
+      "text": "What does 'It is finished' mean when Jesus said it on the cross?",
+      "options": [
+        "Jesus gave up",
+        "Jesus completed everything God sent Him to do",
+        "The day was over",
+        "Jesus was tired"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Jesus had a mission from God the Father.",
+      "explanation": "'It is finished' means Jesus had completed everything He came to do — paying for sin so we could be close to God again.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q24",
+      "text": "True or False: On Saturday, Jesus' friends understood that He would rise again.",
+      "options": [
+        "True — they were expecting it",
+        "True — Jesus had told them clearly",
+        "False — they were sad and didn't understand yet",
+        "False — nobody had ever told them about it"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "Saturday was a quiet, confusing day for Jesus' friends.",
+      "explanation": "Even though Jesus had told them He would rise again, His friends didn't understand it yet. Saturday was full of sadness and questions.",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q25",
+      "text": "Why did Jesus give His life on the cross?",
+      "options": [
+        "Because the soldiers forced Him to",
+        "Because He wanted to pay for our sins so we could be close to God",
+        "Because He made a mistake",
+        "Because He was not strong enough to escape"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "It was all part of God's rescue plan.",
+      "explanation": "Jesus gave His perfect life to pay for sin. Because of what He did, we can be close to God and be His friends forever.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q26",
+      "text": "What does it mean that Jesus 'defeated death'?",
+      "options": [
+        "He was so strong nobody could hurt Him",
+        "He came back to life and death could not hold Him",
+        "He ran away from the tomb",
+        "He was never really dead"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Think about what happened on Easter Sunday morning.",
+      "explanation": "Jesus defeated death by rising from the dead. Death could not keep Him in the tomb — He is alive forever!",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q27",
+      "text": "Fill in the blank: Because Jesus is alive, we can be God's _____ forever.",
+      "options": [
+        "servants",
+        "students",
+        "friends",
+        "neighbors"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "The lesson talks about a special relationship with God.",
+      "explanation": "The lesson teaches that when we follow Jesus, we become God's forever friends. Jesus makes that friendship possible.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q28",
+      "text": "True or False: The joy we get from Easter is only for Easter Sunday.",
+      "options": [
+        "True — joy is only for special holidays",
+        "True — Easter joy fades after the weekend",
+        "False — we can have joy every single day because Jesus is alive",
+        "False — joy is only for grown-ups"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Think about how long Jesus stays alive.",
+      "explanation": "Because Jesus is alive forever, we can have joy not just on Easter but every single day!",
+      "format": "true-false",
+      "category": "understanding"
+    },
+    {
+      "id": "q29",
+      "text": "Why was the name 'I am' so powerful when Jesus said it to the soldiers?",
+      "options": [
+        "It was a magic word",
+        "It was the same name God used with Moses at the burning bush",
+        "It was a secret code",
+        "It scared the soldiers because it was loud"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Think about the Old Testament and a famous bush.",
+      "explanation": "'I am' is the name God used when He introduced Himself to Moses at the burning bush. By using it, Jesus was showing that He is God.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q30",
+      "text": "Even while Jesus was hurting on the cross, what did He do for His mother?",
+      "options": [
+        "He asked her to leave",
+        "He cared for her by asking a disciple to look after her",
+        "He ignored her",
+        "He told her not to cry"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Jesus always cared about the people He loved.",
+      "explanation": "Even while suffering on the cross, Jesus told the disciple He loved to take care of His mother Mary, showing His love and care.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q31",
+      "text": "How can you show joy this week because Jesus is alive?",
+      "options": [
+        "By being grumpy and keeping to yourself",
+        "By worshiping, singing to God, and telling Him you love Him",
+        "By ignoring your friends and family",
+        "By only thinking about yourself"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "The lesson says one of the ways we show joy is through worship.",
+      "explanation": "One of the ways we show our joy is by worshiping, singing to God, and telling Him how much we love Him — at church and every day!",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q32",
+      "text": "When you feel sad or scared, what can you remember from today's lesson?",
+      "options": [
+        "That bad things never happen",
+        "That you should hide your feelings",
+        "That Jesus is alive and His joy goes with you always",
+        "That you should just try harder"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Jesus' joy doesn't go away when hard times come.",
+      "explanation": "Even when we feel sad or scared, we can remember that Jesus is alive, He loves us, and His joy goes with us through everything.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q33",
+      "text": "Fill in the blank: Just like Mary told the disciples the good news, we can _____ others that Jesus is alive.",
+      "options": [
+        "tell",
+        "hide from",
+        "ignore",
+        "trick"
+      ],
+      "correctIndex": 0,
+      "difficulty": "easy",
+      "hint": "Mary ran to share the happiest news ever.",
+      "explanation": "Just like Mary ran to tell the disciples 'I have seen the Lord!' we can share the good news about Jesus with people around us.",
+      "format": "fill-blank",
+      "category": "application"
+    },
+    {
+      "id": "q34",
+      "text": "What should you do when you're at school or playing with friends and want to remember today's lesson?",
+      "options": [
+        "Forget about it until next Sunday",
+        "Choose joy because Jesus is alive and loves you",
+        "Only think about games and fun",
+        "Tell everyone they're wrong"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "The memory verse says to 'always' be joyful.",
+      "explanation": "Philippians 4:4 reminds us to always be joyful because we belong to the Lord — at school, at home, and with friends.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q35",
+      "text": "How is the joy from knowing Jesus different from being happy about getting a present?",
+      "options": [
+        "It's exactly the same",
+        "Joy from Jesus lasts forever and doesn't depend on what happens to us",
+        "Getting presents is always better",
+        "There's no difference at all"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Think about how long Easter joy lasts versus how long a toy lasts.",
+      "explanation": "Happiness from presents fades, but joy from Jesus lasts forever because it's based on the truth that He is alive and loves us — no matter what.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q36",
+      "text": "True or False: You have to wait until you're a grown-up to be a forever friend of God.",
+      "options": [
+        "True — only adults can follow Jesus",
+        "True — kids are too young to understand",
+        "False — anyone, including kids, can follow Jesus and be God's friend now",
+        "False — nobody can really be God's friend"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "God's love and friendship have no age limit.",
+      "explanation": "The lesson teaches that when you decide to follow Jesus, you can be close with God right now. There's no age requirement to be God's forever friend!",
+      "format": "true-false",
+      "category": "application"
+    },
+    {
+      "id": "q37",
+      "text": "What book of the Bible is most of today's Easter story from?",
       "options": [
         "Matthew",
         "Mark",
@@ -199,651 +603,264 @@
       ],
       "correctIndex": 3,
       "difficulty": "medium",
-      "hint": "This book was written by one of Jesus' closest friends.",
-      "explanation": "Today's story comes from the book of John, chapters 12 and 13.",
+      "hint": "It's the fourth book about Jesus' life.",
+      "explanation": "Today's Easter story comes primarily from John chapters 18–20, with a small portion from Luke 23 for the Saturday events.",
       "format": "multiple-choice",
       "category": "recall"
-    },
-    {
-      "id": "q13",
-      "text": "What does it mean to be humble?",
-      "options": [
-        "Being weak and scared",
-        "Putting others first instead of yourself",
-        "Never talking to anyone",
-        "Always losing on purpose"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Think about what Jesus did for His friends.",
-      "explanation": "Being humble means putting others first instead of trying to be the most important. Jesus showed this by serving His disciples.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q14",
-      "text": "Jesus showed us that real greatness comes from being _____ and willing to help others.",
-      "options": [
-        "rich and famous",
-        "loud and bossy",
-        "kind and gentle",
-        "fast and strong"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "Think about how Jesus treated His friends.",
-      "explanation": "Jesus showed that real greatness comes from being kind, gentle, and willing to help others, even when it's hard.",
-      "format": "fill-blank",
-      "category": "understanding"
-    },
-    {
-      "id": "q15",
-      "text": "True or False: Jesus came to Jerusalem to show off His power.",
-      "options": [
-        "True",
-        "False"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Remember why Jesus rode a donkey.",
-      "explanation": "Jesus didn't come to show off His power. He came to show love and to serve others.",
-      "format": "true-false",
-      "category": "understanding"
-    },
-    {
-      "id": "q16",
-      "text": "Who helps us to be humble like Jesus?",
-      "options": [
-        "Our teachers",
-        "Our friends",
-        "The Holy Spirit",
-        "Superheroes"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "This helper lives inside every believer.",
-      "explanation": "The Holy Spirit lives inside us and helps us to be humble and to serve others like Jesus did.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q17",
-      "text": "The memory verse for this month is found in _____.",
-      "options": [
-        "John 12:13",
-        "Philippians 2:3",
-        "Genesis 1:1",
-        "Psalm 23:1"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It's a letter Paul wrote to a church.",
-      "explanation": "The monthly memory verse is Philippians 2:3, which tells us to be humble and value others more than ourselves.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q18",
-      "text": "According to the memory verse, we should value others _____ than ourselves.",
-      "options": [
-        "less",
-        "the same",
-        "more",
-        "not at all"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "It's the opposite of being selfish.",
-      "explanation": "Philippians 2:3 says to 'value others more than yourselves,' which is what humility looks like.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q19",
-      "text": "What miracle had Jesus done for His friend Lazarus?",
-      "options": [
-        "Healed his blindness",
-        "Brought him back to life",
-        "Helped him walk",
-        "Cured his leprosy"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "This was one of Jesus' most amazing miracles.",
-      "explanation": "Jesus had brought His friend Lazarus back to life, which was one reason the crowds were so excited to see Him.",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q20",
-      "text": "True or False: The crowds were bored when Jesus arrived in Jerusalem.",
-      "options": [
-        "True",
-        "False"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Think about how you'd react if you saw someone who could do miracles!",
-      "explanation": "The crowds were not bored at all! They cheered, waved palm branches, and shouted 'Hosanna!' when Jesus arrived.",
-      "format": "true-false",
-      "category": "recall"
-    },
-    {
-      "id": "q21",
-      "text": "What kind of king did the people expect to come?",
-      "options": [
-        "A humble servant king",
-        "A powerful warrior king",
-        "A funny king",
-        "A sleeping king"
-      ],
-      "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "Jesus surprised everyone by being different.",
-      "explanation": "People expected a powerful king who would use force, but Jesus came as a humble servant king riding a donkey instead of a war horse.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q22",
-      "text": "This month's theme is called _____.",
-      "options": [
-        "Right Side Up",
-        "Inside Out",
-        "Upside Down",
-        "Topsy Turvy"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "It means doing things differently from what the world expects.",
-      "explanation": "The monthly theme is 'Upside Down' because living like Jesus means doing things the opposite of what the world expects.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q23",
-      "text": "Which of these is a way you can be humble like Jesus?",
-      "options": [
-        "Always making sure you go first",
-        "Letting a friend pick the game to play",
-        "Bragging about your grades",
-        "Ignoring people who need help"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Think about putting others first.",
-      "explanation": "Letting a friend choose shows humility because you're putting their wishes ahead of your own, just like Jesus put others first.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q24",
-      "text": "If your friend is struggling to carry their books, what would a humble person do?",
-      "options": [
-        "Laugh at them",
-        "Walk away quickly",
-        "Offer to help carry some books",
-        "Tell them to be stronger"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "What would Jesus do?",
-      "explanation": "A humble person helps others, just like Jesus served His disciples by washing their feet. Offering to help carry books puts your friend's needs first.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q25",
-      "text": "At recess, everyone wants to be team captain. How can you show humility?",
-      "options": [
-        "Argue until you get picked",
-        "Let someone else be captain this time",
-        "Quit and go play alone",
-        "Tell the teacher it's not fair"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Remember, humility means putting others first.",
-      "explanation": "Letting someone else have a turn shows humility. Jesus could have demanded to be served, but He chose to serve instead.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q26",
-      "text": "Why is it sometimes hard to be humble?",
-      "options": [
-        "Because the world tells us to get ahead and be important",
-        "Because being humble is wrong",
-        "Because nobody notices humble people",
-        "Because God doesn't want us to be humble"
-      ],
-      "correctIndex": 0,
-      "difficulty": "medium",
-      "hint": "Think about what the lesson said about the world's message.",
-      "explanation": "The world tells us we should always try to win and be the best, which makes humility hard. But Jesus showed us a better way.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q27",
-      "text": "True or False: Only adults need to practice being humble.",
-      "options": [
-        "True",
-        "False"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Does Jesus want ALL His followers to be humble?",
-      "explanation": "Everyone, including kids, can and should practice humility. Jesus wants all of His followers to put others first.",
-      "format": "true-false",
-      "category": "application"
-    },
-    {
-      "id": "q28",
-      "text": "When we are humble and serve others, we are showing the world what _____ is like.",
-      "options": [
-        "school",
-        "sports",
-        "Jesus",
-        "television"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "We are reflecting someone very important.",
-      "explanation": "Every time we are humble, we show the world what Jesus is like. We represent Him to everyone around us.",
-      "format": "fill-blank",
-      "category": "application"
-    },
-    {
-      "id": "q29",
-      "text": "Your little sibling wants to play a game you think is boring. What's the humble choice?",
-      "options": [
-        "Say no and play your own game",
-        "Play their game cheerfully",
-        "Tell them their game is dumb",
-        "Hide so they can't find you"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "What would Jesus do for someone He loves?",
-      "explanation": "Playing their game cheerfully puts their joy ahead of your own preferences, just like Jesus put others ahead of Himself.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q30",
-      "text": "According to the lesson, Jesus is the King of the entire _____.",
-      "options": [
-        "country",
-        "city",
-        "universe",
-        "school"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "It's bigger than a country or a planet!",
-      "explanation": "Jesus is the King of the entire universe, yet He chose to serve others humbly instead of demanding to be served.",
-      "format": "fill-blank",
-      "category": "understanding"
-    },
-    {
-      "id": "q31",
-      "text": "What did the Scripture say about the City of Zion when Jesus arrived?",
-      "options": [
-        "Be very excited",
-        "Do not be afraid",
-        "Start running",
-        "Close the gates"
-      ],
-      "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "The Scripture had a comforting message.",
-      "explanation": "John 12:15 says 'City of Zion, do not be afraid. See, your king is coming. He is sitting on a donkey's colt.'",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q32",
-      "text": "True or False: Jesus washed His disciples' feet to show that serving others is important.",
-      "options": [
-        "True",
-        "False"
-      ],
-      "correctIndex": 0,
-      "difficulty": "easy",
-      "hint": "This was a powerful example of humility.",
-      "explanation": "True! Jesus washed His disciples' feet to show them that serving others is an important part of following God. He led by example.",
-      "format": "true-false",
-      "category": "understanding"
-    },
-    {
-      "id": "q33",
-      "text": "You got the highest score on a test. How can you be humble about it?",
-      "options": [
-        "Tell everyone how smart you are",
-        "Thank God and encourage friends who struggled",
-        "Post about it everywhere",
-        "Make fun of lower scores"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Humility doesn't mean hiding your success—it means not bragging.",
-      "explanation": "Being humble means not bragging. You can be grateful and also encourage others, just like Jesus lifted people up instead of putting them down.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q34",
-      "text": "In today's story, Jesus chose to _____ instead of being served.",
-      "options": [
-        "hide",
-        "sleep",
-        "serve",
-        "leave"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "He did the opposite of what a king normally does.",
-      "explanation": "Jesus chose to serve instead of being served. He washed His disciples' feet, showing that true greatness comes from serving others.",
-      "format": "fill-blank",
-      "category": "understanding"
-    },
-    {
-      "id": "q35",
-      "text": "What were some of the amazing things Jesus had done that made the crowds so excited?",
-      "options": [
-        "He made sick people well and calmed storms",
-        "He built houses and planted gardens",
-        "He won races and played games",
-        "He wrote books and sang songs"
-      ],
-      "correctIndex": 0,
-      "difficulty": "medium",
-      "hint": "Think about the miracles mentioned in the story.",
-      "explanation": "The crowds were excited because Jesus had healed the sick, calmed storms, and even raised Lazarus from the dead.",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q36",
-      "text": "According to the memory verse, we shouldn't do things only to get _____.",
-      "options": [
-        "tired",
-        "ahead",
-        "home",
-        "started"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "It's about selfish ambition.",
-      "explanation": "Philippians 2:3 says 'Don't do anything only to get ahead' — we should not act out of selfish ambition but out of humility.",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q37",
-      "text": "A new kid sits alone at lunch. What's the humble, Jesus-like thing to do?",
-      "options": [
-        "Ignore them",
-        "Sit with them and introduce yourself",
-        "Point and whisper about them",
-        "Wait for someone else to help"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Jesus always noticed people who were left out.",
-      "explanation": "Sitting with the new kid and being friendly puts their needs first, just like Jesus always noticed and cared for people who were overlooked.",
-      "format": "multiple-choice",
-      "category": "application"
     },
     {
       "id": "q38",
-      "text": "True or False: Being humble means you can never feel good about yourself.",
+      "text": "Who was Annas?",
       "options": [
-        "True",
-        "False"
+        "A Roman soldier",
+        "The father-in-law of the high priest",
+        "One of Jesus' disciples",
+        "The gardener at the tomb"
       ],
       "correctIndex": 1,
       "difficulty": "hard",
-      "hint": "Humility isn't about thinking less of yourself.",
-      "explanation": "False! Being humble doesn't mean feeling bad about yourself. It means valuing others and putting their needs alongside your own, just like Jesus did.",
-      "format": "true-false",
-      "category": "understanding"
-    },
-    {
-      "id": "q39",
-      "text": "What did the people call Jesus as He entered Jerusalem?",
-      "options": [
-        "Teacher",
-        "The King of Israel",
-        "A servant",
-        "A friend"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "They recognized Him as their ruler.",
-      "explanation": "The crowds shouted 'Blessed is the King of Israel!' recognizing Jesus as their King as He entered Jerusalem.",
+      "hint": "Jesus was taken to him first after being arrested.",
+      "explanation": "After arresting Jesus, the soldiers tied Him up and took Him to Annas, the father-in-law of the high priest.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
-      "id": "q40",
-      "text": "How does Jesus help us be humble every day?",
+      "id": "q39",
+      "text": "Fill in the blank: Friday was a hard day. Saturday was a quiet day. But Sunday changed _____.",
       "options": [
-        "He sends us a letter",
-        "He goes with us every minute and helps through the Holy Spirit",
-        "He makes us forget about ourselves",
-        "He takes away all our talents"
+        "nothing",
+        "a few things",
+        "everything",
+        "the weather"
+      ],
+      "correctIndex": 2,
+      "difficulty": "easy",
+      "hint": "Sunday was the most amazing day ever.",
+      "explanation": "Sunday changed everything! Jesus rose from the dead, defeating sin and death, and giving us joy that lasts forever.",
+      "format": "fill-blank",
+      "category": "understanding"
+    },
+    {
+      "id": "q40",
+      "text": "Why couldn't Jesus' friends visit the tomb on Saturday?",
+      "options": [
+        "The soldiers wouldn't let them",
+        "It was the Sabbath, a day of rest",
+        "They forgot where the tomb was",
+        "It was too far away"
       ],
       "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "We have a helper who is always with us.",
-      "explanation": "Jesus goes with us every minute of every day through the Holy Spirit, who lives inside believers and helps us to be humble and serve others.",
+      "difficulty": "medium",
+      "hint": "God had given His people a rule about this day.",
+      "explanation": "Since Saturday was the Sabbath, Jesus' friends had to rest, just as God had told His people to do. They couldn't visit the tomb.",
       "format": "multiple-choice",
-      "category": "understanding"
+      "category": "recall"
     }
   ],
   "termPairs": [
     {
-      "term": "Hosanna",
-      "definition": "Save us, we pray!",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Humble",
-      "definition": "Putting others first instead of yourself",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Palm branches",
-      "definition": "What the crowds waved when Jesus arrived",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Donkey",
-      "definition": "The humble animal Jesus rode into Jerusalem",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Jerusalem",
-      "definition": "The city Jesus entered on Palm Sunday",
-      "difficulty": "easy"
-    },
-    {
       "term": "Passover",
-      "definition": "The holiday the people were celebrating",
+      "definition": "A special time when God's people remembered how He rescued them from Egypt",
       "difficulty": "medium"
     },
     {
-      "term": "Foot washing",
-      "definition": "The servant's job Jesus did for His disciples",
+      "term": "Judas",
+      "definition": "The disciple who brought soldiers to arrest Jesus",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Pontius Pilate",
+      "definition": "The Roman governor who questioned Jesus and found Him not guilty",
       "difficulty": "medium"
     },
     {
-      "term": "Philippians 2:3",
-      "definition": "The memory verse about being humble",
+      "term": "The Skull",
+      "definition": "The hill where Jesus was crucified",
       "difficulty": "medium"
     },
     {
-      "term": "Lazarus",
-      "definition": "The friend Jesus brought back to life",
+      "term": "Mary Magdalene",
+      "definition": "The first person to visit the empty tomb on Sunday morning",
+      "difficulty": "easy"
+    },
+    {
+      "term": "It is finished",
+      "definition": "Jesus' last words on the cross, meaning He completed His mission",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Philippians 4:4",
+      "definition": "The memory verse about always being joyful because you belong to the Lord",
       "difficulty": "medium"
     },
     {
-      "term": "Holy Spirit",
-      "definition": "The helper who lives inside us and helps us be humble",
+      "term": "Peter and John",
+      "definition": "The two disciples who ran to the empty tomb after hearing Mary's news",
+      "difficulty": "medium"
+    },
+    {
+      "term": "I am",
+      "definition": "The name God used with Moses that Jesus used to show He is God",
       "difficulty": "hard"
     },
     {
-      "term": "Palm Sunday",
-      "definition": "The day Jesus entered Jerusalem as crowds cheered",
+      "term": "Sabbath",
+      "definition": "The day of rest when Jesus' friends could not visit the tomb",
       "difficulty": "medium"
     },
     {
-      "term": "Servant",
-      "definition": "Someone who puts others' needs first",
+      "term": "Crucified",
+      "definition": "Put to death by being nailed to a wooden cross",
+      "difficulty": "hard"
+    },
+    {
+      "term": "Tomb",
+      "definition": "The place where Jesus' body was laid after He died, sealed with a large stone",
       "difficulty": "easy"
     }
   ],
   "keyWords": [
     {
-      "word": "HUMBLE",
-      "hint": "Putting others first instead of yourself",
+      "word": "EASTER",
+      "hint": "The holiday that celebrates Jesus rising from the dead",
       "difficulty": "easy"
     },
     {
-      "word": "HOSANNA",
-      "hint": "The crowd shouted this word meaning 'Save us!'",
-      "difficulty": "medium"
-    },
-    {
-      "word": "JERUSALEM",
-      "hint": "The city Jesus entered on a donkey",
-      "difficulty": "medium"
-    },
-    {
-      "word": "DONKEY",
-      "hint": "The animal Jesus rode instead of a horse",
+      "word": "JOY",
+      "hint": "A deep happiness that lasts because Jesus is alive",
       "difficulty": "easy"
     },
     {
-      "word": "SERVANT",
-      "hint": "Jesus took on this role by washing feet",
+      "word": "CRUCIFIED",
+      "hint": "What happened to Jesus on the cross on Friday",
       "difficulty": "medium"
     },
     {
-      "word": "PALM",
-      "hint": "The type of branches the crowds waved",
+      "word": "RISEN",
+      "hint": "Jesus came back to life on Sunday morning",
       "difficulty": "easy"
     },
     {
       "word": "PASSOVER",
-      "hint": "The holiday everyone was celebrating",
+      "hint": "The special celebration Jesus and His friends were having in Jerusalem",
       "difficulty": "medium"
     },
     {
-      "word": "LAZARUS",
-      "hint": "Jesus brought this friend back to life",
+      "word": "JUDAS",
+      "hint": "The disciple who betrayed Jesus and brought soldiers to arrest Him",
+      "difficulty": "medium"
+    },
+    {
+      "word": "PILATE",
+      "hint": "The Roman governor who questioned Jesus",
+      "difficulty": "medium"
+    },
+    {
+      "word": "TOMB",
+      "hint": "The place where Jesus was buried, sealed with a big stone",
+      "difficulty": "easy"
+    },
+    {
+      "word": "SABBATH",
+      "hint": "The day of rest between Friday and Sunday",
+      "difficulty": "medium"
+    },
+    {
+      "word": "MAGDALENE",
+      "hint": "Mary's last name — she was the first to see the risen Jesus",
       "difficulty": "hard"
     },
     {
-      "word": "DISCIPLES",
-      "hint": "Jesus' closest followers whose feet He washed",
+      "word": "JERUSALEM",
+      "hint": "The city where Jesus was arrested and crucified",
       "difficulty": "medium"
-    },
-    {
-      "word": "WORSHIP",
-      "hint": "Lifting our voices and serving others for God",
-      "difficulty": "medium"
-    },
-    {
-      "word": "GREATNESS",
-      "hint": "Jesus showed this comes from kindness, not power",
-      "difficulty": "hard"
     },
     {
       "word": "PHILIPPIANS",
-      "hint": "The Bible book where the memory verse is found",
+      "hint": "The book of the Bible where today's memory verse is found",
       "difficulty": "hard"
     },
     {
-      "word": "KINGDOM",
-      "hint": "Jesus wants us to make the world look like His _____",
+      "word": "RESURRECTION",
+      "hint": "The word that means coming back to life after dying",
       "difficulty": "hard"
     },
     {
-      "word": "SPIRIT",
-      "hint": "The Holy _____ helps us to be humble",
+      "word": "ANGELS",
+      "hint": "Two of these dressed in white appeared to Mary at the empty tomb",
       "difficulty": "easy"
     }
   ],
   "story": {
-    "summary": "As Jesus traveled toward Jerusalem for Passover, huge crowds gathered to welcome Him. They waved palm branches and shouted 'Hosanna!' calling Him the King of Israel. But Jesus surprised everyone by riding in on a humble donkey instead of a powerful horse. Later, at a special meal with His disciples, Jesus did something even more surprising—He knelt down and washed their feet, doing the job of a lowly servant. Jesus, the King of the universe, showed us that true greatness comes from being humble and putting others first.",
+    "summary": "During Passover in Jerusalem, Jesus was arrested, tried, and crucified on Friday even though He had done nothing wrong. His friends were heartbroken. On Saturday they waited in sadness. But on Sunday morning, Mary Magdalene found the tomb empty — Jesus had risen from the dead! He appeared to Mary and she ran to tell the disciples the joyful news: Jesus is alive! Because Jesus defeated death, we can have joy that lasts forever.",
     "scenes": [
       {
-        "title": "The Journey to Jerusalem",
-        "description": "Jesus and His disciples traveled toward Jerusalem. The city was packed with people getting ready for Passover. Everyone had heard about Jesus—how He healed the sick, calmed storms, and even brought Lazarus back to life. Excitement was building as word spread that Jesus was coming.",
+        "title": "The Arrest in the Garden",
+        "description": "After celebrating Passover and praying in a quiet garden, Jesus was arrested. Judas brought soldiers with torches and weapons. When Jesus said 'I am he,' the soldiers fell down. But Jesus allowed them to arrest Him because God had a plan to save people through Him.",
         "questionIds": [
           "q1",
           "q2",
-          "q19",
-          "q35"
-        ]
-      },
-      {
-        "title": "The Triumphal Entry",
-        "description": "As Jesus got close to the city, crowds gathered on the road. They took branches from palm trees and went out to meet Him. They shouted 'Hosanna! Blessed is the one who comes in the name of the Lord! Blessed is the King of Israel!' The people cheered and celebrated His arrival.",
-        "questionIds": [
           "q3",
           "q4",
-          "q8",
-          "q20",
-          "q31",
-          "q39"
-        ]
-      },
-      {
-        "title": "The Humble King on a Donkey",
-        "description": "Instead of riding a powerful war horse like people expected a king to ride, Jesus found a young donkey and sat on it. This fulfilled what Scripture had promised. Jesus showed that He was a different kind of King—a humble King who came to serve, not to show off His power.",
-        "questionIds": [
-          "q5",
-          "q6",
-          "q9",
-          "q15",
-          "q21",
           "q22"
         ]
       },
       {
-        "title": "Jesus Washes His Disciples' Feet",
-        "description": "At a special meal with His disciples, Jesus did something no one expected. The King of the universe knelt down and washed His friends' feet—a job that was usually done by the lowest servant. Jesus showed His disciples that real greatness comes from being kind, gentle, and willing to help others.",
+        "title": "The Trial and the Cross",
+        "description": "Jesus was taken to Annas and then to Pontius Pilate. Even though Pilate found no reason to punish Jesus, the crowd shouted for Him to be crucified. Jesus was nailed to a cross on a hill called the Skull. He cared for His mother even while suffering, and His last words were 'It is finished.'",
         "questionIds": [
+          "q5",
+          "q6",
           "q7",
-          "q10",
-          "q13",
-          "q14",
+          "q8",
+          "q9",
+          "q23",
+          "q25",
+          "q29",
           "q30",
-          "q32",
-          "q34"
+          "q38"
         ]
       },
       {
-        "title": "Living Humbly Like Jesus",
-        "description": "Jesus showed us that being humble means putting others first. He is the King of the entire universe, but He chose to serve instead of being served. Through the Holy Spirit, Jesus helps us to be humble every day. Every time we put others first, we show the world what Jesus is like.",
+        "title": "The Quiet Saturday",
+        "description": "After Jesus died, His friends wrapped His body and placed it in a tomb sealed with a large stone. Saturday was the Sabbath so they could not visit. They waited in sadness, not understanding that God was still working and that Sunday was coming.",
+        "questionIds": [
+          "q10",
+          "q24",
+          "q40"
+        ]
+      },
+      {
+        "title": "Sunday — He Is Alive!",
+        "description": "Early Sunday morning, Mary Magdalene found the stone rolled away and the tomb empty. Peter and John ran to see. Mary stayed crying until Jesus appeared to her. When He said her name, she recognized Him. She ran to the disciples shouting, 'I have seen the Lord!' Jesus is alive and we can have joy forever!",
         "questionIds": [
           "q11",
+          "q12",
+          "q13",
+          "q14",
+          "q15",
           "q16",
-          "q23",
-          "q24",
-          "q25",
+          "q17",
+          "q21",
           "q26",
+          "q39"
+        ]
+      },
+      {
+        "title": "Joy That Lasts Forever",
+        "description": "Because Jesus rose from the dead, we can be God's forever friends. This joy isn't just for Easter — it's for every single day. Philippians 4:4 reminds us to always be joyful because we belong to the Lord. We can share this good news with everyone around us!",
+        "questionIds": [
+          "q18",
+          "q19",
+          "q20",
           "q27",
           "q28",
-          "q29",
+          "q31",
+          "q32",
           "q33",
-          "q37",
-          "q38",
-          "q40"
+          "q34",
+          "q35",
+          "q36"
         ]
       }
     ]
