@@ -1,866 +1,741 @@
 {
   "meta": {
-    "week": "2026-04-04",
-    "title": "Easter (Crucified and Risen) — John 18–20:23",
+    "week": "2026-04-15",
+    "title": "The Great Commission and Ascension",
     "verseReference": "Philippians 4:4",
     "verseText": "Always be joyful because you belong to the Lord. I will say it again. Be joyful!",
-    "theme": "You can have joy because Jesus is alive",
+    "theme": "Sharing the good news about Jesus with the whole world",
     "spotlightGame": "bible-brawler",
-    "generatedAt": "2026-04-04T12:00:00.000Z",
+    "generatedAt": "2026-04-19T12:00:00Z",
     "jeopardyCategories": [
-      "Easter People",
-      "Friday & Sunday",
-      "Joy & Promises",
-      "Bible Verses",
-      "The Empty Tomb"
+      "The Mission",
+      "On the Mountain",
+      "Jesus' Words",
+      "Share the News",
+      "Holy Spirit Power"
     ]
   },
   "questions": [
     {
       "id": "q1",
-      "text": "What special holiday were Jesus and His friends celebrating in Jerusalem?",
+      "text": "Where did Jesus tell His disciples to meet Him after He rose from the dead?",
       "options": [
-        "Christmas",
-        "Passover",
-        "Thanksgiving",
-        "Easter"
+        "On a mountain in Galilee",
+        "At the temple in Jerusalem",
+        "By the Sea of Galilee",
+        "In a garden"
       ],
-      "correctIndex": 1,
+      "correctIndex": 0,
       "difficulty": "easy",
-      "hint": "It's a time when God's people remembered how He rescued them long ago.",
-      "explanation": "Jesus and His disciples were in Jerusalem celebrating Passover, which remembered how God rescued His people from Egypt.",
+      "hint": "It was a high place in a region called Galilee.",
+      "explanation": "Jesus told His disciples to meet Him on a mountain in Galilee, where He gave them the Great Commission.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q2",
-      "text": "Which disciple brought soldiers to arrest Jesus?",
+      "text": "What book of the Bible tells us about the Great Commission?",
       "options": [
-        "Peter",
-        "John",
-        "Judas",
-        "Thomas"
+        "Genesis",
+        "Matthew",
+        "Revelation",
+        "Psalms"
       ],
-      "correctIndex": 2,
+      "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "He was one of Jesus' twelve disciples.",
-      "explanation": "Judas, one of Jesus' disciples, arrived with a group of soldiers carrying torches and weapons to arrest Jesus.",
+      "hint": "It's the first book in the New Testament.",
+      "explanation": "The Great Commission is found in Matthew 28:16-20.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q3",
-      "text": "What did the soldiers carry when they came to arrest Jesus?",
+      "text": "True or False: Jesus said all authority in heaven and on earth had been given to Him.",
       "options": [
-        "Flowers and gifts",
-        "Torches and weapons",
-        "Food and water",
-        "Books and scrolls"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
-      "correctIndex": 1,
+      "correctIndex": 0,
       "difficulty": "easy",
-      "hint": "They came at night and needed light.",
-      "explanation": "The soldiers carried torches and weapons when they came to arrest Jesus in the garden.",
-      "format": "multiple-choice",
+      "hint": "Jesus is King over everything.",
+      "explanation": "Jesus said, 'All authority in heaven and on earth has been given to me' (Matthew 28:18).",
+      "format": "true-false",
       "category": "recall"
     },
     {
       "id": "q4",
-      "text": "When Jesus said 'I am he,' what happened to the soldiers?",
+      "text": "How many days did Jesus spend with His friends after Easter?",
       "options": [
-        "They ran away",
-        "They laughed",
-        "They were knocked down",
-        "They fell asleep"
+        "10 days",
+        "20 days",
+        "40 days",
+        "100 days"
       ],
       "correctIndex": 2,
       "difficulty": "medium",
-      "hint": "Jesus' words were very powerful.",
-      "explanation": "When Jesus identified Himself using God's name 'I am,' the power of that truth knocked the soldiers down.",
+      "hint": "It's the same number of days and nights it rained on Noah's ark.",
+      "explanation": "During the forty days after Easter, Jesus spent time with His friends, teaching them and helping them understand God's plan.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q5",
-      "text": "Who was the Roman governor that questioned Jesus?",
+      "text": "What did the disciples do when they saw Jesus alive on the mountain?",
       "options": [
-        "King Herod",
-        "Pontius Pilate",
-        "Caesar Augustus",
-        "Annas"
+        "They ran away",
+        "They worshiped Him",
+        "They asked for food",
+        "They went fishing"
       ],
       "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "He couldn't find any reason to punish Jesus.",
-      "explanation": "Pontius Pilate was the Roman governor who questioned Jesus and found no basis for any charge against Him.",
+      "difficulty": "easy",
+      "hint": "They knew He was the Son of God.",
+      "explanation": "When the disciples saw Jesus, they worshiped Him because they knew He was truly the Son of God.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q6",
-      "text": "True or False: Pontius Pilate found Jesus guilty of doing something wrong.",
+      "text": "Jesus told His disciples to make _____ of all nations.",
       "options": [
-        "True — Pilate found Jesus guilty",
-        "True — Pilate said Jesus was a criminal",
-        "False — Pilate found no reason to punish Jesus",
-        "False — Pilate never even spoke to Jesus"
+        "friends",
+        "disciples",
+        "kings",
+        "soldiers"
       ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Think about what Pilate said to the crowd.",
-      "explanation": "Pilate told the crowd, 'I find no basis for a charge against him.' Jesus had done nothing wrong.",
-      "format": "true-false",
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "A disciple is a follower who learns from a teacher.",
+      "explanation": "Jesus said, 'Go and make disciples of all nations,' meaning to help people everywhere follow Him.",
+      "format": "fill-blank",
       "category": "recall"
     },
     {
       "id": "q7",
-      "text": "What did the crowd shout when Pilate asked what to do with Jesus?",
+      "text": "True or False: Some of the disciples still had doubts even when they saw Jesus.",
       "options": [
-        "Set Him free!",
-        "Crucify Him!",
-        "Let Him go!",
-        "We love Him!"
+        "False",
+        "True",
+        "False",
+        "True"
       ],
       "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "The crowd wanted something very bad to happen to Jesus.",
-      "explanation": "The crowd shouted 'Take him away! Crucify him!' even though Jesus had never done anything wrong.",
-      "format": "multiple-choice",
+      "difficulty": "medium",
+      "hint": "The Bible is honest about their struggles.",
+      "explanation": "Matthew 28:17 tells us that when they saw Him, they worshiped Him, but some still had their doubts.",
+      "format": "true-false",
       "category": "recall"
     },
     {
       "id": "q8",
-      "text": "What is the name of the hill where Jesus was crucified?",
+      "text": "What is the 'Great Commission'?",
       "options": [
-        "Mount Sinai",
-        "The Skull",
-        "Mount Olive",
-        "The Garden"
+        "A famous painting",
+        "Jesus' command to go and make disciples of all nations",
+        "A fishing trip",
+        "A type of prayer"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "It has a spooky-sounding name.",
-      "explanation": "The soldiers led Jesus to a hill called 'the Skull' where He was nailed to a wooden cross.",
+      "hint": "It's the big mission Jesus gave His followers.",
+      "explanation": "The Great Commission is Jesus' command to go and make disciples of all nations, teaching them about Him.",
       "format": "multiple-choice",
-      "category": "recall"
+      "category": "understanding"
     },
     {
       "id": "q9",
-      "text": "What were Jesus' last words on the cross?",
+      "text": "In whose name did Jesus say to baptize new disciples?",
       "options": [
-        "Help me!",
-        "I love you all",
-        "It is finished",
-        "Don't forget me"
+        "Peter, James, and John",
+        "The Father, Son, and Holy Spirit",
+        "Moses and Elijah",
+        "The disciples"
       ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Jesus knew He had completed everything He came to do.",
-      "explanation": "After Jesus drank, He said 'It is finished,' meaning He had completed everything God sent Him to do.",
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Three persons of the Trinity.",
+      "explanation": "Jesus said to baptize them 'in the name of the Father and of the Son and of the Holy Spirit' (Matthew 28:19).",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q10",
-      "text": "What was placed in front of Jesus' tomb after He was buried?",
+      "text": "What promise did Jesus give His disciples at the end of the Great Commission?",
       "options": [
-        "A wooden door",
-        "A large stone",
-        "A metal gate",
-        "A curtain"
+        "They would be rich",
+        "He would always be with them",
+        "They would never get sick",
+        "They could fly"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "It was very heavy and hard to move.",
-      "explanation": "A large stone was rolled in front of the entrance to Jesus' tomb.",
+      "hint": "It's a promise of presence.",
+      "explanation": "Jesus promised, 'I am always with you' (Matthew 28:20), meaning we are never alone.",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q11",
-      "text": "Who was the first person to visit Jesus' tomb on Sunday morning?",
+      "text": "What is our Bottom Line this week?",
       "options": [
-        "Peter",
-        "John",
-        "Mary Magdalene",
-        "Thomas"
+        "Jesus loves kids",
+        "You can share the good news about Jesus",
+        "Always be kind",
+        "Jesus is strong"
       ],
-      "correctIndex": 2,
+      "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "She wanted to bring spices to care for Jesus' body.",
-      "explanation": "Very early on Sunday morning, Mary Magdalene went to the tomb before the sun was even up.",
+      "hint": "It's about sharing news about Jesus.",
+      "explanation": "Our Bottom Line is: You can share the good news about Jesus!",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q12",
-      "text": "What did Mary find when she arrived at the tomb?",
+      "text": "What is the 'ascension'?",
       "options": [
-        "Jesus sitting outside",
-        "The stone rolled away and the tomb empty",
-        "Soldiers guarding the tomb",
-        "The stone still in place"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Something surprising had happened to the entrance.",
-      "explanation": "When Mary arrived, she saw the stone was rolled away, the tomb was open, and Jesus' body was gone.",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q13",
-      "text": "Which two disciples ran to the tomb after Mary told them it was empty?",
-      "options": [
-        "James and John",
-        "Peter and John",
-        "Matthew and Mark",
-        "Peter and Thomas"
+        "When Jesus was born",
+        "When Jesus left Earth and went to heaven",
+        "When Jesus healed people",
+        "When Jesus was baptized"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "They were two of Jesus' closest friends.",
-      "explanation": "Mary ran to tell Peter and John, two of Jesus' closest friends, and they both ran to the tomb as fast as they could.",
+      "hint": "It happened after the Great Commission.",
+      "explanation": "The ascension is when Jesus left Earth and went up to be with God in heaven.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q13",
+      "text": "Where is our monthly memory verse found?",
+      "options": [
+        "John 3:16",
+        "Psalm 23",
+        "Philippians 4:4",
+        "Genesis 1:1"
+      ],
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "It's in a letter Paul wrote.",
+      "explanation": "Our memory verse is Philippians 4:4: 'Always be joyful because you belong to the Lord. I will say it again. Be joyful!'",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
       "id": "q14",
-      "text": "What did Peter and John find inside the empty tomb?",
+      "text": "Fill in the blank: 'Always be _____ because you belong to the Lord.'",
       "options": [
-        "Nothing at all",
-        "Angels singing",
-        "Strips of cloth that had wrapped Jesus' body",
-        "A written message from Jesus"
+        "quiet",
+        "joyful",
+        "hungry",
+        "sleepy"
       ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "Something was left behind from the burial.",
-      "explanation": "When they looked inside, they saw the strips of cloth that Jesus' body had been wrapped in, but Jesus wasn't there.",
-      "format": "multiple-choice",
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "It's a happy word that goes deeper than happiness.",
+      "explanation": "Philippians 4:4 says, 'Always be joyful because you belong to the Lord.'",
+      "format": "fill-blank",
       "category": "recall"
     },
     {
       "id": "q15",
-      "text": "True or False: Mary immediately recognized Jesus when He appeared to her.",
+      "text": "Who helps us when we share the good news about Jesus?",
       "options": [
-        "True — Mary knew it was Jesus right away",
-        "True — Mary had been expecting Jesus",
-        "False — Mary thought He was the gardener at first",
-        "False — Mary never saw Jesus at all"
+        "Angels only",
+        "The Holy Spirit",
+        "Other disciples",
+        "No one, we do it alone"
       ],
-      "correctIndex": 2,
+      "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "At first, Mary was confused about who was talking to her.",
-      "explanation": "Mary didn't recognize Jesus at first. She thought He was the gardener until Jesus said her name, 'Mary.'",
-      "format": "true-false",
-      "category": "recall"
+      "hint": "God sent a Helper to live in us.",
+      "explanation": "The Holy Spirit lives in us, gives us courage, and helps us know the right words to say.",
+      "format": "multiple-choice",
+      "category": "understanding"
     },
     {
       "id": "q16",
-      "text": "How did Mary finally recognize that it was Jesus?",
+      "text": "True or False: Jesus wants us to share the good news only in our own country.",
       "options": [
-        "She saw His face clearly",
-        "He said her name",
-        "He showed her His hands",
-        "An angel told her"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "Jesus said just one word and she knew.",
-      "explanation": "When Jesus said her name, 'Mary,' she turned around and knew it was Him. Jesus is alive!",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q17",
-      "text": "What did Mary say to the disciples after seeing Jesus alive?",
-      "options": [
-        "I don't believe it",
-        "I have seen the Lord!",
-        "Come quickly!",
-        "He is gone forever"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "It was the happiest news in the world.",
-      "explanation": "Mary Magdalene went to the disciples with the news and said, 'I have seen the Lord!'",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q18",
-      "text": "What is the Bottom Line for today's lesson?",
-      "options": [
-        "God loves everyone",
-        "You can have joy because Jesus is alive",
-        "Always be kind to others",
-        "Read your Bible every day"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "It's all about joy and Easter.",
-      "explanation": "The Bottom Line is 'You can have joy because Jesus is alive!' — the central message of Easter.",
-      "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q19",
-      "text": "Fill in the blank: 'Always be _____ because you belong to the Lord.' (Philippians 4:4)",
-      "options": [
-        "joyful",
-        "careful",
-        "quiet",
-        "brave"
-      ],
-      "correctIndex": 0,
-      "difficulty": "easy",
-      "hint": "This word means really, really happy.",
-      "explanation": "Philippians 4:4 says 'Always be joyful because you belong to the Lord. I will say it again. Be joyful!'",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q20",
-      "text": "Fill in the blank: 'I will say it again. Be _____!' (Philippians 4:4)",
-      "options": [
-        "strong",
-        "joyful",
-        "patient",
-        "faithful"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "The verse repeats this word twice because it's so important.",
-      "explanation": "The verse emphasizes joy by repeating it: 'Always be joyful... I will say it again. Be joyful!'",
-      "format": "fill-blank",
-      "category": "recall"
-    },
-    {
-      "id": "q21",
-      "text": "Why is Easter called the most joyful day ever?",
-      "options": [
-        "Because we get candy and eggs",
-        "Because spring flowers are blooming",
-        "Because Jesus rose from the dead and is alive",
-        "Because it's a day off from school"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Think about what makes Easter different from every other day.",
-      "explanation": "Easter is the most joyful day because Jesus defeated death and came back to life — that's the best news ever!",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q22",
-      "text": "Why did Jesus allow the soldiers to arrest Him even though He had the power to stop them?",
-      "options": [
-        "He was scared of them",
-        "He didn't have any power",
-        "God had a plan to save people through Him",
-        "He didn't know they were coming"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "God had a special plan that Jesus came to complete.",
-      "explanation": "Jesus knew everything that was going to happen. He allowed it because God had a plan to rescue and save people through Him.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q23",
-      "text": "What does 'It is finished' mean when Jesus said it on the cross?",
-      "options": [
-        "Jesus gave up",
-        "Jesus completed everything God sent Him to do",
-        "The day was over",
-        "Jesus was tired"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "Jesus had a mission from God the Father.",
-      "explanation": "'It is finished' means Jesus had completed everything He came to do — paying for sin so we could be close to God again.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q24",
-      "text": "True or False: On Saturday, Jesus' friends understood that He would rise again.",
-      "options": [
-        "True — they were expecting it",
-        "True — Jesus had told them clearly",
-        "False — they were sad and didn't understand yet",
-        "False — nobody had ever told them about it"
-      ],
-      "correctIndex": 2,
-      "difficulty": "medium",
-      "hint": "Saturday was a quiet, confusing day for Jesus' friends.",
-      "explanation": "Even though Jesus had told them He would rise again, His friends didn't understand it yet. Saturday was full of sadness and questions.",
+      "hint": "Jesus said 'all nations.'",
+      "explanation": "Jesus told His disciples to make disciples of ALL nations — the good news is for the whole world!",
       "format": "true-false",
       "category": "understanding"
     },
     {
-      "id": "q25",
-      "text": "Why did Jesus give His life on the cross?",
+      "id": "q17",
+      "text": "What are two ways we can share about Jesus?",
       "options": [
-        "Because the soldiers forced Him to",
-        "Because He wanted to pay for our sins so we could be close to God",
-        "Because He made a mistake",
-        "Because He was not strong enough to escape"
+        "Only by singing",
+        "With our words and the way we live",
+        "Only by reading the Bible",
+        "Only in church"
       ],
       "correctIndex": 1,
       "difficulty": "medium",
-      "hint": "It was all part of God's rescue plan.",
-      "explanation": "Jesus gave His perfect life to pay for sin. Because of what He did, we can be close to God and be His friends forever.",
+      "hint": "Showing AND telling.",
+      "explanation": "We share about Jesus through the words we speak AND the way we live — showing His love in kindness, forgiveness, and honesty.",
       "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q18",
+      "text": "What does it mean that Jesus has 'all authority'?",
+      "options": [
+        "He is a good teacher",
+        "He is King over everything in heaven and earth",
+        "He is a nice helper",
+        "He lived long ago"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Authority means power and rule.",
+      "explanation": "Having all authority means Jesus is King over everything — there is no one greater than Him in heaven or on earth.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q19",
+      "text": "Why can we have joy even when things are hard?",
+      "options": [
+        "Because nothing bad happens to us",
+        "Because Jesus is with us and never changes",
+        "Because we always feel happy",
+        "Because we get everything we want"
+      ],
+      "correctIndex": 1,
+      "difficulty": "hard",
+      "hint": "Joy is different from just being happy.",
+      "explanation": "Real joy comes from knowing Jesus is with us always. It doesn't depend on circumstances because Jesus never changes.",
+      "format": "multiple-choice",
+      "category": "understanding"
+    },
+    {
+      "id": "q20",
+      "text": "How can you share Jesus at your school?",
+      "options": [
+        "Yell at kids who don't know Jesus",
+        "Include others, be honest, and be a good friend",
+        "Ignore everyone",
+        "Only talk to your best friend"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Think about showing Jesus' love.",
+      "explanation": "You can share Jesus at school by including others, being honest, and helping someone who needs a friend — showing His love.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q21",
+      "text": "What should you do when you feel nervous about telling someone about Jesus?",
+      "options": [
+        "Give up",
+        "Ask the Holy Spirit for courage",
+        "Run away",
+        "Keep it a secret forever"
+      ],
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Remember who helps you.",
+      "explanation": "The Holy Spirit gives us courage when we feel nervous and helps us know the right words to say.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q22",
+      "text": "Which of these shows Jesus' love to others?",
+      "options": [
+        "Being mean to people who are different",
+        "Being kind, forgiving, and loving",
+        "Ignoring people who need help",
+        "Telling only your best friends"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Act like Jesus.",
+      "explanation": "When we are kind, forgiving, and loving like Jesus, people see Him through us.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q23",
+      "text": "Your neighbor is new and has no friends. What would Jesus want you to do?",
+      "options": [
+        "Ignore them",
+        "Welcome them and be their friend",
+        "Tell them to go away",
+        "Only say hi once"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Be a friend like Jesus.",
+      "explanation": "Jesus wants us to include and love others — being a friend is one great way to show His love.",
+      "format": "multiple-choice",
+      "category": "application"
+    },
+    {
+      "id": "q24",
+      "text": "Fill in the blank: 'I am always _____ you,' said Jesus.",
+      "options": [
+        "against",
+        "with",
+        "far from",
+        "watching"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "A promise of never being alone.",
+      "explanation": "Jesus promised, 'I am always with you' — we are never alone when we follow Him.",
+      "format": "fill-blank",
+      "category": "recall"
+    },
+    {
+      "id": "q25",
+      "text": "True or False: We have to share about Jesus all by ourselves.",
+      "options": [
+        "True",
+        "False",
+        "True",
+        "False"
+      ],
+      "correctIndex": 1,
+      "difficulty": "easy",
+      "hint": "Jesus promised to send a Helper.",
+      "explanation": "We are never alone! The Holy Spirit is always with us to help, give us courage, and guide our words.",
+      "format": "true-false",
       "category": "understanding"
     },
     {
       "id": "q26",
-      "text": "What does it mean that Jesus 'defeated death'?",
+      "text": "What did Jesus mean when He said to teach people to 'obey everything I have commanded'?",
       "options": [
-        "He was so strong nobody could hurt Him",
-        "He came back to life and death could not hold Him",
-        "He ran away from the tomb",
-        "He was never really dead"
+        "Follow Jesus' teachings with their whole lives",
+        "Memorize a list of rules",
+        "Only obey on Sundays",
+        "Do whatever they want"
       ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Think about what happened on Easter Sunday morning.",
-      "explanation": "Jesus defeated death by rising from the dead. Death could not keep Him in the tomb — He is alive forever!",
+      "correctIndex": 0,
+      "difficulty": "hard",
+      "hint": "It's about how we live every day.",
+      "explanation": "Jesus wants His disciples to follow His teachings with their whole hearts and whole lives — not just say the right things.",
       "format": "multiple-choice",
       "category": "understanding"
     },
     {
       "id": "q27",
-      "text": "Fill in the blank: Because Jesus is alive, we can be God's _____ forever.",
+      "text": "Fill in the blank: The good news about Jesus is for _____.",
       "options": [
-        "servants",
-        "students",
-        "friends",
-        "neighbors"
+        "only adults",
+        "only one country",
+        "the whole world",
+        "only pastors"
       ],
       "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "The lesson talks about a special relationship with God.",
-      "explanation": "The lesson teaches that when we follow Jesus, we become God's forever friends. Jesus makes that friendship possible.",
+      "difficulty": "medium",
+      "hint": "Jesus said 'all nations.'",
+      "explanation": "Jesus told His followers to make disciples of ALL nations — the good news is meant to be spread all around the world.",
       "format": "fill-blank",
       "category": "understanding"
     },
     {
       "id": "q28",
-      "text": "True or False: The joy we get from Easter is only for Easter Sunday.",
+      "text": "What is one way you can share the good news with your family this week?",
       "options": [
-        "True — joy is only for special holidays",
-        "True — Easter joy fades after the weekend",
-        "False — we can have joy every single day because Jesus is alive",
-        "False — joy is only for grown-ups"
+        "Say nothing",
+        "Pray together or tell them something you learned about Jesus",
+        "Hide from them",
+        "Keep it to yourself"
       ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Think about how long Jesus stays alive.",
-      "explanation": "Because Jesus is alive forever, we can have joy not just on Easter but every single day!",
-      "format": "true-false",
-      "category": "understanding"
+      "correctIndex": 1,
+      "difficulty": "medium",
+      "hint": "Home is a great place to start.",
+      "explanation": "Your home is a place where you can show kindness, forgiveness, and love like Jesus — and tell your family about Him.",
+      "format": "multiple-choice",
+      "category": "application"
     },
     {
       "id": "q29",
-      "text": "Why was the name 'I am' so powerful when Jesus said it to the soldiers?",
+      "text": "Who gives us power and wisdom to share about Jesus?",
       "options": [
-        "It was a magic word",
-        "It was the same name God used with Moses at the burning bush",
-        "It was a secret code",
-        "It scared the soldiers because it was loud"
+        "The pastor",
+        "Our parents",
+        "The Holy Spirit",
+        "Our friends"
       ],
-      "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "Think about the Old Testament and a famous bush.",
-      "explanation": "'I am' is the name God used when He introduced Himself to Moses at the burning bush. By using it, Jesus was showing that He is God.",
+      "correctIndex": 2,
+      "difficulty": "medium",
+      "hint": "The third person of the Trinity.",
+      "explanation": "The Holy Spirit gives us power, courage, and wisdom to love others and tell them about Jesus.",
       "format": "multiple-choice",
       "category": "understanding"
     },
     {
       "id": "q30",
-      "text": "Even while Jesus was hurting on the cross, what did He do for His mother?",
+      "text": "True or False: You're too young to share about Jesus with others.",
       "options": [
-        "He asked her to leave",
-        "He cared for her by asking a disciple to look after her",
-        "He ignored her",
-        "He told her not to cry"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "Jesus always cared about the people He loved.",
-      "explanation": "Even while suffering on the cross, Jesus told the disciple He loved to take care of His mother Mary, showing His love and care.",
-      "format": "multiple-choice",
-      "category": "understanding"
-    },
-    {
-      "id": "q31",
-      "text": "How can you show joy this week because Jesus is alive?",
-      "options": [
-        "By being grumpy and keeping to yourself",
-        "By worshiping, singing to God, and telling Him you love Him",
-        "By ignoring your friends and family",
-        "By only thinking about yourself"
+        "True",
+        "False",
+        "True",
+        "False"
       ],
       "correctIndex": 1,
       "difficulty": "easy",
-      "hint": "The lesson says one of the ways we show joy is through worship.",
-      "explanation": "One of the ways we show our joy is by worshiping, singing to God, and telling Him how much we love Him — at church and every day!",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q32",
-      "text": "When you feel sad or scared, what can you remember from today's lesson?",
-      "options": [
-        "That bad things never happen",
-        "That you should hide your feelings",
-        "That Jesus is alive and His joy goes with you always",
-        "That you should just try harder"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Jesus' joy doesn't go away when hard times come.",
-      "explanation": "Even when we feel sad or scared, we can remember that Jesus is alive, He loves us, and His joy goes with us through everything.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q33",
-      "text": "Fill in the blank: Just like Mary told the disciples the good news, we can _____ others that Jesus is alive.",
-      "options": [
-        "tell",
-        "hide from",
-        "ignore",
-        "trick"
-      ],
-      "correctIndex": 0,
-      "difficulty": "easy",
-      "hint": "Mary ran to share the happiest news ever.",
-      "explanation": "Just like Mary ran to tell the disciples 'I have seen the Lord!' we can share the good news about Jesus with people around us.",
-      "format": "fill-blank",
-      "category": "application"
-    },
-    {
-      "id": "q34",
-      "text": "What should you do when you're at school or playing with friends and want to remember today's lesson?",
-      "options": [
-        "Forget about it until next Sunday",
-        "Choose joy because Jesus is alive and loves you",
-        "Only think about games and fun",
-        "Tell everyone they're wrong"
-      ],
-      "correctIndex": 1,
-      "difficulty": "easy",
-      "hint": "The memory verse says to 'always' be joyful.",
-      "explanation": "Philippians 4:4 reminds us to always be joyful because we belong to the Lord — at school, at home, and with friends.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q35",
-      "text": "How is the joy from knowing Jesus different from being happy about getting a present?",
-      "options": [
-        "It's exactly the same",
-        "Joy from Jesus lasts forever and doesn't depend on what happens to us",
-        "Getting presents is always better",
-        "There's no difference at all"
-      ],
-      "correctIndex": 1,
-      "difficulty": "hard",
-      "hint": "Think about how long Easter joy lasts versus how long a toy lasts.",
-      "explanation": "Happiness from presents fades, but joy from Jesus lasts forever because it's based on the truth that He is alive and loves us — no matter what.",
-      "format": "multiple-choice",
-      "category": "application"
-    },
-    {
-      "id": "q36",
-      "text": "True or False: You have to wait until you're a grown-up to be a forever friend of God.",
-      "options": [
-        "True — only adults can follow Jesus",
-        "True — kids are too young to understand",
-        "False — anyone, including kids, can follow Jesus and be God's friend now",
-        "False — nobody can really be God's friend"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "God's love and friendship have no age limit.",
-      "explanation": "The lesson teaches that when you decide to follow Jesus, you can be close with God right now. There's no age requirement to be God's forever friend!",
+      "hint": "Everyone who follows Jesus has this mission.",
+      "explanation": "No one is too young! Jesus gives this mission to everyone who follows Him — kids can share about Jesus too!",
       "format": "true-false",
       "category": "application"
     },
     {
-      "id": "q37",
-      "text": "What book of the Bible is most of today's Easter story from?",
+      "id": "q31",
+      "text": "Which of these is NOT part of the Great Commission?",
       "options": [
-        "Matthew",
-        "Mark",
-        "Luke",
-        "John"
+        "Go and make disciples",
+        "Baptize them",
+        "Teach them to obey Jesus",
+        "Keep it a secret"
       ],
       "correctIndex": 3,
       "difficulty": "medium",
-      "hint": "It's the fourth book about Jesus' life.",
-      "explanation": "Today's Easter story comes primarily from John chapters 18–20, with a small portion from Luke 23 for the Saturday events.",
+      "hint": "Jesus wanted the news to SPREAD.",
+      "explanation": "Jesus told us to go, baptize, and teach — never to keep the good news a secret!",
       "format": "multiple-choice",
       "category": "recall"
     },
     {
-      "id": "q38",
-      "text": "Who was Annas?",
+      "id": "q32",
+      "text": "How does showing kindness help others see Jesus?",
       "options": [
-        "A Roman soldier",
-        "The father-in-law of the high priest",
-        "One of Jesus' disciples",
-        "The gardener at the tomb"
+        "It doesn't",
+        "It reflects Jesus' love and character",
+        "It only helps if they ask",
+        "Only words matter"
       ],
       "correctIndex": 1,
       "difficulty": "hard",
-      "hint": "Jesus was taken to him first after being arrested.",
-      "explanation": "After arresting Jesus, the soldiers tied Him up and took Him to Annas, the father-in-law of the high priest.",
+      "hint": "When you act like Jesus, people see Him.",
+      "explanation": "When you're kind, honest, and forgiving like Jesus, the world gets to see what Jesus is like through you.",
       "format": "multiple-choice",
-      "category": "recall"
-    },
-    {
-      "id": "q39",
-      "text": "Fill in the blank: Friday was a hard day. Saturday was a quiet day. But Sunday changed _____.",
-      "options": [
-        "nothing",
-        "a few things",
-        "everything",
-        "the weather"
-      ],
-      "correctIndex": 2,
-      "difficulty": "easy",
-      "hint": "Sunday was the most amazing day ever.",
-      "explanation": "Sunday changed everything! Jesus rose from the dead, defeating sin and death, and giving us joy that lasts forever.",
-      "format": "fill-blank",
-      "category": "understanding"
-    },
-    {
-      "id": "q40",
-      "text": "Why couldn't Jesus' friends visit the tomb on Saturday?",
-      "options": [
-        "The soldiers wouldn't let them",
-        "It was the Sabbath, a day of rest",
-        "They forgot where the tomb was",
-        "It was too far away"
-      ],
-      "correctIndex": 1,
-      "difficulty": "medium",
-      "hint": "God had given His people a rule about this day.",
-      "explanation": "Since Saturday was the Sabbath, Jesus' friends had to rest, just as God had told His people to do. They couldn't visit the tomb.",
-      "format": "multiple-choice",
-      "category": "recall"
+      "category": "application"
     }
   ],
   "termPairs": [
     {
-      "term": "Passover",
-      "definition": "A special time when God's people remembered how He rescued them from Egypt",
+      "term": "Great Commission",
+      "definition": "Jesus' command to go and make disciples of all nations",
       "difficulty": "medium"
     },
     {
-      "term": "Judas",
-      "definition": "The disciple who brought soldiers to arrest Jesus",
-      "difficulty": "easy"
-    },
-    {
-      "term": "Pontius Pilate",
-      "definition": "The Roman governor who questioned Jesus and found Him not guilty",
+      "term": "Ascension",
+      "definition": "When Jesus left Earth and went up to heaven",
       "difficulty": "medium"
     },
     {
-      "term": "The Skull",
-      "definition": "The hill where Jesus was crucified",
+      "term": "Disciple",
+      "definition": "A follower of Jesus who learns from Him",
+      "difficulty": "easy"
+    },
+    {
+      "term": "Galilee",
+      "definition": "The region where the disciples met Jesus on a mountain",
       "difficulty": "medium"
     },
     {
-      "term": "Mary Magdalene",
-      "definition": "The first person to visit the empty tomb on Sunday morning",
+      "term": "Holy Spirit",
+      "definition": "God's Helper who lives in believers and gives courage",
       "difficulty": "easy"
     },
     {
-      "term": "It is finished",
-      "definition": "Jesus' last words on the cross, meaning He completed His mission",
-      "difficulty": "easy"
+      "term": "Authority",
+      "definition": "Power and rule — Jesus has it over heaven and earth",
+      "difficulty": "hard"
+    },
+    {
+      "term": "Baptize",
+      "definition": "To dip in water as a sign of following Jesus",
+      "difficulty": "medium"
+    },
+    {
+      "term": "Matthew 28:19",
+      "definition": "The verse where Jesus says 'go and make disciples of all nations'",
+      "difficulty": "hard"
     },
     {
       "term": "Philippians 4:4",
-      "definition": "The memory verse about always being joyful because you belong to the Lord",
+      "definition": "Our memory verse about always being joyful",
       "difficulty": "medium"
     },
     {
-      "term": "Peter and John",
-      "definition": "The two disciples who ran to the empty tomb after hearing Mary's news",
-      "difficulty": "medium"
-    },
-    {
-      "term": "I am",
-      "definition": "The name God used with Moses that Jesus used to show He is God",
+      "term": "Joy",
+      "definition": "A deep gladness from knowing Jesus that stays even when things are hard",
       "difficulty": "hard"
     },
     {
-      "term": "Sabbath",
-      "definition": "The day of rest when Jesus' friends could not visit the tomb",
+      "term": "Forty Days",
+      "definition": "The time Jesus spent with His disciples after Easter",
       "difficulty": "medium"
     },
     {
-      "term": "Crucified",
-      "definition": "Put to death by being nailed to a wooden cross",
+      "term": "Trinity",
+      "definition": "The Father, the Son, and the Holy Spirit — one God in three persons",
       "difficulty": "hard"
     },
     {
-      "term": "Tomb",
-      "definition": "The place where Jesus' body was laid after He died, sealed with a large stone",
+      "term": "Good News",
+      "definition": "The message that Jesus died and rose to rescue us",
       "difficulty": "easy"
     }
   ],
   "keyWords": [
     {
-      "word": "EASTER",
-      "hint": "The holiday that celebrates Jesus rising from the dead",
-      "difficulty": "easy"
-    },
-    {
-      "word": "JOY",
-      "hint": "A deep happiness that lasts because Jesus is alive",
-      "difficulty": "easy"
-    },
-    {
-      "word": "CRUCIFIED",
-      "hint": "What happened to Jesus on the cross on Friday",
-      "difficulty": "medium"
-    },
-    {
-      "word": "RISEN",
-      "hint": "Jesus came back to life on Sunday morning",
-      "difficulty": "easy"
-    },
-    {
-      "word": "PASSOVER",
-      "hint": "The special celebration Jesus and His friends were having in Jerusalem",
-      "difficulty": "medium"
-    },
-    {
-      "word": "JUDAS",
-      "hint": "The disciple who betrayed Jesus and brought soldiers to arrest Him",
-      "difficulty": "medium"
-    },
-    {
-      "word": "PILATE",
-      "hint": "The Roman governor who questioned Jesus",
-      "difficulty": "medium"
-    },
-    {
-      "word": "TOMB",
-      "hint": "The place where Jesus was buried, sealed with a big stone",
-      "difficulty": "easy"
-    },
-    {
-      "word": "SABBATH",
-      "hint": "The day of rest between Friday and Sunday",
-      "difficulty": "medium"
-    },
-    {
-      "word": "MAGDALENE",
-      "hint": "Mary's last name — she was the first to see the risen Jesus",
+      "word": "COMMISSION",
+      "hint": "The 'Great ___' — Jesus' big mission for His followers",
       "difficulty": "hard"
     },
     {
-      "word": "JERUSALEM",
-      "hint": "The city where Jesus was arrested and crucified",
+      "word": "ASCENSION",
+      "hint": "When Jesus went up to heaven",
+      "difficulty": "hard"
+    },
+    {
+      "word": "DISCIPLES",
+      "hint": "Followers of Jesus who learn from Him",
       "difficulty": "medium"
     },
     {
-      "word": "PHILIPPIANS",
-      "hint": "The book of the Bible where today's memory verse is found",
-      "difficulty": "hard"
+      "word": "GALILEE",
+      "hint": "The region where Jesus met His disciples on a mountain",
+      "difficulty": "medium"
     },
     {
-      "word": "RESURRECTION",
-      "hint": "The word that means coming back to life after dying",
-      "difficulty": "hard"
-    },
-    {
-      "word": "ANGELS",
-      "hint": "Two of these dressed in white appeared to Mary at the empty tomb",
+      "word": "MOUNTAIN",
+      "hint": "The high place where the disciples met Jesus",
       "difficulty": "easy"
+    },
+    {
+      "word": "NATIONS",
+      "hint": "Jesus said to make disciples of all ___",
+      "difficulty": "medium"
+    },
+    {
+      "word": "AUTHORITY",
+      "hint": "Power and rule — Jesus has all of it",
+      "difficulty": "hard"
+    },
+    {
+      "word": "BAPTIZE",
+      "hint": "To dip in water as a sign of following Jesus",
+      "difficulty": "medium"
+    },
+    {
+      "word": "JOYFUL",
+      "hint": "How we should always be because we belong to the Lord",
+      "difficulty": "easy"
+    },
+    {
+      "word": "HOLY",
+      "hint": "The ___ Spirit is God's Helper in us",
+      "difficulty": "easy"
+    },
+    {
+      "word": "SPIRIT",
+      "hint": "The Holy ___ gives us courage and wisdom",
+      "difficulty": "easy"
+    },
+    {
+      "word": "WORSHIP",
+      "hint": "What the disciples did when they saw Jesus alive",
+      "difficulty": "medium"
+    },
+    {
+      "word": "MATTHEW",
+      "hint": "The book of the Bible where the Great Commission is found",
+      "difficulty": "medium"
+    },
+    {
+      "word": "JESUS",
+      "hint": "The Son of God who gave us the Great Commission",
+      "difficulty": "easy"
+    },
+    {
+      "word": "COURAGE",
+      "hint": "What the Holy Spirit gives us when we feel nervous",
+      "difficulty": "medium"
     }
   ],
   "story": {
-    "summary": "During Passover in Jerusalem, Jesus was arrested, tried, and crucified on Friday even though He had done nothing wrong. His friends were heartbroken. On Saturday they waited in sadness. But on Sunday morning, Mary Magdalene found the tomb empty — Jesus had risen from the dead! He appeared to Mary and she ran to tell the disciples the joyful news: Jesus is alive! Because Jesus defeated death, we can have joy that lasts forever.",
+    "summary": "After Jesus rose from the dead, He spent forty days with His disciples. One day, He told them to meet Him on a mountain in Galilee. When they saw Him alive, they worshiped Him — though some still had doubts. Jesus declared that all authority in heaven and earth had been given to Him, and He gave them the Great Commission: go and make disciples of all nations, baptizing them in the name of the Father, Son, and Holy Spirit, and teaching them to obey everything Jesus commanded. He promised, 'I am always with you.' Then Jesus ascended into heaven to be with God the Father. Today, followers of Jesus continue the mission — sharing the good news with their words and their lives, empowered by the Holy Spirit.",
     "scenes": [
       {
-        "title": "The Arrest in the Garden",
-        "description": "After celebrating Passover and praying in a quiet garden, Jesus was arrested. Judas brought soldiers with torches and weapons. When Jesus said 'I am he,' the soldiers fell down. But Jesus allowed them to arrest Him because God had a plan to save people through Him.",
+        "title": "Meeting on the Mountain",
+        "description": "After Easter, Jesus spent forty days with His disciples. He told them to meet Him on a mountain in Galilee. When they saw Him alive, they worshiped Him — but some still had doubts.",
         "questionIds": [
           "q1",
-          "q2",
-          "q3",
           "q4",
-          "q22"
+          "q5",
+          "q7"
         ]
       },
       {
-        "title": "The Trial and the Cross",
-        "description": "Jesus was taken to Annas and then to Pontius Pilate. Even though Pilate found no reason to punish Jesus, the crowd shouted for Him to be crucified. Jesus was nailed to a cross on a hill called the Skull. He cared for His mother even while suffering, and His last words were 'It is finished.'",
+        "title": "All Authority Given",
+        "description": "Jesus came to His disciples and declared, 'All authority in heaven and on earth has been given to me.' He was showing them that He is King over everything.",
         "questionIds": [
-          "q5",
+          "q3",
+          "q18",
+          "q12"
+        ]
+      },
+      {
+        "title": "The Great Commission",
+        "description": "Jesus gave His followers a mission: 'Go and make disciples of all nations. Baptize them in the name of the Father and of the Son and of the Holy Spirit. Teach them to obey everything I have commanded you.'",
+        "questionIds": [
+          "q2",
           "q6",
-          "q7",
           "q8",
           "q9",
-          "q23",
-          "q25",
-          "q29",
-          "q30",
-          "q38"
+          "q26",
+          "q31"
         ]
       },
       {
-        "title": "The Quiet Saturday",
-        "description": "After Jesus died, His friends wrapped His body and placed it in a tomb sealed with a large stone. Saturday was the Sabbath so they could not visit. They waited in sadness, not understanding that God was still working and that Sunday was coming.",
+        "title": "The Promise and the Ascension",
+        "description": "Jesus promised His followers, 'I am always with you.' Then He ascended to heaven to be with God. The Holy Spirit would come to give them power to share the good news.",
         "questionIds": [
           "q10",
+          "q15",
           "q24",
-          "q40"
+          "q25",
+          "q29"
         ]
       },
       {
-        "title": "Sunday — He Is Alive!",
-        "description": "Early Sunday morning, Mary Magdalene found the stone rolled away and the tomb empty. Peter and John ran to see. Mary stayed crying until Jesus appeared to her. When He said her name, she recognized Him. She ran to the disciples shouting, 'I have seen the Lord!' Jesus is alive and we can have joy forever!",
+        "title": "Our Mission Today",
+        "description": "The good news about Jesus is for the whole world. We share it with our words and the way we live — showing kindness, forgiveness, and love wherever we go.",
         "questionIds": [
           "q11",
-          "q12",
           "q13",
           "q14",
-          "q15",
           "q16",
           "q17",
-          "q21",
-          "q26",
-          "q39"
-        ]
-      },
-      {
-        "title": "Joy That Lasts Forever",
-        "description": "Because Jesus rose from the dead, we can be God's forever friends. This joy isn't just for Easter — it's for every single day. Philippians 4:4 reminds us to always be joyful because we belong to the Lord. We can share this good news with everyone around us!",
-        "questionIds": [
-          "q18",
           "q19",
           "q20",
+          "q21",
+          "q22",
+          "q23",
           "q27",
           "q28",
-          "q31",
-          "q32",
-          "q33",
-          "q34",
-          "q35",
-          "q36"
+          "q30",
+          "q32"
         ]
       }
     ]
