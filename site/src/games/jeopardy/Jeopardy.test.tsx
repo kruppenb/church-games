@@ -301,11 +301,15 @@ import { playCorrect, playWrong } from "@/lib/sounds";
 
 beforeEach(() => {
   vi.useFakeTimers();
+  // Pin Daily Double to (col 4, row 4) so tests clicking the first $100 cell
+  // never land on it and trigger the 1500ms banner state.
+  vi.spyOn(Math, "random").mockReturnValue(0.999);
 });
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("Jeopardy", () => {
