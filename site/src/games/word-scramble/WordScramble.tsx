@@ -5,6 +5,7 @@ import { filterByDifficulty } from "@/lib/difficulty";
 import { playCorrect, playWrong, playCelebration } from "@/lib/sounds";
 import { saveScore } from "@/lib/score-store";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import type { KeyWord } from "@/types/lesson";
 
 type GameState = "intro" | "playing" | "celebration" | "complete";
@@ -93,6 +94,7 @@ export function WordScramble() {
   const [correctFlash, setCorrectFlash] = useState(false);
   const [wordsWithoutHint, setWordsWithoutHint] = useState(0);
   const [wordsFirstAttempt, setWordsFirstAttempt] = useState(0);
+  const [hsFlowDone, setHsFlowDone] = useState(false);
   // Animation states
   const [tileBounceIndex, setTileBounceIndex] = useState<number | null>(null);
   const [cascadeIndices, setCascadeIndices] = useState<number[]>([]);
@@ -156,6 +158,7 @@ export function WordScramble() {
     setCurrentWordIndex(0);
     setWordsWithoutHint(0);
     setWordsFirstAttempt(0);
+    setHsFlowDone(false);
   }
 
   // Place a letter tile into the next empty answer slot
@@ -465,6 +468,13 @@ export function WordScramble() {
 
     return (
       <div className={"scramble-container"}>
+        <HighScoreFlow
+          gameId="word-scramble"
+          gameName="Word Scramble"
+          score={score}
+          show={!hsFlowDone}
+          onDone={() => setHsFlowDone(true)}
+        />
         <div className="quiz-complete">
           <h1 className="quiz-complete-title">Great Job!</h1>
           <div className="quiz-complete-stars" aria-label={`${stars} stars`}>

@@ -1595,6 +1595,11 @@ export class MatchScene extends Phaser.Scene {
   // ─── Game Over ───────────────────────────────
 
   private handleGameOver(): void {
+    const overallStars = this.totalStars >= 20 ? 3 : this.totalStars >= 10 ? 2 : 1;
+    saveScore("kingdom-match", overallStars);
+    this.game.events.emit("game:finished", {
+      score: this.totalStars * 100 + this.levelsCompleted * 10,
+    });
     this.sceneState = "game-over";
 
     this.overlay.removeAll(true);
@@ -1691,6 +1696,9 @@ export class MatchScene extends Phaser.Scene {
   private showAllComplete(): void {
     const overallStars = this.totalStars >= 20 ? 3 : this.totalStars >= 10 ? 2 : 1;
     saveScore("kingdom-match", overallStars);
+    this.game.events.emit("game:finished", {
+      score: this.totalStars * 100 + this.levelsCompleted * 10,
+    });
     this.sceneState = "all-complete";
     this.overlay.removeAll(true);
 

@@ -1,12 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import { MatchScene } from "./scenes/MatchScene";
 
 export function KingdomMatch() {
   const { lesson, loading, error } = useLesson();
   const { difficulty } = useDifficulty();
+  const [finishedScore, setFinishedScore] = useState<number | null>(null);
 
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,11 @@ export function KingdomMatch() {
 
     gameRef.current = game;
 
+    const onFinished = (data: { score: number }) => setFinishedScore(data.score);
+    game.events.on("game:finished", onFinished);
+
     return () => {
+      game.events.off("game:finished", onFinished);
       game.destroy(true);
       gameRef.current = null;
     };
@@ -73,6 +79,13 @@ export function KingdomMatch() {
         &larr; Back to Games
       </a>
       <div ref={containerRef} className="phaser-container" />
+      <HighScoreFlow
+        gameId="kingdom-match"
+        gameName="Kingdom Match"
+        score={finishedScore ?? 0}
+        show={finishedScore !== null}
+        onDone={() => setFinishedScore(null)}
+      />
     </div>
   );
 }

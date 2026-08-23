@@ -56,6 +56,7 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 - `QuestionPool` class manages shuffled question consumption without repeats
 - Phaser games pass data via `game.registry.set("lesson", lesson)` etc.
 - Game logic is pure TS in `logic/` subdirs (no Phaser deps) for testability
+- **Weekly leaderboard** (arcade-style, no logins): `lib/leaderboard-store.ts` keeps per-game top-10 boards in localStorage, keyed by Sunday-start week (`YYYY-MM-DD`), auto-"resets" on week rollover, prunes to the newest 6 weeks. Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`
 
 ## Testing
 

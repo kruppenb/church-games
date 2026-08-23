@@ -6,6 +6,7 @@ import { saveScore } from "@/lib/score-store";
 import { Celebration } from "@/components/shared/Celebration";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
 import { Timer } from "@/components/shared/Timer";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import type { Question } from "@/types/lesson";
 import {
   createLadder,
@@ -138,6 +139,7 @@ export function Millionaire() {
   const [questionIndex, setQuestionIndex] = useState(0);
   // Track newly earned temple piece for construction animation
   const [newPieceLevel, setNewPieceLevel] = useState<number | null>(null);
+  const [hsFlowDone, setHsFlowDone] = useState(false);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Current question being displayed
@@ -368,6 +370,7 @@ export function Millionaire() {
     setShowHint(false);
     setShowCelebration(false);
     setNewPieceLevel(null);
+    setHsFlowDone(false);
   }
 
   // -----------------------------------------------------------------------
@@ -607,6 +610,13 @@ export function Millionaire() {
           text="Temple Complete!"
           stars={stars}
           onDismiss={() => setShowCelebration(false)}
+        />
+        <HighScoreFlow
+          gameId="millionaire"
+          gameName="Bible Millionaire"
+          score={getLevelValue(state.currentLevel, state.difficulty)}
+          show={!showCelebration && !hsFlowDone}
+          onDone={() => setHsFlowDone(true)}
         />
         <div className="millionaire-complete">
           <h1 className="millionaire-complete-title">{title}</h1>

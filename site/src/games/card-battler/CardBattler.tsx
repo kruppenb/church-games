@@ -7,6 +7,7 @@ import { saveScore } from "@/lib/score-store";
 import { AnswerFeedback } from "@/components/shared/AnswerFeedback";
 import { Celebration } from "@/components/shared/Celebration";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import type { Question } from "@/types/lesson";
 import {
   generateCards,
@@ -264,6 +265,7 @@ export function CardBattler() {
   const [remainingPool, setRemainingPool] = useState<Card[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const [stars, setStars] = useState(0);
+  const [hsFlowDone, setHsFlowDone] = useState(false);
 
   // Track whether current question is a bonus question
   const [isBonusQuestion, setIsBonusQuestion] = useState(false);
@@ -542,6 +544,7 @@ export function CardBattler() {
     setStars(0);
     setIsBonusQuestion(false);
     setClashWinner(null);
+    setHsFlowDone(false);
   }, []);
 
   // --- Loading / Error ---
@@ -689,6 +692,13 @@ export function CardBattler() {
           text="Victory!"
           stars={stars}
           onDismiss={() => setShowCelebration(false)}
+        />
+        <HighScoreFlow
+          gameId="scripture-cards"
+          gameName="Scripture Cards"
+          score={battleState.winner === "player" ? battleState.playerHp * 100 : 0}
+          show={!showCelebration && !hsFlowDone}
+          onDone={() => setHsFlowDone(true)}
         />
         <div className="card-complete">
           <h1 className={`card-complete-title ${titleClass}`}>{winnerText}</h1>

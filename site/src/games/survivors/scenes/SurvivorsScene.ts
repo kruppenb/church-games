@@ -2199,6 +2199,7 @@ export class SurvivorsScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const stars = calculateStars(this.state);
     saveScore("survivors", stars);
+    this.game.events.emit("game:finished", { score: this.state.score });
     const container = this.add.container(0, 0).setDepth(300);
 
     container.add(this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.6));

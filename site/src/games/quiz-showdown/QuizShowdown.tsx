@@ -10,6 +10,7 @@ import { Scoreboard } from "@/components/shared/Scoreboard";
 import { AnswerFeedback } from "@/components/shared/AnswerFeedback";
 import { ComboEffects } from "@/components/shared/ComboEffects";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import type { Question } from "@/types/lesson";
 
 type GameState = "intro" | "playing" | "feedback" | "complete";
@@ -40,6 +41,7 @@ function PodiumScreen({
   const [showStars, setShowStars] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [hsFlowDone, setHsFlowDone] = useState(false);
 
   useEffect(() => {
     if (score === 0) {
@@ -71,6 +73,13 @@ function PodiumScreen({
 
   return (
     <div className="quiz-container">
+      <HighScoreFlow
+        gameId="quiz-showdown"
+        gameName="Quiz Showdown"
+        score={score}
+        show={!hsFlowDone}
+        onDone={() => setHsFlowDone(true)}
+      />
       <div className="quiz-complete quiz-podium">
         {showConfetti && (
           <div className="quiz-confetti" aria-hidden="true">

@@ -854,6 +854,13 @@ export class MapScene extends Phaser.Scene {
 
   private showQuestComplete(): void {
     saveScore("promised-land", 3);
+    const lootCount = (
+      (this.registry.get("collectedLoot") as LootItem[] | undefined) ?? []
+    ).length;
+    const finalPartyHp = (this.registry.get("partyHp") as number | undefined) ?? 0;
+    this.game.events.emit("game:finished", {
+      score: lootCount * 100 + Math.max(0, finalPartyHp),
+    });
     const { width, height } = this.scale;
     const cy = height / 2;
 

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty } from "@/hooks/useDifficulty";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import { TeamSelectScene } from "./scenes/TeamSelectScene";
 import { MapScene } from "./scenes/MapScene";
 import { BattleScene } from "./scenes/BattleScene";
@@ -11,6 +12,7 @@ export function PartyRPG() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const { lesson, loading, error } = useLesson();
   const { difficulty } = useDifficulty();
+  const [finishedScore, setFinishedScore] = useState<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || !lesson) return;
@@ -44,7 +46,11 @@ export function PartyRPG() {
     game.registry.set("lesson", lesson);
     game.registry.set("difficulty", difficulty);
 
+    const onFinished = (data: { score: number }) => setFinishedScore(data.score);
+    game.events.on("game:finished", onFinished);
+
     return () => {
+      game.events.off("game:finished", onFinished);
       game.destroy(true);
       gameRef.current = null;
     };
@@ -85,6 +91,13 @@ export function PartyRPG() {
         &larr; Back
       </a>
       <div ref={containerRef} className="phaser-container" />
+      <HighScoreFlow
+        gameId="promised-land"
+        gameName="Promised Land"
+        score={finishedScore ?? 0}
+        show={finishedScore !== null}
+        onDone={() => setFinishedScore(null)}
+      />
     </div>
   );
 }

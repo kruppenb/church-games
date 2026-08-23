@@ -6,6 +6,7 @@ import { saveScore } from "@/lib/score-store";
 import { useComboStreak } from "@/hooks/useComboStreak";
 import { ComboEffects } from "@/components/shared/ComboEffects";
 import { VerseDisplay } from "@/components/shared/VerseDisplay";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import type { Question } from "@/types/lesson";
 
 interface JeopardyCell {
@@ -134,6 +135,7 @@ export function Jeopardy() {
   const [feedbackCorrect, setFeedbackCorrect] = useState(false);
   const [feedbackPoints, setFeedbackPoints] = useState(0);
   const { streak, streakJustBroke, recordAnswer, reset: resetStreak } = useComboStreak();
+  const [hsFlowDone, setHsFlowDone] = useState(false);
 
   // Board-to-question zoom: track clicked cell position
   const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
@@ -426,6 +428,13 @@ export function Jeopardy() {
 
     return (
       <div className="jeopardy-container">
+        <HighScoreFlow
+          gameId="jeopardy"
+          gameName="Jeopardy"
+          score={Math.max(...scores)}
+          show={!hsFlowDone}
+          onDone={() => setHsFlowDone(true)}
+        />
         <div className="quiz-complete">
           <h1 className="quiz-complete-title">
             {winner ?? "Great Job!"}
@@ -467,6 +476,7 @@ export function Jeopardy() {
               onClick={() => {
                 setGameState("intro");
                 setScores([0, 0]);
+                setHsFlowDone(false);
               }}
             >
               Play Again

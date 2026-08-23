@@ -2871,6 +2871,9 @@ export class TowerScene extends Phaser.Scene {
   // =========================================================================
 
   private showVictoryOverlay(): void {
+    this.game.events.emit("game:finished", {
+      score: this.gameState.wave * 1000 + this.gameState.villageHp * 10,
+    });
     this.overlayContainer?.destroy();
     this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);
@@ -2995,6 +2998,9 @@ export class TowerScene extends Phaser.Scene {
 
   private showDefeatOverlay(): void {
     saveScore("faith-fortress", calculateStars(this.gameState));
+    this.game.events.emit("game:finished", {
+      score: this.gameState.wave * 1000 + this.gameState.villageHp * 10,
+    });
     this.overlayContainer?.destroy();
     this.setGameElementsVisible(false);
     const container = this.add.container(0, 0);

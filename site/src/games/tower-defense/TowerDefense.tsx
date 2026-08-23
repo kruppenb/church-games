@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import Phaser from "phaser";
 import { useLesson } from "@/hooks/useLesson";
 import { useDifficulty, type Difficulty } from "@/hooks/useDifficulty";
+import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import { TowerScene } from "./scenes/TowerScene";
 
 export function TowerDefense() {
   const { lesson, loading, error } = useLesson();
   const { difficulty: contextDifficulty, setDifficulty } = useDifficulty();
   const [difficultyConfirmed, setDifficultyConfirmed] = useState(false);
+  const [finishedScore, setFinishedScore] = useState<number | null>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +46,11 @@ export function TowerDefense() {
 
     gameRef.current = game;
 
+    const onFinished = (data: { score: number }) => setFinishedScore(data.score);
+    game.events.on("game:finished", onFinished);
+
     return () => {
+      game.events.off("game:finished", onFinished);
       game.destroy(true);
       gameRef.current = null;
     };
@@ -141,6 +147,13 @@ export function TowerDefense() {
         &larr; Back to Games
       </a>
       <div ref={containerRef} className="phaser-container" />
+      <HighScoreFlow
+        gameId="faith-fortress"
+        gameName="Faith Fortress"
+        score={finishedScore ?? 0}
+        show={finishedScore !== null}
+        onDone={() => setFinishedScore(null)}
+      />
     </div>
   );
 }

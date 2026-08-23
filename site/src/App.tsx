@@ -16,6 +16,7 @@ const Survivors = lazy(() => import("./games/survivors"));
 const Jeopardy = lazy(() => import("./games/jeopardy"));
 const ScriptureCards = lazy(() => import("./games/card-battler"));
 const KingdomMatch = lazy(() => import("./games/kingdom-match"));
+const LeaderboardPage = lazy(() => import("./components/LeaderboardPage"));
 
 export function App() {
   return (
@@ -27,6 +28,14 @@ export function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/teacher/:token" element={<TeacherMode />} />
+            <Route
+              path="/leaderboard"
+              element={
+                <ErrorBoundary>
+                  <LeaderboardPage />
+                </ErrorBoundary>
+              }
+            />
             <Route
               path="/games/quiz"
               element={
