@@ -2,10 +2,16 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Phaser boot + full playthroughs regularly exceed the default 30s when
+  // all projects run in parallel locally; 60s keeps load-induced flakes out.
+  timeout: 60_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Locally, cap the browser count: the default (half the cores) floods the
+  // single dev server and starves lesson fetches / Phaser boots, making
+  // slow-loading tests fail at random.
+  workers: process.env.CI ? 1 : 6,
   reporter: "html",
   use: {
     baseURL: "http://localhost:5173",

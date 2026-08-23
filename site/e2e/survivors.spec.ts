@@ -116,9 +116,11 @@ test.describe("Survivors", () => {
   });
 
   test("back button returns to landing", async ({ page }) => {
-    // The survivors game uses adventure-container class
+    // The survivors game uses adventure-container class. The back button only
+    // renders once the lesson fetch resolves, which can take a while when the
+    // full suite runs in parallel — hence the generous timeout.
     const backBtn = page.locator(".adventure-back-btn");
-    await expect(backBtn).toBeVisible({ timeout: 5000 });
+    await expect(backBtn).toBeVisible({ timeout: 20000 });
     await backBtn.click();
     await expect(page.locator("text=Church Games")).toBeVisible({ timeout: 5000 });
   });

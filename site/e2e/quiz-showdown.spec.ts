@@ -18,9 +18,11 @@ test.describe("Quiz Showdown", () => {
     // Question should appear
     await expect(page.locator(".quiz-question-text")).toBeVisible({ timeout: 3000 });
 
-    // 4 answer buttons
+    // 4 answer buttons (true/false questions render only 2)
     const answerBtns = page.locator(".quiz-answer-btn");
-    await expect(answerBtns).toHaveCount(4);
+    await expect(answerBtns.first()).toBeVisible();
+    const answerCount = await answerBtns.count();
+    expect([2, 4]).toContain(answerCount);
 
     await page.screenshot({ path: "e2e/screenshots/quiz-question.png" });
   });
@@ -44,14 +46,20 @@ test.describe("Quiz Showdown", () => {
   });
 
   test("plays through to completion screen", async ({ page }) => {
+    // Full 14-question playthrough — needs far more than the default budget
+    // when the suite runs all projects in parallel.
+    test.setTimeout(120_000);
     await expect(page.locator("text=Quiz Showdown")).toBeVisible({ timeout: 5000 });
     await page.click("text=Ready? Let's Go!");
 
-    // Answer all questions (click first answer each time, then advance)
-    for (let i = 0; i < 50; i++) {
-      // Check if we're at the completion screen
-      const complete = page.locator(".quiz-complete-title");
-      if (await complete.isVisible().catch(() => false)) break;
+    // Answer all questions (click first answer each time, then advance).
+    // The completion screen is the podium (.quiz-podium-rank); when the
+    // score qualifies, the high-score initials overlay (.lb-overlay)
+    // appears above it first.
+    for (let i = 0; i < 80; i++) {
+      const overlayUp = await page.locator(".lb-overlay").isVisible().catch(() => false);
+      const podiumUp = await page.locator(".quiz-podium-rank").isVisible().catch(() => false);
+      if (overlayUp || podiumUp) break;
 
       // If there's a question, answer it
       const answerBtn = page.locator(".quiz-answer-btn").first();
@@ -69,8 +77,15 @@ test.describe("Quiz Showdown", () => {
       await page.waitForTimeout(300);
     }
 
-    // Should reach completion
-    await expect(page.locator(".quiz-complete-title")).toBeVisible({ timeout: 10000 });
+    // Dismiss the high-score flow if it appeared (fresh storage means any
+    // non-zero score qualifies): submit default initials, close the board.
+    if (await page.locator(".lb-overlay").isVisible().catch(() => false)) {
+      await page.keyboard.press("Enter");
+      await page.click("text=Awesome!");
+    }
+
+    // Should reach the completion podium
+    await expect(page.locator(".quiz-podium-rank")).toBeVisible({ timeout: 10000 });
     await expect(page.locator(".quiz-star")).toHaveCount(3); // 3 star slots
 
     await page.screenshot({ path: "e2e/screenshots/quiz-completion.png" });

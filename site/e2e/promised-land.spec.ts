@@ -68,7 +68,8 @@ test.describe("Promised Land Quest", () => {
   });
 
   test("back button returns to landing", async ({ page }) => {
-    await expect(page.locator(".rpg-back-btn")).toBeVisible({ timeout: 5000 });
+    // Rendered only after the lesson fetch resolves — slow under suite load
+    await expect(page.locator(".rpg-back-btn")).toBeVisible({ timeout: 20000 });
     await page.locator(".rpg-back-btn").click();
     await expect(page.locator("text=Church Games")).toBeVisible({ timeout: 5000 });
   });

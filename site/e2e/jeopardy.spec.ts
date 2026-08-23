@@ -74,6 +74,11 @@ test.describe("Jeopardy", () => {
     const answerBtn = page.locator(".quiz-answer-btn").first();
     await answerBtn.click();
 
+    // Correct/wrong feedback appears (its wrapper reuses
+    // .jeopardy-question-overlay) and waits for a tap to dismiss
+    await expect(page.locator(".jeopardy-feedback-panel")).toBeVisible({ timeout: 3000 });
+    await page.locator(".jeopardy-feedback-panel").click();
+
     // Question overlay should close
     await expect(page.locator(".jeopardy-question-overlay")).toHaveCount(0, { timeout: 5000 });
 
@@ -99,6 +104,9 @@ test.describe("Jeopardy", () => {
     await valueCells.first().click();
     await expect(page.locator(".jeopardy-question-overlay")).toBeVisible({ timeout: 3000 });
     await page.locator(".quiz-answer-btn").first().click();
+    // Dismiss the tap-to-continue feedback (same overlay wrapper class)
+    await expect(page.locator(".jeopardy-feedback-panel")).toBeVisible({ timeout: 3000 });
+    await page.locator(".jeopardy-feedback-panel").click();
     await expect(page.locator(".jeopardy-question-overlay")).toHaveCount(0, { timeout: 5000 });
 
     // The answered cell should have pointer-events: none (from CSS)

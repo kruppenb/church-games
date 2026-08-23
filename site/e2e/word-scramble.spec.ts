@@ -6,7 +6,8 @@ test.describe("Word Scramble", () => {
   });
 
   test("shows intro screen", async ({ page }) => {
-    await expect(page.locator("text=Word Scramble")).toBeVisible({ timeout: 5000 });
+    // Rendered only after the lesson fetch resolves — slow under suite load
+    await expect(page.locator("text=Word Scramble")).toBeVisible({ timeout: 20000 });
     await expect(page.locator("text=Start")).toBeVisible();
 
     await page.screenshot({ path: "e2e/screenshots/scramble-intro.png" });

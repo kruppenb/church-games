@@ -317,7 +317,9 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   gap: var(--space-md);
   justify-content: center;
-  flex-wrap: nowrap;
+  /* wrap: with nowrap + centering, overflow clips both edges and the
+     first/last cards become unreachable on narrow screens */
+  flex-wrap: wrap;
   align-items: stretch;
 }
 .more-games-row > * {

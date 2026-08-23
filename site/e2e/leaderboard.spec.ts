@@ -144,6 +144,9 @@ test.describe("Weekly Arcade Leaderboard", () => {
   test("quiz completion with qualifying score shows initials entry and records score", async ({
     page,
   }) => {
+    // Full 14-question playthrough — needs far more than the default budget
+    // when the suite runs all projects in parallel.
+    test.setTimeout(120_000);
     await clearLeaderboardStorage(page);
 
     // Build a question-text -> correct-answer-text map from the live lesson

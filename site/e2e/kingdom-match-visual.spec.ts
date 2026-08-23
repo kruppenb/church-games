@@ -53,7 +53,9 @@ function allSwaps6x6(): [number, number, number, number][] {
 }
 
 test.describe("Kingdom Match Visual Validation", () => {
-  test.setTimeout(180000);
+  // 90 coordinate swaps with ~1s of waits each take ~3 min alone; parallel
+  // full-suite runs need the extra headroom.
+  test.setTimeout(360000);
 
   test("clean playthrough - all game states", async ({ page }) => {
     const swaps = allSwaps6x6();
