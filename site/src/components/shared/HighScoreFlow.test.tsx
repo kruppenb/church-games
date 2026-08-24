@@ -6,14 +6,64 @@ import {
   fireEvent,
   act,
   cleanup,
+  waitFor,
 } from "@testing-library/react";
 import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import { LeaderboardTable } from "@/components/shared/LeaderboardTable";
 import { DifficultyProvider } from "@/hooks/useDifficulty";
-import { getBoard, getWeekKey, submitScore } from "@/lib/leaderboard-store";
+import {
+  getBoard,
+  getWeekKey,
+  submitScore,
+  type LeaderboardEntry,
+} from "@/lib/leaderboard-local";
+
+const BASE = "https://lb.test/api";
 
 function renderFlow(ui: ReactNode) {
   return render(<DifficultyProvider>{ui}</DifficultyProvider>);
+}
+
+function entry(
+  initials: string,
+  score: number,
+  ts: number,
+  difficulty: LeaderboardEntry["difficulty"] = "big-kids",
+): LeaderboardEntry {
+  return { initials, score, difficulty, ts };
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as unknown as Response;
+}
+
+/** A full 10-entry board with scores 1000, 900, … 100. */
+function fullBoard(): LeaderboardEntry[] {
+  return Array.from({ length: 10 }, (_, i) => entry("AAA", 1000 - i * 100, 1000 + i));
+}
+
+/** Turn on shared mode; every request is answered by `routes`. */
+function configureShared(
+  routes: (url: string, init: RequestInit) => Response | Promise<Response> | undefined,
+) {
+  vi.stubEnv("VITE_LEADERBOARD_API", BASE);
+  const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
+    const res = routes(url, init);
+    if (!res) throw new Error(`Unrouted request: ${url}`);
+    return res;
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+async function typeInitials(keys: string[]) {
+  await act(async () => {
+    for (const key of keys) fireEvent.keyDown(window, { key });
+  });
 }
 
 beforeEach(() => {
@@ -22,10 +72,12 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("HighScoreFlow", () => {
-  it("renders nothing and calls onDone for a non-qualifying score", () => {
+  it("renders nothing and calls onDone for a non-qualifying score", async () => {
     const onDone = vi.fn();
     const { container } = renderFlow(
       <HighScoreFlow
@@ -36,11 +88,11 @@ describe("HighScoreFlow", () => {
         onDone={onDone}
       />,
     );
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
     expect(container.querySelector(".lb-overlay")).toBeNull();
-    expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the picker for a qualifying score", () => {
+  it("shows the picker for a qualifying score", async () => {
     renderFlow(
       <HighScoreFlow
         gameId="survivors"
@@ -50,12 +102,12 @@ describe("HighScoreFlow", () => {
         onDone={() => {}}
       />,
     );
-    expect(screen.getByText("HIGH SCORE!")).toBeTruthy();
+    expect(await screen.findByText("HIGH SCORE!")).toBeTruthy();
     expect(screen.getByText("Survivors")).toBeTruthy();
     expect(screen.getByText("1,500")).toBeTruthy();
   });
 
-  it("types initials from the keyboard and submits on Enter", () => {
+  it("types initials from the keyboard and submits on Enter", async () => {
     const onDone = vi.fn();
     renderFlow(
       <HighScoreFlow
@@ -66,21 +118,16 @@ describe("HighScoreFlow", () => {
         onDone={onDone}
       />,
     );
+    await screen.findByText("HIGH SCORE!");
 
-    act(() => {
-      fireEvent.keyDown(window, { key: "b" });
-      fireEvent.keyDown(window, { key: "o" });
-      fireEvent.keyDown(window, { key: "b" });
-    });
+    await typeInitials(["b", "o", "b"]);
     expect(screen.getByLabelText("Slot 1, letter B")).toBeTruthy();
     expect(screen.getByLabelText("Slot 2, letter O")).toBeTruthy();
     expect(screen.getByLabelText("Slot 3, letter B")).toBeTruthy();
 
-    act(() => {
-      fireEvent.keyDown(window, { key: "Enter" });
-    });
+    await typeInitials(["Enter"]);
 
-    expect(screen.getByText("RANK #1")).toBeTruthy();
+    expect(await screen.findByText("RANK #1")).toBeTruthy();
     expect(getBoard(getWeekKey(), "survivors")[0].initials).toBe("BOB");
     expect(document.querySelector(".lb-row-new")).toBeTruthy();
 
@@ -88,7 +135,7 @@ describe("HighScoreFlow", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it("moves back a slot on Backspace", () => {
+  it("moves back a slot on Backspace", async () => {
     renderFlow(
       <HighScoreFlow
         gameId="survivors"
@@ -98,15 +145,12 @@ describe("HighScoreFlow", () => {
         onDone={() => {}}
       />,
     );
-    act(() => {
-      fireEvent.keyDown(window, { key: "x" });
-      fireEvent.keyDown(window, { key: "Backspace" });
-      fireEvent.keyDown(window, { key: "y" });
-    });
+    await screen.findByText("HIGH SCORE!");
+    await typeInitials(["x", "Backspace", "y"]);
     expect(screen.getByLabelText("Slot 1, letter Y")).toBeTruthy();
   });
 
-  it("shakes and does not submit blocked initials", () => {
+  it("shakes and does not submit blocked initials", async () => {
     renderFlow(
       <HighScoreFlow
         gameId="survivors"
@@ -116,18 +160,14 @@ describe("HighScoreFlow", () => {
         onDone={() => {}}
       />,
     );
-    act(() => {
-      fireEvent.keyDown(window, { key: "a" });
-      fireEvent.keyDown(window, { key: "s" });
-      fireEvent.keyDown(window, { key: "s" });
-      fireEvent.keyDown(window, { key: "Enter" });
-    });
+    await screen.findByText("HIGH SCORE!");
+    await typeInitials(["a", "s", "s", "Enter"]);
     expect(document.querySelector(".lb-shake")).toBeTruthy();
     expect(screen.queryByText(/RANK/)).toBeNull();
     expect(getBoard(getWeekKey(), "survivors")).toHaveLength(0);
   });
 
-  it("cycles letters with the arrow buttons and wraps Z to A", () => {
+  it("cycles letters with the arrow buttons and wraps Z to A", async () => {
     submitScore("jeopardy", {
       initials: "ZZZ",
       score: 10,
@@ -143,7 +183,7 @@ describe("HighScoreFlow", () => {
       />,
     );
     // Prefilled from the last initials used on this device
-    expect(screen.getByLabelText("Slot 1, letter Z")).toBeTruthy();
+    expect(await screen.findByLabelText("Slot 1, letter Z")).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText("Next letter, slot 1"));
     expect(screen.getByLabelText("Slot 1, letter A")).toBeTruthy();
@@ -152,7 +192,7 @@ describe("HighScoreFlow", () => {
     expect(screen.getByLabelText("Slot 1, letter Z")).toBeTruthy();
   });
 
-  it("closes without calling onDone when the parent hides it", () => {
+  it("closes without calling onDone when the parent hides it", async () => {
     const onDone = vi.fn();
     const { rerender } = renderFlow(
       <HighScoreFlow
@@ -163,7 +203,7 @@ describe("HighScoreFlow", () => {
         onDone={onDone}
       />,
     );
-    expect(screen.getByText("HIGH SCORE!")).toBeTruthy();
+    expect(await screen.findByText("HIGH SCORE!")).toBeTruthy();
 
     rerender(
       <DifficultyProvider>
@@ -179,30 +219,175 @@ describe("HighScoreFlow", () => {
     expect(screen.queryByText("HIGH SCORE!")).toBeNull();
     expect(onDone).not.toHaveBeenCalled();
   });
+
+  it("ignores a qualify result that lands after the parent hid the flow", async () => {
+    const onDone = vi.fn();
+    const { rerender } = renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={0}
+        show
+        onDone={onDone}
+      />,
+    );
+    // Hide before the (async) non-qualifying answer comes back.
+    rerender(
+      <DifficultyProvider>
+        <HighScoreFlow
+          gameId="survivors"
+          gameName="Survivors"
+          score={0}
+          show={false}
+          onDone={onDone}
+        />
+      </DifficultyProvider>,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onDone).not.toHaveBeenCalled();
+  });
+});
+
+describe("HighScoreFlow — shared mode", () => {
+  it("checks the server board, shows Saving… during the POST, then the server board", async () => {
+    let resolvePost: ((res: Response) => void) | undefined;
+    const serverBoard = [entry("ZZT", 900, 555000), entry("OLD", 400, 111000)];
+    const fetchMock = configureShared((url, init) => {
+      if (init.method === "POST" && url.endsWith("/score/survivors")) {
+        return new Promise<Response>((resolve) => {
+          resolvePost = resolve;
+        });
+      }
+      if (url.endsWith("/board/current")) {
+        return jsonResponse({ weekKey: "2026-08-23", boards: {} });
+      }
+      return undefined;
+    });
+
+    renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={900}
+        show
+        onDone={() => {}}
+      />,
+    );
+
+    await screen.findByText("HIGH SCORE!");
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).endsWith("/board/current")),
+    ).toBe(true);
+
+    await typeInitials(["z", "z", "t", "Enter"]);
+
+    // The POST is still in flight: the OK button says Saving… and is disabled.
+    const ok = await screen.findByText("Saving…");
+    expect((ok as HTMLButtonElement).disabled).toBe(true);
+    expect(ok.getAttribute("aria-busy")).toBe("true");
+    expect(
+      (screen.getByLabelText("Next letter, slot 1") as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    await act(async () => {
+      resolvePost?.(
+        jsonResponse({ rank: 1, weekKey: "2026-08-23", board: serverBoard }),
+      );
+    });
+
+    expect(await screen.findByText("RANK #1")).toBeTruthy();
+    const rows = document.querySelectorAll(".lb-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain("ZZT");
+    expect(rows[0].className).toContain("lb-row-new");
+    expect(rows[1].className).not.toContain("lb-row-new");
+    // Shared mode never writes the board to this device.
+    expect(getBoard(getWeekKey(), "survivors")).toEqual([]);
+    expect(document.querySelector(".lb-offline")).toBeNull();
+
+    const posted = fetchMock.mock.calls
+      .filter(([, init]) => (init as RequestInit | undefined)?.method === "POST")
+      .map(([, init]) => JSON.parse(String((init as RequestInit).body)));
+    expect(posted).toEqual([
+      { initials: "ZZT", score: 900, difficulty: "little-kids" },
+    ]);
+  });
+
+  it("closes without an overlay when the server board says the score does not qualify", async () => {
+    const onDone = vi.fn();
+    configureShared((url) =>
+      url.endsWith("/board/current")
+        ? jsonResponse({
+            weekKey: "2026-08-23",
+            boards: { survivors: fullBoard() },
+          })
+        : undefined,
+    );
+
+    const { container } = renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={50}
+        show
+        onDone={onDone}
+      />,
+    );
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(container.querySelector(".lb-overlay")).toBeNull();
+  });
+
+  it("shows the offline note and keeps the score on this device when the API is down", async () => {
+    vi.stubEnv("VITE_LEADERBOARD_API", BASE);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+
+    renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={750}
+        show
+        onDone={() => {}}
+      />,
+    );
+
+    await screen.findByText("HIGH SCORE!");
+    await typeInitials(["a", "m", "y", "Enter"]);
+
+    expect(await screen.findByText("RANK #1")).toBeTruthy();
+    const note = document.querySelector(".lb-offline");
+    expect(note).toBeTruthy();
+    expect(note?.textContent).toBe("Offline — score saved on this device");
+    expect(getBoard(getWeekKey(), "survivors")[0]).toMatchObject({
+      initials: "AMY",
+      score: 750,
+    });
+  });
 });
 
 describe("LeaderboardTable", () => {
   it("renders the empty state", () => {
-    const { container } = render(
-      <LeaderboardTable gameId="survivors" weekKey={getWeekKey()} />,
-    );
+    const { container } = render(<LeaderboardTable entries={[]} />);
     expect(container.querySelector(".lb-empty")).toBeTruthy();
     expect(screen.getByText("No scores yet — be the first!")).toBeTruthy();
   });
 
   it("renders ranked rows with medals, difficulty and formatted scores", () => {
-    submitScore("survivors", {
-      initials: "AMY",
-      score: 1200,
-      difficulty: "little-kids",
-    });
-    submitScore("survivors", {
-      initials: "BEN",
-      score: 25000,
-      difficulty: "big-kids",
-    });
     const { container } = render(
-      <LeaderboardTable gameId="survivors" weekKey={getWeekKey()} />,
+      <LeaderboardTable
+        entries={[
+          entry("BEN", 25000, 200, "big-kids"),
+          entry("AMY", 1200, 100, "little-kids"),
+        ]}
+      />,
     );
     const rows = container.querySelectorAll(".lb-row");
     expect(rows).toHaveLength(2);
@@ -216,19 +401,14 @@ describe("LeaderboardTable", () => {
   });
 
   it("highlights the row matching highlightTs", () => {
-    submitScore("survivors", {
-      initials: "AMY",
-      score: 100,
-      difficulty: "big-kids",
-    });
-    const ts = getBoard(getWeekKey(), "survivors")[0].ts;
     const { container } = render(
       <LeaderboardTable
-        gameId="survivors"
-        weekKey={getWeekKey()}
-        highlightTs={ts}
+        entries={[entry("AMY", 100, 4242), entry("BEN", 50, 4243)]}
+        highlightTs={4242}
       />,
     );
-    expect(container.querySelectorAll(".lb-row-new")).toHaveLength(1);
+    const highlighted = container.querySelectorAll(".lb-row-new");
+    expect(highlighted).toHaveLength(1);
+    expect(highlighted[0].textContent).toContain("AMY");
   });
 });

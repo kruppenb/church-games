@@ -1,9 +1,8 @@
-import { useMemo } from "react";
-import { getBoard } from "@/lib/leaderboard-store";
+import type { LeaderboardEntry } from "@/lib/leaderboard-store";
 
 interface LeaderboardTableProps {
-  gameId: string;
-  weekKey: string;
+  /** Already sorted best-first and trimmed by whoever loaded it. */
+  entries: LeaderboardEntry[];
   /** Entry with this `ts` gets the pulsing "just landed" highlight. */
   highlightTs?: number;
 }
@@ -16,16 +15,9 @@ const DIFFICULTY_LABEL: Record<string, string> = {
 };
 
 export function LeaderboardTable({
-  gameId,
-  weekKey,
+  entries,
   highlightTs,
 }: LeaderboardTableProps) {
-  // highlightTs is a dep so a freshly submitted entry re-reads storage.
-  const entries = useMemo(
-    () => getBoard(weekKey, gameId),
-    [gameId, weekKey, highlightTs],
-  );
-
   if (entries.length === 0) {
     return <div className="lb-empty">No scores yet — be the first!</div>;
   }

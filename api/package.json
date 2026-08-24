@@ -1,0 +1,24 @@
+{
+  "name": "church-games-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared weekly arcade leaderboard API (Azure Functions v4 + Table Storage)",
+  "main": "dist/functions/*.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "prestart": "npm run build",
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/data-tables": "^13.3.0",
+    "@azure/functions": "^4.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.0.0"
+  }
+}

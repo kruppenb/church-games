@@ -3,6 +3,9 @@ dist/
 .env
 .env.local
 
+# Azure Functions local config (contains dev secrets)
+local.settings.json
+
 # Drafts are reviewed locally, not committed
 drafts/*.json
 !drafts/.gitkeep

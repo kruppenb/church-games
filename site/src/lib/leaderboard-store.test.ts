@@ -4,26 +4,26 @@ import {
   WEEKS_TO_KEEP,
   clearLeaderboard,
   formatWeekLabel,
-  getBoard,
   getLastInitials,
+  getWeekBoards,
   getWeekKey,
   isAllowedInitials,
+  isSharedLeaderboardConfigured,
   listWeeks,
   qualifies,
   sanitizeInitials,
   submitScore,
-  type LeaderboardEntry,
 } from "@/lib/leaderboard-store";
+import {
+  getBoard as localGetBoard,
+  type LeaderboardEntry,
+} from "@/lib/leaderboard-local";
 
 const STORAGE_KEY = "church-games:leaderboard";
-const LAST_INITIALS_KEY = "church-games:last-initials";
+const BASE = "https://example.test/api";
+const WEEK = "2026-08-23";
 
-interface SeedShape {
-  version: 1;
-  weeks: Record<string, Record<string, LeaderboardEntry[]>>;
-}
-
-function seed(weeks: SeedShape["weeks"]): void {
+function seed(weeks: Record<string, Record<string, LeaderboardEntry[]>>): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, weeks }));
 }
 
@@ -43,553 +43,399 @@ function fullBoard(): LeaderboardEntry[] {
   );
 }
 
+function jsonResponse(body: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  } as unknown as Response;
+}
+
+/** Route the mocked fetch by URL; unmatched routes 404. */
+function routeFetch(
+  routes: (url: string, init: RequestInit) => Response | undefined,
+) {
+  const fn = vi.fn(async (url: string, init: RequestInit = {}) => {
+    const res = routes(url, init);
+    if (!res) throw new Error(`Unrouted request: ${url}`);
+    return res;
+  });
+  vi.stubGlobal("fetch", fn);
+  return fn;
+}
+
+function configure(): void {
+  vi.stubEnv("VITE_LEADERBOARD_API", BASE);
+}
+
+function postBodies(fn: ReturnType<typeof vi.fn>): unknown[] {
+  return fn.mock.calls
+    .filter((c) => (c[1] as RequestInit | undefined)?.method === "POST")
+    .map((c) => JSON.parse(String((c[1] as RequestInit).body)));
+}
+
 beforeEach(() => {
   localStorage.clear();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 7, 26, 10, 0, 0)); // week 2026-08-23
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
-describe("getWeekKey", () => {
-  it("maps a Sunday to itself", () => {
-    // 2026-08-23 is a Sunday
-    expect(getWeekKey(new Date(2026, 7, 23))).toBe("2026-08-23");
-  });
-
-  it("maps a Saturday back 6 days to the preceding Sunday", () => {
-    // 2026-08-29 is a Saturday
-    expect(getWeekKey(new Date(2026, 7, 29))).toBe("2026-08-23");
-  });
-
-  it("maps every weekday of a week onto the same Sunday key", () => {
-    const keys = [23, 24, 25, 26, 27, 28, 29].map((day) =>
-      getWeekKey(new Date(2026, 7, day)),
-    );
-    expect(new Set(keys).size).toBe(1);
-    expect(keys[0]).toBe("2026-08-23");
-  });
-
-  it("ignores time of day (local midnight and 23:59 agree)", () => {
-    expect(getWeekKey(new Date(2026, 7, 26, 0, 0, 0))).toBe("2026-08-23");
-    expect(getWeekKey(new Date(2026, 7, 26, 23, 59, 59))).toBe("2026-08-23");
-  });
-
-  it("crosses a month boundary backwards", () => {
-    // Tue 2026-09-01 -> Sun 2026-08-30
-    expect(getWeekKey(new Date(2026, 8, 1))).toBe("2026-08-30");
-  });
-
-  it("crosses a year boundary backwards", () => {
-    // Fri 2027-01-01 -> Sun 2026-12-27
-    expect(getWeekKey(new Date(2027, 0, 1))).toBe("2026-12-27");
-    // Sat 2026-01-03 -> Sun 2025-12-28 (also checks zero padding)
-    expect(getWeekKey(new Date(2026, 0, 3))).toBe("2025-12-28");
-  });
-
-  it("zero-pads single-digit months and days", () => {
-    // Sun 2026-03-01
-    expect(getWeekKey(new Date(2026, 2, 1))).toBe("2026-03-01");
-  });
-
-  it("handles a leap-day week", () => {
-    // Sun 2028-02-27 covers Tue 2028-02-29
-    expect(getWeekKey(new Date(2028, 1, 29))).toBe("2028-02-27");
-  });
-
-  it("defaults to today and always returns a Sunday", () => {
-    const key = getWeekKey();
-    expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    const [y, m, d] = key.split("-").map(Number);
-    expect(new Date(y, m - 1, d).getDay()).toBe(0);
+describe("re-exports", () => {
+  it("keeps the synchronous helpers available from the facade", () => {
+    expect(MAX_ENTRIES).toBe(10);
+    expect(WEEKS_TO_KEEP).toBe(6);
+    expect(getWeekKey()).toBe(WEEK);
+    expect(formatWeekLabel(WEEK)).toBe("Week of Aug 23");
+    expect(sanitizeInitials("b0b")).toBe("BBA");
+    expect(isAllowedInitials("ASS")).toBe(false);
+    expect(getLastInitials()).toBeNull();
+    expect(() => clearLeaderboard()).not.toThrow();
   });
 });
 
-describe("formatWeekLabel", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 7, 23, 12, 0, 0));
+describe("pure-local mode (VITE_LEADERBOARD_API unset)", () => {
+  it("reports the shared leaderboard as not configured", () => {
+    expect(isSharedLeaderboardConfigured()).toBe(false);
   });
 
-  it("omits the year for the current year", () => {
-    expect(formatWeekLabel("2026-08-23")).toBe("Week of Aug 23");
+  it("qualifies against the local board without fetching", async () => {
+    const fetchMock = routeFetch(() => jsonResponse({}));
+    seed({ [WEEK]: { survivors: fullBoard() } });
+    await expect(qualifies("survivors", 101)).resolves.toBe(true);
+    await expect(qualifies("survivors", 100)).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("includes the year for other years", () => {
-    expect(formatWeekLabel("2025-12-28")).toBe("Week of Dec 28, 2025");
-    expect(formatWeekLabel("2027-01-03")).toBe("Week of Jan 3, 2027");
-  });
-
-  it("parses the key as a LOCAL date (no UTC off-by-one)", () => {
-    // new Date("2026-03-01") is UTC midnight and renders as Feb 28 in any
-    // negative-offset timezone. Local component parsing must say Mar 1.
-    expect(formatWeekLabel("2026-03-01")).toBe("Week of Mar 1");
-    expect(formatWeekLabel("2026-01-01")).toBe("Week of Jan 1");
-    expect(formatWeekLabel("2026-12-31")).toBe("Week of Dec 31");
-  });
-
-  it("strips leading zeros from the day", () => {
-    expect(formatWeekLabel("2026-08-02")).toBe("Week of Aug 2");
-  });
-
-  it("returns the raw key when it is not a valid week key", () => {
-    expect(formatWeekLabel("nonsense")).toBe("nonsense");
-    expect(formatWeekLabel("2026-13-01")).toBe("2026-13-01");
-  });
-});
-
-describe("getBoard", () => {
-  it("returns an empty array for missing storage", () => {
-    expect(getBoard("2026-08-23", "survivors")).toEqual([]);
-  });
-
-  it("returns an empty array for an unknown week or game", () => {
-    seed({ "2026-08-23": { survivors: [entry("BOB", 100, 1)] } });
-    expect(getBoard("2026-08-16", "survivors")).toEqual([]);
-    expect(getBoard("2026-08-23", "jeopardy")).toEqual([]);
-  });
-
-  it("sorts by score descending", () => {
-    seed({
-      "2026-08-23": {
-        survivors: [
-          entry("LOW", 10, 1),
-          entry("TOP", 900, 2),
-          entry("MID", 400, 3),
-        ],
-      },
-    });
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "TOP",
-      "MID",
-      "LOW",
-    ]);
-  });
-
-  it("breaks ties with the earlier ts first", () => {
-    seed({
-      "2026-08-23": {
-        survivors: [
-          entry("LTR", 500, 9000),
-          entry("ERL", 500, 1000),
-          entry("MID", 500, 5000),
-        ],
-      },
-    });
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "ERL",
-      "MID",
-      "LTR",
-    ]);
-  });
-
-  it("caps the returned board at MAX_ENTRIES", () => {
-    const many = Array.from({ length: 25 }, (_, i) =>
-      entry("AAA", 100 + i, 1000 + i),
-    );
-    seed({ "2026-08-23": { survivors: many } });
-    expect(getBoard("2026-08-23", "survivors")).toHaveLength(MAX_ENTRIES);
-  });
-
-  it("drops malformed entries but keeps the good ones", () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        weeks: {
-          "2026-08-23": {
-            survivors: [
-              entry("GUD", 300, 1),
-              { initials: "BAD" },
-              { score: 999, difficulty: "big-kids", ts: 2 },
-              { initials: "NAN", score: "lots", difficulty: "big-kids", ts: 3 },
-              { initials: "DIF", score: 500, difficulty: "grown-ups", ts: 4 },
-              null,
-              "junk",
-            ],
-          },
-        },
-      }),
-    );
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "GUD",
-    ]);
-  });
-});
-
-describe("corrupt storage recovery", () => {
-  it("recovers from unparseable JSON", () => {
-    localStorage.setItem(STORAGE_KEY, "{not json at all");
-    expect(listWeeks()).toEqual([]);
-    expect(getBoard("2026-08-23", "survivors")).toEqual([]);
-    expect(qualifies("survivors", 100)).toBe(true);
-  });
-
-  it("recovers from a wrong top-level shape", () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([1, 2, 3]));
-    expect(listWeeks()).toEqual([]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, weeks: 7 }));
-    expect(listWeeks()).toEqual([]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify("hello"));
-    expect(getBoard("2026-08-23", "survivors")).toEqual([]);
-  });
-
-  it("ignores week keys that are not YYYY-MM-DD", () => {
-    seed({
-      "not-a-week": { survivors: [entry("BOB", 100, 1)] },
-      "2026-08-23": { survivors: [entry("AMY", 200, 2)] },
-    });
-    expect(listWeeks()).toEqual(["2026-08-23"]);
-  });
-
-  it("ignores boards that are not arrays", () => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        weeks: { "2026-08-23": { survivors: "oops", jeopardy: [entry("AMY", 5, 1)] } },
-      }),
-    );
-    expect(getBoard("2026-08-23", "survivors")).toEqual([]);
-    expect(getBoard("2026-08-23", "jeopardy")).toHaveLength(1);
-  });
-
-  it("overwrites corrupt storage on the next submit", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 7, 26, 10, 0, 0));
-    localStorage.setItem(STORAGE_KEY, "<<<garbage>>>");
-    expect(submitScore("survivors", {
-      initials: "NEW",
+  it("submits to local storage with source 'local'", async () => {
+    const fetchMock = routeFetch(() => jsonResponse({}));
+    const result = await submitScore("survivors", {
+      initials: "amy",
       score: 500,
       difficulty: "big-kids",
-    })).toBe(1);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "NEW",
-    ]);
-  });
-});
-
-describe("listWeeks", () => {
-  it("returns week keys sorted descending", () => {
-    seed({
-      "2026-07-05": {},
-      "2026-08-23": {},
-      "2026-08-02": {},
     });
-    expect(listWeeks()).toEqual(["2026-08-23", "2026-08-02", "2026-07-05"]);
-  });
-
-  it("returns an empty array with no storage", () => {
-    expect(listWeeks()).toEqual([]);
-  });
-});
-
-describe("qualifies", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 7, 26, 10, 0, 0)); // week 2026-08-23
-  });
-
-  it("rejects zero, negative and non-finite scores", () => {
-    expect(qualifies("survivors", 0)).toBe(false);
-    expect(qualifies("survivors", -50)).toBe(false);
-    expect(qualifies("survivors", Number.NaN)).toBe(false);
-    expect(qualifies("survivors", Number.POSITIVE_INFINITY)).toBe(false);
-  });
-
-  it("accepts any positive score on an empty board", () => {
-    expect(qualifies("survivors", 1)).toBe(true);
-  });
-
-  it("accepts any positive score while the board is not full", () => {
-    seed({
-      "2026-08-23": { survivors: fullBoard().slice(0, MAX_ENTRIES - 1) },
+    expect(result).toEqual({
+      rank: 1,
+      weekKey: WEEK,
+      board: [
+        {
+          initials: "AMY",
+          score: 500,
+          difficulty: "big-kids",
+          ts: new Date(2026, 7, 26, 10, 0, 0).getTime(),
+        },
+      ],
+      source: "local",
     });
-    expect(qualifies("survivors", 1)).toBe(true);
+    expect(localGetBoard(WEEK, "survivors")).toHaveLength(1);
+    expect(getLastInitials()).toBe("AMY");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a score equal to 10th place on a full board", () => {
-    seed({ "2026-08-23": { survivors: fullBoard() } });
-    expect(qualifies("survivors", 100)).toBe(false);
-  });
-
-  it("rejects a score below 10th place on a full board", () => {
-    seed({ "2026-08-23": { survivors: fullBoard() } });
-    expect(qualifies("survivors", 99)).toBe(false);
-  });
-
-  it("accepts a score that beats 10th place on a full board", () => {
-    seed({ "2026-08-23": { survivors: fullBoard() } });
-    expect(qualifies("survivors", 101)).toBe(true);
-  });
-
-  it("only looks at the current week", () => {
-    seed({ "2026-08-16": { survivors: fullBoard() } });
-    expect(qualifies("survivors", 1)).toBe(true);
-  });
-
-  it("only looks at the requested game", () => {
-    seed({ "2026-08-23": { jeopardy: fullBoard() } });
-    expect(qualifies("survivors", 1)).toBe(true);
-  });
-});
-
-describe("sanitizeInitials", () => {
-  it("uppercases", () => {
-    expect(sanitizeInitials("bob")).toBe("BOB");
-  });
-
-  it("strips non A–Z characters", () => {
-    expect(sanitizeInitials("b0b!")).toBe("BBA");
-    expect(sanitizeInitials("j. t.")).toBe("JTA");
-  });
-
-  it("pads short input with A", () => {
-    expect(sanitizeInitials("")).toBe("AAA");
-    expect(sanitizeInitials("K")).toBe("KAA");
-    expect(sanitizeInitials("KR")).toBe("KRA");
-  });
-
-  it("trims long input to 3 characters", () => {
-    expect(sanitizeInitials("abcdef")).toBe("ABC");
-  });
-
-  it("always returns exactly 3 A–Z characters", () => {
-    for (const raw of ["", "!!!", "1234", "zzzzzzzz", "  a  "]) {
-      expect(sanitizeInitials(raw)).toMatch(/^[A-Z]{3}$/);
-    }
-  });
-});
-
-describe("isAllowedInitials", () => {
-  it("allows ordinary initials", () => {
-    expect(isAllowedInitials("AAA")).toBe(true);
-    expect(isAllowedInitials("BOB")).toBe(true);
-    expect(isAllowedInitials("KID")).toBe(true);
-  });
-
-  it("blocks the blocklist regardless of case", () => {
-    const blocked = [
-      "ASS", "SEX", "FUK", "FUC", "FCK", "FUX", "DIK", "DIC", "DCK",
-      "CUM", "TIT", "FAG", "NIG", "KKK", "POO", "PEE", "BUT", "HEL",
-      "DAM", "DMN", "VAG", "PNS", "WTF", "STD", "XXX",
-    ];
-    for (const combo of blocked) {
-      expect(isAllowedInitials(combo)).toBe(false);
-      expect(isAllowedInitials(combo.toLowerCase())).toBe(false);
-      expect(isAllowedInitials(`${combo[0]}${combo[1].toLowerCase()}${combo[2]}`)).toBe(false);
-    }
-  });
-
-  it("does not block near-misses", () => {
-    expect(isAllowedInitials("ASH")).toBe(true);
-    expect(isAllowedInitials("KKA")).toBe(true);
-  });
-});
-
-describe("getLastInitials", () => {
-  it("returns null when nothing is stored", () => {
-    expect(getLastInitials()).toBeNull();
-  });
-
-  it("returns null for empty or letterless stored values", () => {
-    localStorage.setItem(LAST_INITIALS_KEY, "");
-    expect(getLastInitials()).toBeNull();
-    localStorage.setItem(LAST_INITIALS_KEY, "!!!");
-    expect(getLastInitials()).toBeNull();
-  });
-
-  it("sanitizes what it returns", () => {
-    localStorage.setItem(LAST_INITIALS_KEY, "zq");
-    expect(getLastInitials()).toBe("ZQA");
-  });
-
-  it("is written by submitScore", () => {
-    submitScore("survivors", {
-      initials: "kr8",
-      score: 10,
+  it("returns -1 and the unchanged board when the score does not make it", async () => {
+    seed({ [WEEK]: { survivors: fullBoard() } });
+    const result = await submitScore("survivors", {
+      initials: "LOW",
+      score: 5,
       difficulty: "little-kids",
     });
-    expect(getLastInitials()).toBe("KRA");
+    expect(result.rank).toBe(-1);
+    expect(result.source).toBe("local");
+    expect(result.board).toHaveLength(MAX_ENTRIES);
+    expect(result.board.some((e) => e.initials === "LOW")).toBe(false);
+  });
+
+  it("reads local week boards with source 'local'", async () => {
+    seed({
+      [WEEK]: { survivors: [entry("AMY", 500, 1)] },
+      "2026-08-16": { jeopardy: [entry("OLD", 5, 1)] },
+    });
+    await expect(getWeekBoards("current")).resolves.toEqual({
+      weekKey: WEEK,
+      boards: { survivors: [entry("AMY", 500, 1)] },
+      source: "local",
+    });
+    await expect(getWeekBoards("2026-08-16")).resolves.toMatchObject({
+      weekKey: "2026-08-16",
+      source: "local",
+    });
+  });
+
+  it("lists local weeks with source 'local'", async () => {
+    seed({ [WEEK]: {}, "2026-08-16": {} });
+    await expect(listWeeks()).resolves.toEqual({
+      weeks: [WEEK, "2026-08-16"],
+      currentWeekKey: WEEK,
+      source: "local",
+    });
   });
 });
 
-describe("submitScore", () => {
+describe("shared mode — API healthy", () => {
+  beforeEach(configure);
+
+  it("reports the shared leaderboard as configured", () => {
+    expect(isSharedLeaderboardConfigured()).toBe(true);
+  });
+
+  it("qualifies against the SERVER board, not the local one", async () => {
+    // Local storage is empty (would qualify anything); the server board is full.
+    const fetchMock = routeFetch((url) =>
+      url.endsWith("/board/current")
+        ? jsonResponse({ weekKey: WEEK, boards: { survivors: fullBoard() } })
+        : undefined,
+    );
+    await expect(qualifies("survivors", 101)).resolves.toBe(true);
+    await expect(qualifies("survivors", 100)).resolves.toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("qualifies on an empty server board even when the local board is full", async () => {
+    seed({ [WEEK]: { survivors: fullBoard() } });
+    routeFetch((url) =>
+      url.endsWith("/board/current")
+        ? jsonResponse({ weekKey: WEEK, boards: {} })
+        : undefined,
+    );
+    await expect(qualifies("survivors", 1)).resolves.toBe(true);
+  });
+
+  it("short-circuits non-positive scores without fetching", async () => {
+    const fetchMock = routeFetch(() => jsonResponse({}));
+    await expect(qualifies("survivors", 0)).resolves.toBe(false);
+    await expect(qualifies("survivors", -10)).resolves.toBe(false);
+    await expect(qualifies("survivors", Number.NaN)).resolves.toBe(false);
+    await expect(qualifies("survivors", Number.POSITIVE_INFINITY)).resolves.toBe(
+      false,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("posts the score and returns the server board with source 'shared'", async () => {
+    const serverBoard = [entry("AMY", 500, 12345), entry("BEN", 100, 12300)];
+    const fetchMock = routeFetch((url, init) =>
+      url.endsWith("/score/survivors") && init.method === "POST"
+        ? jsonResponse({ rank: 1, weekKey: WEEK, board: serverBoard })
+        : undefined,
+    );
+
+    const result = await submitScore("survivors", {
+      initials: "amy",
+      score: 500,
+      difficulty: "big-kids",
+    });
+
+    expect(result).toEqual({
+      rank: 1,
+      weekKey: WEEK,
+      board: serverBoard,
+      source: "shared",
+    });
+    expect(postBodies(fetchMock)).toEqual([
+      { initials: "AMY", score: 500, difficulty: "big-kids" },
+    ]);
+    // Nothing written to the local board in shared mode…
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localGetBoard(WEEK, "survivors")).toEqual([]);
+    // …but the initials are still remembered for the next prefill.
+    expect(getLastInitials()).toBe("AMY");
+  });
+
+  it("uses the server's week key even when it differs from the device's", async () => {
+    routeFetch((url, init) =>
+      init.method === "POST"
+        ? jsonResponse({ rank: 2, weekKey: "2026-08-16", board: [] })
+        : undefined,
+    );
+    const result = await submitScore("survivors", {
+      initials: "AMY",
+      score: 5,
+      difficulty: "big-kids",
+    });
+    expect(result.weekKey).toBe("2026-08-16");
+    expect(result.rank).toBe(2);
+  });
+
+  it("reads a week's boards from the server with source 'shared'", async () => {
+    routeFetch((url) =>
+      url.endsWith("/board/2026-08-16")
+        ? jsonResponse({
+            weekKey: "2026-08-16",
+            boards: { jeopardy: [entry("SRV", 700, 5)] },
+          })
+        : undefined,
+    );
+    await expect(getWeekBoards("2026-08-16")).resolves.toEqual({
+      weekKey: "2026-08-16",
+      boards: { jeopardy: [entry("SRV", 700, 5)] },
+      source: "shared",
+    });
+  });
+
+  it("lists weeks from the server with source 'shared'", async () => {
+    seed({ "2020-01-05": {} }); // local junk must not leak through
+    routeFetch((url) =>
+      url.endsWith("/weeks")
+        ? jsonResponse({ weeks: [WEEK, "2026-08-16"], currentWeekKey: WEEK })
+        : undefined,
+    );
+    await expect(listWeeks()).resolves.toEqual({
+      weeks: [WEEK, "2026-08-16"],
+      currentWeekKey: WEEK,
+      source: "shared",
+    });
+  });
+});
+
+describe("shared mode — API unreachable", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 7, 26, 10, 0, 0)); // week 2026-08-23
+    configure();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
   });
 
-  it("writes into the current week's board and returns rank 1", () => {
-    const rank = submitScore("survivors", {
-      initials: "AMY",
+  it("falls back to the local qualify rule", async () => {
+    seed({ [WEEK]: { survivors: fullBoard() } });
+    await expect(qualifies("survivors", 100)).resolves.toBe(false);
+    await expect(qualifies("survivors", 101)).resolves.toBe(true);
+  });
+
+  it("writes locally with source 'offline'", async () => {
+    const result = await submitScore("survivors", {
+      initials: "amy",
       score: 500,
       difficulty: "big-kids",
     });
-    expect(rank).toBe(1);
-    const board = getBoard("2026-08-23", "survivors");
-    expect(board).toHaveLength(1);
-    expect(board[0]).toMatchObject({
-      initials: "AMY",
-      score: 500,
-      difficulty: "big-kids",
-    });
-    expect(board[0].ts).toBe(new Date(2026, 7, 26, 10, 0, 0).getTime());
-  });
-
-  it("returns the correct 1-based rank for a mid-board insert", () => {
-    seed({
-      "2026-08-23": {
-        survivors: [entry("AAA", 900, 1), entry("BBB", 500, 2), entry("CCC", 100, 3)],
-      },
-    });
-    expect(
-      submitScore("survivors", { initials: "NEW", score: 700, difficulty: "big-kids" }),
-    ).toBe(2);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "AAA",
-      "NEW",
-      "BBB",
-      "CCC",
-    ]);
-  });
-
-  it("ranks a tie below the entry that got there first", () => {
-    seed({ "2026-08-23": { survivors: [entry("OLD", 500, 1)] } });
-    expect(
-      submitScore("survivors", { initials: "NEW", score: 500, difficulty: "big-kids" }),
-    ).toBe(2);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "OLD",
-      "NEW",
-    ]);
-  });
-
-  it("trims the board to MAX_ENTRIES", () => {
-    seed({ "2026-08-23": { survivors: fullBoard() } });
-    submitScore("survivors", {
-      initials: "TOP",
-      score: 5000,
-      difficulty: "big-kids",
-    });
-    const board = getBoard("2026-08-23", "survivors");
-    expect(board).toHaveLength(MAX_ENTRIES);
-    expect(board[0].initials).toBe("TOP");
-    // The old 10th place (score 100) was pushed off
-    expect(board.some((e) => e.score === 100)).toBe(false);
-  });
-
-  it("returns -1 when the entry falls off a full board", () => {
-    seed({ "2026-08-23": { survivors: fullBoard() } });
-    expect(
-      submitScore("survivors", { initials: "LOW", score: 5, difficulty: "little-kids" }),
-    ).toBe(-1);
-    const board = getBoard("2026-08-23", "survivors");
-    expect(board).toHaveLength(MAX_ENTRIES);
-    expect(board.some((e) => e.initials === "LOW")).toBe(false);
-  });
-
-  it("sanitizes the initials it stores", () => {
-    submitScore("survivors", { initials: "j.", score: 42, difficulty: "big-kids" });
-    expect(getBoard("2026-08-23", "survivors")[0].initials).toBe("JAA");
-  });
-
-  it("floors and clamps the stored score", () => {
-    submitScore("survivors", { initials: "AAA", score: 12.9, difficulty: "big-kids" });
-    submitScore("jeopardy", { initials: "AAA", score: -5, difficulty: "big-kids" });
-    expect(getBoard("2026-08-23", "survivors")[0].score).toBe(12);
-    expect(getBoard("2026-08-23", "jeopardy")[0].score).toBe(0);
-  });
-
-  it("keeps other games' boards untouched", () => {
-    seed({ "2026-08-23": { jeopardy: [entry("JEO", 800, 1)] } });
-    submitScore("survivors", { initials: "SUR", score: 100, difficulty: "big-kids" });
-    expect(getBoard("2026-08-23", "jeopardy").map((e) => e.initials)).toEqual(["JEO"]);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual(["SUR"]);
-  });
-
-  it("keeps previous weeks untouched", () => {
-    seed({ "2026-08-16": { survivors: [entry("OLD", 800, 1)] } });
-    submitScore("survivors", { initials: "NOW", score: 100, difficulty: "big-kids" });
-    expect(getBoard("2026-08-16", "survivors").map((e) => e.initials)).toEqual(["OLD"]);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual(["NOW"]);
-  });
-
-  it("prunes storage to the newest WEEKS_TO_KEEP weeks", () => {
-    // 7 stored past weeks + the current one written by submitScore
-    seed({
-      "2026-07-05": { survivors: [entry("AAA", 1, 1)] },
-      "2026-07-12": { survivors: [entry("BBB", 1, 1)] },
-      "2026-07-19": { survivors: [entry("CCC", 1, 1)] },
-      "2026-07-26": { survivors: [entry("DDD", 1, 1)] },
-      "2026-08-02": { survivors: [entry("EEE", 1, 1)] },
-      "2026-08-09": { survivors: [entry("FFF", 1, 1)] },
-      "2026-08-16": { survivors: [entry("GGG", 1, 1)] },
-    });
-    submitScore("survivors", { initials: "NOW", score: 100, difficulty: "big-kids" });
-
-    const weeks = listWeeks();
-    expect(weeks).toHaveLength(WEEKS_TO_KEEP);
-    expect(weeks).toEqual([
-      "2026-08-23",
-      "2026-08-16",
-      "2026-08-09",
-      "2026-08-02",
-      "2026-07-26",
-      "2026-07-19",
-    ]);
-    expect(weeks).not.toContain("2026-07-12");
-    expect(weeks).not.toContain("2026-07-05");
-  });
-
-  it("always keeps the current week even when future weeks are stored", () => {
-    // Clock-skew defence: 6 future weeks already stored
-    seed({
-      "2026-08-30": {},
-      "2026-09-06": {},
-      "2026-09-13": {},
-      "2026-09-20": {},
-      "2026-09-27": {},
-      "2026-10-04": {},
-    });
-    submitScore("survivors", { initials: "NOW", score: 100, difficulty: "big-kids" });
-    const weeks = listWeeks();
-    expect(weeks).toHaveLength(WEEKS_TO_KEEP);
-    expect(weeks).toContain("2026-08-23");
-    expect(getBoard("2026-08-23", "survivors")).toHaveLength(1);
-  });
-
-  it("persists across separate reads (hard-reload equivalent)", () => {
-    submitScore("survivors", { initials: "AMY", score: 500, difficulty: "big-kids" });
-    vi.setSystemTime(new Date(2026, 7, 27, 9, 0, 0)); // still week 2026-08-23
-    submitScore("survivors", { initials: "BEN", score: 900, difficulty: "big-kids" });
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual([
-      "BEN",
+    expect(result.rank).toBe(1);
+    expect(result.weekKey).toBe(WEEK);
+    expect(result.source).toBe("offline");
+    expect(result.board.map((e) => e.initials)).toEqual(["AMY"]);
+    expect(localGetBoard(WEEK, "survivors").map((e) => e.initials)).toEqual([
       "AMY",
     ]);
+    expect(getLastInitials()).toBe("AMY");
   });
 
-  it("starts a fresh board when the week rolls over", () => {
-    submitScore("survivors", { initials: "AMY", score: 500, difficulty: "big-kids" });
-    vi.setSystemTime(new Date(2026, 7, 30, 9, 0, 0)); // next week: 2026-08-30
-    expect(getBoard(getWeekKey(), "survivors")).toEqual([]);
-    expect(qualifies("survivors", 1)).toBe(true);
-    submitScore("survivors", { initials: "NEW", score: 1, difficulty: "big-kids" });
-    expect(getBoard("2026-08-30", "survivors").map((e) => e.initials)).toEqual(["NEW"]);
-    expect(getBoard("2026-08-23", "survivors").map((e) => e.initials)).toEqual(["AMY"]);
+  it("reads local week boards with source 'offline'", async () => {
+    seed({ [WEEK]: { survivors: [entry("AMY", 500, 1)] } });
+    await expect(getWeekBoards("current")).resolves.toEqual({
+      weekKey: WEEK,
+      boards: { survivors: [entry("AMY", 500, 1)] },
+      source: "offline",
+    });
+  });
+
+  it("lists local weeks with source 'offline'", async () => {
+    seed({ [WEEK]: {}, "2026-08-09": {} });
+    await expect(listWeeks()).resolves.toEqual({
+      weeks: [WEEK, "2026-08-09"],
+      currentWeekKey: WEEK,
+      source: "offline",
+    });
+  });
+
+  it("never throws, even when the server answers with garbage", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse("<html>oops</html>")));
+    await expect(qualifies("survivors", 5)).resolves.toBe(true);
+    await expect(listWeeks()).resolves.toMatchObject({ source: "offline" });
+    await expect(getWeekBoards("current")).resolves.toMatchObject({
+      source: "offline",
+    });
+    await expect(
+      submitScore("survivors", { initials: "AMY", score: 5, difficulty: "big-kids" }),
+    ).resolves.toMatchObject({ source: "offline" });
+  });
+
+  it("falls back to local on a 5xx", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "boom" }, 500)));
+    const result = await submitScore("survivors", {
+      initials: "AMY",
+      score: 5,
+      difficulty: "big-kids",
+    });
+    expect(result.source).toBe("offline");
+    expect(localGetBoard(WEEK, "survivors")).toHaveLength(1);
   });
 });
 
-describe("clearLeaderboard", () => {
-  it("removes every stored week", () => {
-    seed({ "2026-08-23": { survivors: [entry("AMY", 500, 1)] } });
-    clearLeaderboard();
-    expect(listWeeks()).toEqual([]);
-    expect(getBoard("2026-08-23", "survivors")).toEqual([]);
+describe("shared mode — server rejects the score (4xx)", () => {
+  beforeEach(configure);
+
+  it("returns rank -1 with the real board and does not write locally", async () => {
+    const serverBoard = [entry("SRV", 900, 5)];
+    const fetchMock = routeFetch((url, init) => {
+      if (init.method === "POST") return jsonResponse({ error: "nope" }, 400);
+      if (url.endsWith("/board/current")) {
+        return jsonResponse({
+          weekKey: WEEK,
+          boards: { survivors: serverBoard },
+        });
+      }
+      return undefined;
+    });
+
+    const result = await submitScore("survivors", {
+      initials: "ASS",
+      score: 5,
+      difficulty: "big-kids",
+    });
+
+    expect(result).toEqual({
+      rank: -1,
+      weekKey: WEEK,
+      board: serverBoard,
+      source: "shared",
+    });
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localGetBoard(WEEK, "survivors")).toEqual([]);
+    expect(getLastInitials()).toBe("ASS"); // prefill is local-only, still saved
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("is safe to call with nothing stored", () => {
-    expect(() => clearLeaderboard()).not.toThrow();
+  it("treats a 429 (throttled) as offline: saves on this device", async () => {
+    // A classroom shares one wifi IP, so a throttled kid must not be told
+    // they missed the board — the score is kept locally instead.
+    const fetchMock = routeFetch((_url, init) => {
+      if (init.method === "POST") return jsonResponse({ error: "slow" }, 429);
+      return undefined;
+    });
+    const result = await submitScore("survivors", {
+      initials: "AMY",
+      score: 5,
+      difficulty: "big-kids",
+    });
+    expect(result).toMatchObject({ rank: 1, weekKey: WEEK, source: "offline" });
+    expect(result.board.map((e) => e.initials)).toEqual(["AMY"]);
+    expect(localGetBoard(WEEK, "survivors").map((e) => e.initials)).toEqual([
+      "AMY",
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // no follow-up board read
+  });
+
+  it("falls back to an empty board when the follow-up read also fails", async () => {
+    routeFetch((url, init) =>
+      init.method === "POST" ? jsonResponse({ error: "nope" }, 400) : undefined,
+    );
+    const result = await submitScore("survivors", {
+      initials: "AMY",
+      score: 5,
+      difficulty: "big-kids",
+    });
+    expect(result).toEqual({
+      rank: -1,
+      weekKey: WEEK,
+      board: [],
+      source: "shared",
+    });
+    expect(localGetBoard(WEEK, "survivors")).toEqual([]);
   });
 });

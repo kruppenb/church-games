@@ -11,6 +11,8 @@ cd site && npm run test        # Vitest unit tests
 cd site && npm run test:e2e    # Playwright e2e tests
 cd site && npm run preview     # Preview with draft content
 cd site && npm run validate    # Full validation (test + typecheck + build)
+cd api && npm test             # Leaderboard API unit tests (vitest)
+cd api && npm run build        # Compile the Functions app (tsc)
 ```
 
 ## Architecture
@@ -20,6 +22,7 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 - **Routing**: Hash-based (`/#/games/quiz`) for GitHub Pages compatibility
 - **Code splitting**: `React.lazy()` per game route, Phaser in vendor chunk
 - **Content**: JSON lesson files in `site/public/lessons/`
+- **Leaderboard API**: `api/` — Azure Functions v4 (Node 22, TypeScript) + Table Storage, deployed by `.github/workflows/deploy-api.yml` via OIDC to `church-games-api` (RG `ChurchGames`). Provisioning: `infra/provision.sh`. Runbook: `docs/shared-leaderboard.md`
 
 ## Game Roster
 
@@ -56,7 +59,7 @@ cd site && npm run validate    # Full validation (test + typecheck + build)
 - `QuestionPool` class manages shuffled question consumption without repeats
 - Phaser games pass data via `game.registry.set("lesson", lesson)` etc.
 - Game logic is pure TS in `logic/` subdirs (no Phaser deps) for testability
-- **Weekly leaderboard** (arcade-style, no logins): `lib/leaderboard-store.ts` keeps per-game top-10 boards in localStorage, keyed by Sunday-start week (`YYYY-MM-DD`), auto-"resets" on week rollover, prunes to the newest 6 weeks. Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`
+- **Weekly leaderboard** (arcade-style, no logins): per-game top-10 boards keyed by Sunday-start week (`YYYY-MM-DD`), newest 6 weeks kept. **Shared** across devices via the Azure Functions API in `api/` (Table Storage, one entity per entry) — see `docs/shared-leaderboard.md`. Client side: `lib/leaderboard-store.ts` is an **async facade** that calls `lib/leaderboard-api.ts` when `VITE_LEADERBOARD_API` is set and falls back to the device-local store `lib/leaderboard-local.ts` (unset env ⇒ pure-local; configured-but-unreachable ⇒ `source: "offline"` and a small offline note in the UI). Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`. The server re-validates everything (initials blocklist, per-game score caps, week key in `LEADERBOARD_TIMEZONE`).
 
 ## Testing
 

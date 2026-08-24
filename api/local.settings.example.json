@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "LEADERBOARD_STORAGE_CONNECTION": "UseDevelopmentStorage=true",
+    "LEADERBOARD_TIMEZONE": "America/Los_Angeles",
+    "MODERATION_KEY": "local-dev-moderation-key",
+    "LEADERBOARD_ALLOWED_ORIGINS": "",
+    "LEADERBOARD_RATE_LIMIT_PER_MINUTE": "30"
+  }
+}

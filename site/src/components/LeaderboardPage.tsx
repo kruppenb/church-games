@@ -1,29 +1,78 @@
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GAMES } from "@/lib/games-catalog";
-import { getBoard, getWeekKey, formatWeekLabel, listWeeks } from "@/lib/leaderboard-store";
+import {
+  formatWeekLabel,
+  getWeekBoards,
+  getWeekKey,
+  listWeeks,
+  type BoardSource,
+  type LeaderboardEntry,
+} from "@/lib/leaderboard-store";
 import { LeaderboardTable } from "@/components/shared/LeaderboardTable";
 
 const MAX_PAST_WEEKS = 5;
 
 export default function LeaderboardPage() {
-  const currentWeekKey = useMemo(() => getWeekKey(), []);
+  // The device's guess for "this week" is only a placeholder: the server owns
+  // the real week key and replaces it as soon as /weeks answers.
+  const [currentWeekKey, setCurrentWeekKey] = useState(() => getWeekKey());
+  const [pastWeeks, setPastWeeks] = useState<string[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState(() => getWeekKey());
+  // null = still loading (first paint and every week switch).
+  const [boards, setBoards] = useState<Record<
+    string,
+    LeaderboardEntry[]
+  > | null>(null);
+  const [source, setSource] = useState<BoardSource>("local");
 
-  // "This Week" always appears first, even if it has no entries yet. Past
-  // weeks (newest first) come from storage, capped at MAX_PAST_WEEKS.
-  const weekKeys = useMemo(() => {
-    const stored = listWeeks().filter((w) => w !== currentWeekKey);
-    return [currentWeekKey, ...stored.slice(0, MAX_PAST_WEEKS)];
-  }, [currentWeekKey]);
+  // Once a kid picks a week, a late /weeks response must not yank them back.
+  const userPickedRef = useRef(false);
+  // Only the newest week request may write state.
+  const boardsRequestRef = useRef(0);
 
-  const [selectedWeek, setSelectedWeek] = useState(currentWeekKey);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await listWeeks();
+      if (cancelled) return;
+      setCurrentWeekKey(result.currentWeekKey);
+      setPastWeeks(
+        result.weeks
+          .filter((week) => week !== result.currentWeekKey)
+          .slice(0, MAX_PAST_WEEKS),
+      );
+      setSource(result.source);
+      if (!userPickedRef.current) setSelectedWeek(result.currentWeekKey);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const requestId = ++boardsRequestRef.current;
+    setBoards(null);
+    void (async () => {
+      const result = await getWeekBoards(selectedWeek);
+      if (boardsRequestRef.current !== requestId) return;
+      setBoards(result.boards);
+      setSource(result.source);
+    })();
+  }, [selectedWeek]);
+
+  const selectWeek = (weekKey: string) => {
+    userPickedRef.current = true;
+    setSelectedWeek(weekKey);
+  };
+
+  // "This Week" always appears first, even if it has no entries yet.
+  const weekKeys = [currentWeekKey, ...pastWeeks];
 
   // Games with at least one entry in the selected week, in catalog order.
-  const gamesWithScores = useMemo(
-    () =>
-      GAMES.filter((game) => getBoard(selectedWeek, game.id).length > 0),
-    // selectedWeek is the only real dependency; GAMES is a stable module const.
-    [selectedWeek],
-  );
+  const gamesWithScores =
+    boards === null
+      ? []
+      : GAMES.filter((game) => (boards[game.id]?.length ?? 0) > 0);
 
   return (
     <div className="lbp-page">
@@ -35,6 +84,11 @@ export default function LeaderboardPage() {
           <span aria-hidden="true">🏆</span> High Scores
         </h1>
         <p className="lbp-subtitle">{formatWeekLabel(selectedWeek)}</p>
+        {source === "offline" ? (
+          <p className="lbp-offline" role="status">
+            Offline — showing scores saved on this device
+          </p>
+        ) : null}
       </header>
 
       <div className="lbp-weeks" role="tablist" aria-label="Select week">
@@ -45,14 +99,18 @@ export default function LeaderboardPage() {
             role="tab"
             aria-selected={weekKey === selectedWeek}
             className={`lbp-week-pill ${weekKey === selectedWeek ? "lbp-week-pill-active" : ""}`}
-            onClick={() => setSelectedWeek(weekKey)}
+            onClick={() => selectWeek(weekKey)}
           >
             {weekKey === currentWeekKey ? "This Week" : formatWeekLabel(weekKey)}
           </button>
         ))}
       </div>
 
-      {gamesWithScores.length === 0 ? (
+      {boards === null ? (
+        <div className="lbp-loading" role="status" aria-live="polite">
+          Loading scores…
+        </div>
+      ) : gamesWithScores.length === 0 ? (
         <div className="lbp-empty">
           <div className="lbp-empty-icon" aria-hidden="true">
             🏆
@@ -81,7 +139,7 @@ export default function LeaderboardPage() {
                 </span>
                 <h2 className="lbp-card-name">{game.name}</h2>
               </div>
-              <LeaderboardTable gameId={game.id} weekKey={selectedWeek} />
+              <LeaderboardTable entries={boards[game.id] ?? []} />
             </div>
           ))}
         </div>

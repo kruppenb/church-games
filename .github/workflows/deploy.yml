@@ -42,6 +42,7 @@ jobs:
         run: npm run build
         env:
           GITHUB_ACTIONS: true
+          VITE_LEADERBOARD_API: ${{ vars.VITE_LEADERBOARD_API }}
 
       - name: Check bundle size
         working-directory: site

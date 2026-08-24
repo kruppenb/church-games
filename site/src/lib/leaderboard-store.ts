@@ -1,349 +1,191 @@
 /**
- * Weekly arcade leaderboard — device-local, no accounts.
+ * Weekly arcade leaderboard — the facade the UI talks to.
  *
- * Boards are per-game (the games have incomparable scoring systems, see
- * score-store.ts) and per-week, where a "week" starts on Sunday to match the
- * church lesson cadence. The newest WEEKS_TO_KEEP weeks are retained so kids
- * can browse recent history; older weeks are pruned on write.
+ * Reads and writes go to the shared API when `VITE_LEADERBOARD_API` is set,
+ * and fall back to the device-local store (`leaderboard-local.ts`) whenever the
+ * API is unconfigured, unreachable, slow or broken. Every result carries a
+ * `source` so the UI can show a small "offline" note when a board is only from
+ * this device.
  *
- * Every read is defensive: missing, unavailable, or corrupt storage degrades
- * to an empty board rather than throwing.
+ * This module NEVER throws and NEVER shows an error to a kid.
  */
 
 import type { Difficulty } from "@/hooks/useDifficulty";
-
-export interface LeaderboardEntry {
-  initials: string; // exactly 3 chars A–Z
-  score: number; // integer >= 0
-  difficulty: Difficulty;
-  ts: number; // Date.now() at submission
-}
-
-/** gameId -> entries */
-type WeekBoards = Record<string, LeaderboardEntry[]>;
-
-/** Persisted shape: { version: 1, weeks: { [weekKey]: { [gameId]: entries } } } */
-interface LeaderboardData {
-  version: 1;
-  weeks: Record<string, WeekBoards>;
-}
-
-export const MAX_ENTRIES = 10;
-export const WEEKS_TO_KEEP = 6;
-
-const STORAGE_KEY = "church-games:leaderboard";
-const LAST_INITIALS_KEY = "church-games:last-initials";
-
-/** Rude / unwanted 3-letter combos. Compared uppercase. */
-const BLOCKED_INITIALS = new Set([
-  "ASS",
-  "SEX",
-  "FUK",
-  "FUC",
-  "FCK",
-  "FUX",
-  "DIK",
-  "DIC",
-  "DCK",
-  "CUM",
-  "TIT",
-  "FAG",
-  "NIG",
-  "KKK",
-  "POO",
-  "PEE",
-  "BUT",
-  "HEL",
-  "DAM",
-  "DMN",
-  "VAG",
-  "PNS",
-  "WTF",
-  "STD",
-  "XXX",
-]);
-
-const MONTH_NAMES = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-const WEEK_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function isStorageAvailable(): boolean {
-  try {
-    const test = "__storage_test__";
-    localStorage.setItem(test, "1");
-    localStorage.removeItem(test);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function pad2(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
-}
-
-function formatLocalDate(d: Date): string {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
-function isDifficulty(v: unknown): v is Difficulty {
-  return v === "little-kids" || v === "big-kids";
-}
-
-/** Coerce one unknown value into a valid entry, or null if unusable. */
-function toEntry(raw: unknown): LeaderboardEntry | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const r = raw as Record<string, unknown>;
-  if (typeof r.initials !== "string") return null;
-  if (typeof r.score !== "number" || !Number.isFinite(r.score)) return null;
-  if (!isDifficulty(r.difficulty)) return null;
-  const ts = typeof r.ts === "number" && Number.isFinite(r.ts) ? r.ts : 0;
-  return {
-    initials: sanitizeInitials(r.initials),
-    score: Math.max(0, Math.floor(r.score)),
-    difficulty: r.difficulty,
-    ts,
-  };
-}
-
-/** Score desc, ties broken by earlier ts (first to set the score holds it). */
-function compareEntries(a: LeaderboardEntry, b: LeaderboardEntry): number {
-  if (b.score !== a.score) return b.score - a.score;
-  return a.ts - b.ts;
-}
-
-/** Load + normalize the whole store. Returns an empty store on any problem. */
-function loadData(): LeaderboardData {
-  const empty: LeaderboardData = { version: 1, weeks: {} };
-  if (!isStorageAvailable()) return empty;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return empty;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      return empty;
-    }
-    const weeksRaw = (parsed as Record<string, unknown>).weeks;
-    if (
-      typeof weeksRaw !== "object" ||
-      weeksRaw === null ||
-      Array.isArray(weeksRaw)
-    ) {
-      return empty;
-    }
-
-    const weeks: Record<string, WeekBoards> = {};
-    for (const [weekKey, boardsRaw] of Object.entries(
-      weeksRaw as Record<string, unknown>,
-    )) {
-      if (!WEEK_KEY_RE.test(weekKey)) continue;
-      if (
-        typeof boardsRaw !== "object" ||
-        boardsRaw === null ||
-        Array.isArray(boardsRaw)
-      ) {
-        continue;
-      }
-      const boards: WeekBoards = {};
-      for (const [gameId, entriesRaw] of Object.entries(
-        boardsRaw as Record<string, unknown>,
-      )) {
-        if (!Array.isArray(entriesRaw)) continue;
-        const entries: LeaderboardEntry[] = [];
-        for (const item of entriesRaw) {
-          const entry = toEntry(item);
-          if (entry) entries.push(entry);
-        }
-        boards[gameId] = entries.sort(compareEntries).slice(0, MAX_ENTRIES);
-      }
-      weeks[weekKey] = boards;
-    }
-    return { version: 1, weeks };
-  } catch {
-    return empty;
-  }
-}
-
-function saveData(data: LeaderboardData): void {
-  if (!isStorageAvailable()) return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // Storage full or unavailable — silently degrade
-  }
-}
+import * as localStore from "@/lib/leaderboard-local";
+import type { LeaderboardEntry } from "@/lib/leaderboard-local";
+import {
+  LeaderboardApiError,
+  fetchWeekBoards as apiFetchWeekBoards,
+  fetchWeeks as apiFetchWeeks,
+  isSharedLeaderboardConfigured,
+  postScore as apiPostScore,
+} from "@/lib/leaderboard-api";
 
 /**
- * Local-time date of the most recent Sunday (or `d` itself when `d` is Sunday),
- * formatted `YYYY-MM-DD`. Time-of-day is ignored.
+ * Where a board came from.
+ * - "shared"  — the API answered
+ * - "local"   — the API is not configured (dev / offline demo); no note shown
+ * - "offline" — the API is configured but unreachable; device-local, note shown
  */
-export function getWeekKey(d: Date = new Date()): string {
-  const base = d instanceof Date && !Number.isNaN(d.getTime()) ? d : new Date();
-  const local = new Date(base.getFullYear(), base.getMonth(), base.getDate());
-  local.setDate(local.getDate() - local.getDay());
-  return formatLocalDate(local);
+export type BoardSource = "shared" | "local" | "offline";
+
+export interface SubmitResult {
+  rank: number;
+  weekKey: string;
+  board: LeaderboardEntry[];
+  source: BoardSource;
 }
 
-/**
- * `"Week of Aug 23"` for the current year, `"Week of Aug 23, 2026"` otherwise.
- * The key is parsed as LOCAL date components — `new Date("YYYY-MM-DD")` is
- * parsed as UTC and shifts a day in negative-offset timezones.
- */
-export function formatWeekLabel(weekKey: string): string {
-  if (typeof weekKey !== "string" || !WEEK_KEY_RE.test(weekKey)) return weekKey;
-  const [yStr, mStr, dStr] = weekKey.split("-");
-  const year = Number(yStr);
-  const monthIndex = Number(mStr) - 1;
-  const day = Number(dStr);
-  if (monthIndex < 0 || monthIndex > 11 || day < 1 || day > 31) return weekKey;
-
-  const label = `Week of ${MONTH_NAMES[monthIndex]} ${day}`;
-  const currentYear = new Date().getFullYear();
-  return year === currentYear ? label : `${label}, ${year}`;
+export interface WeekBoardsResult {
+  weekKey: string;
+  boards: Record<string, LeaderboardEntry[]>;
+  source: BoardSource;
 }
 
-/** Week keys present in storage, newest first. */
-export function listWeeks(): string[] {
-  const { weeks } = loadData();
-  return Object.keys(weeks).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+export interface WeeksResult {
+  weeks: string[];
+  currentWeekKey: string;
+  source: BoardSource;
 }
 
-/** Board for one game in one week: score desc, ties earlier `ts` first. */
-export function getBoard(weekKey: string, gameId: string): LeaderboardEntry[] {
-  if (typeof weekKey !== "string" || typeof gameId !== "string") return [];
-  const { weeks } = loadData();
-  const board = weeks[weekKey]?.[gameId];
-  if (!board) return [];
-  return board.slice().sort(compareEntries).slice(0, MAX_ENTRIES);
+/** Resolve `"current"` (and junk) to this device's current week key. */
+function resolveWeekKey(weekKey: string): string {
+  if (typeof weekKey !== "string" || weekKey === "" || weekKey === "current") {
+    return localStore.getWeekKey();
+  }
+  return weekKey;
 }
 
-/**
- * True when `score` earns a spot on this week's board for `gameId`.
- * Arcade rule: a board that is full and tied at 10th place does NOT qualify.
- */
-export function qualifies(gameId: string, score: number): boolean {
+function submitLocally(
+  gameId: string,
+  entry: { initials: string; score: number; difficulty: Difficulty },
+  source: BoardSource,
+): SubmitResult {
+  const rank = localStore.submitScore(gameId, entry);
+  const weekKey = localStore.getWeekKey();
+  return { rank, weekKey, board: localStore.getBoard(weekKey, gameId), source };
+}
+
+/** True when `score` earns a spot on this week's board for `gameId`. */
+export async function qualifies(
+  gameId: string,
+  score: number,
+): Promise<boolean> {
   if (typeof score !== "number" || !Number.isFinite(score) || score <= 0) {
     return false;
   }
-  const board = getBoard(getWeekKey(), gameId);
-  if (board.length < MAX_ENTRIES) return true;
-  return score > board[MAX_ENTRIES - 1].score;
-}
-
-/** Uppercase, strip non-A–Z, pad with "A" / trim to exactly 3 chars. */
-export function sanitizeInitials(raw: string): string {
-  const letters = String(raw ?? "")
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "");
-  return `${letters}AAA`.slice(0, 3);
-}
-
-/** False for blocklisted combos (case-insensitive). */
-export function isAllowedInitials(s: string): boolean {
-  const normalized = String(s ?? "")
-    .toUpperCase()
-    .replace(/[^A-Z]/g, "");
-  return !BLOCKED_INITIALS.has(normalized);
-}
-
-/** Last initials used on this device, sanitized — or null if never set. */
-export function getLastInitials(): string | null {
-  if (!isStorageAvailable()) return null;
-  try {
-    const raw = localStorage.getItem(LAST_INITIALS_KEY);
-    if (!raw) return null;
-    const letters = raw.toUpperCase().replace(/[^A-Z]/g, "");
-    if (!letters) return null;
-    return sanitizeInitials(letters);
-  } catch {
-    return null;
+  if (!isSharedLeaderboardConfigured()) {
+    return localStore.qualifies(gameId, score);
   }
-}
-
-function saveLastInitials(initials: string): void {
-  if (!isStorageAvailable()) return;
   try {
-    localStorage.setItem(LAST_INITIALS_KEY, initials);
+    const { boards } = await apiFetchWeekBoards("current");
+    return localStore.qualifiesAgainst(boards[gameId] ?? [], score);
   } catch {
-    // Silently degrade
+    return localStore.qualifies(gameId, score);
   }
 }
 
 /**
- * Insert a score into the CURRENT week's board for `gameId`, trim to 10, prune
- * storage to the newest WEEKS_TO_KEEP weeks and save. Also remembers the
- * initials for next time.
- *
- * Returns the 1-based rank of the new entry, or -1 if it fell off the board.
+ * Record a score for the CURRENT week. The initials are always remembered on
+ * this device (prefill for next time) regardless of where the score lands.
  */
-export function submitScore(
+export async function submitScore(
   gameId: string,
   entry: { initials: string; score: number; difficulty: Difficulty },
-): number {
-  const initials = sanitizeInitials(entry.initials);
-  saveLastInitials(initials);
-
-  const rawScore = entry.score;
-  const score =
-    typeof rawScore === "number" && Number.isFinite(rawScore)
-      ? Math.max(0, Math.floor(rawScore))
-      : 0;
-
-  const newEntry: LeaderboardEntry = {
+): Promise<SubmitResult> {
+  const initials = localStore.sanitizeInitials(entry.initials);
+  localStore.rememberInitials(initials);
+  const payload = {
     initials,
-    score,
-    difficulty: isDifficulty(entry.difficulty) ? entry.difficulty : "little-kids",
-    ts: Date.now(),
+    score: entry.score,
+    difficulty: entry.difficulty,
   };
 
-  const data = loadData();
-  const weekKey = getWeekKey();
-  const boards = data.weeks[weekKey] ?? {};
-  const board = boards[gameId] ?? [];
-
-  // Push last so a stable sort keeps existing equal-score entries ahead.
-  const sorted = board.concat(newEntry).sort(compareEntries);
-  const trimmed = sorted.slice(0, MAX_ENTRIES);
-
-  boards[gameId] = trimmed;
-  data.weeks[weekKey] = boards;
-
-  // Prune to the newest WEEKS_TO_KEEP weeks, always keeping the current one.
-  const ordered = Object.keys(data.weeks).sort((a, b) =>
-    a < b ? 1 : a > b ? -1 : 0,
-  );
-  const kept = ordered.slice(0, WEEKS_TO_KEEP);
-  if (!kept.includes(weekKey)) kept[kept.length - 1] = weekKey;
-  const keptSet = new Set(kept);
-  for (const key of ordered) {
-    if (!keptSet.has(key)) delete data.weeks[key];
+  if (!isSharedLeaderboardConfigured()) {
+    return submitLocally(gameId, payload, "local");
   }
 
-  saveData(data);
-
-  const index = trimmed.indexOf(newEntry);
-  return index === -1 ? -1 : index + 1;
-}
-
-/** Wipe every stored leaderboard week. */
-export function clearLeaderboard(): void {
-  if (!isStorageAvailable()) return;
   try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {
-    // Silently degrade
+    const res = await apiPostScore(gameId, payload);
+    return { ...res, source: "shared" };
+  } catch (err) {
+    // 429 is NOT a rejection of the score itself — the whole classroom shares
+    // one wifi IP, so a throttled kid should still get the offline experience
+    // (score kept on this device) rather than "you didn't make the board".
+    const rejected =
+      err instanceof LeaderboardApiError &&
+      err.kind === "http" &&
+      typeof err.status === "number" &&
+      err.status >= 400 &&
+      err.status < 500 &&
+      err.status !== 429;
+
+    if (rejected) {
+      // The server said no (cap, blocklist). Writing it locally would show
+      // the kid a score the shared board does not have — just show the real
+      // board instead.
+      let weekKey = localStore.getWeekKey();
+      let board: LeaderboardEntry[] = [];
+      try {
+        const current = await apiFetchWeekBoards("current");
+        weekKey = current.weekKey;
+        board = current.boards[gameId] ?? [];
+      } catch {
+        // Keep the local week guess and an empty board.
+      }
+      return { rank: -1, weekKey, board, source: "shared" };
+    }
+
+    return submitLocally(gameId, payload, "offline");
   }
 }
+
+/** Every game's board for one week. `weekKey` may be `"current"`. */
+export async function getWeekBoards(
+  weekKey: string,
+): Promise<WeekBoardsResult> {
+  const localKey = resolveWeekKey(weekKey);
+  const localResult = (source: BoardSource): WeekBoardsResult => ({
+    weekKey: localKey,
+    boards: localStore.getWeekBoards(localKey),
+    source,
+  });
+
+  if (!isSharedLeaderboardConfigured()) return localResult("local");
+  try {
+    const res = await apiFetchWeekBoards(weekKey);
+    return { ...res, source: "shared" };
+  } catch {
+    return localResult("offline");
+  }
+}
+
+/** Retained week keys, newest first, plus the authoritative current week. */
+export async function listWeeks(): Promise<WeeksResult> {
+  const localResult = (source: BoardSource): WeeksResult => ({
+    weeks: localStore.listWeeks(),
+    currentWeekKey: localStore.getWeekKey(),
+    source,
+  });
+
+  if (!isSharedLeaderboardConfigured()) return localResult("local");
+  try {
+    const res = await apiFetchWeeks();
+    return { ...res, source: "shared" };
+  } catch {
+    return localResult("offline");
+  }
+}
+
+export {
+  MAX_ENTRIES,
+  WEEKS_TO_KEEP,
+  getWeekKey,
+  formatWeekLabel,
+  sanitizeInitials,
+  isAllowedInitials,
+  getLastInitials,
+  clearLeaderboard,
+  type LeaderboardEntry,
+} from "@/lib/leaderboard-local";
+export { isSharedLeaderboardConfigured } from "@/lib/leaderboard-api";

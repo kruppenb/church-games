@@ -1,0 +1,61 @@
+# Deploy Leaderboard API
+name: Deploy Leaderboard API
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'api/**'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: leaderboard-api
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: api
+        run: npm ci
+
+      - name: Run tests
+        working-directory: api
+        run: npm test
+
+      - name: Build
+        working-directory: api
+        run: npm run build
+
+      - name: Prune dev dependencies
+        working-directory: api
+        run: npm prune --omit=dev
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: church-games-api
+          package: api

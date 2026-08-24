@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { sounds } from "@/lib/sounds";
 import {
-  getBoard,
   getLastInitials,
   getWeekKey,
   isAllowedInitials,
   qualifies,
   submitScore,
+  type BoardSource,
+  type LeaderboardEntry,
 } from "@/lib/leaderboard-store";
 import { LeaderboardTable } from "@/components/shared/LeaderboardTable";
 
@@ -23,7 +24,8 @@ interface HighScoreFlowProps {
   onDone: () => void;
 }
 
-type Phase = "idle" | "entry" | "board";
+/** "checking" waits on the (possibly remote) qualify check and renders nothing. */
+type Phase = "idle" | "checking" | "entry" | "board";
 
 const SLOT_COUNT = 3;
 const SHAKE_MS = 500;
@@ -54,9 +56,23 @@ export function HighScoreFlow({
   const [rank, setRank] = useState(-1);
   const [highlightTs, setHighlightTs] = useState<number | undefined>(undefined);
   const [weekKey, setWeekKey] = useState(() => getWeekKey());
+  const [submitting, setSubmitting] = useState(false);
+  const [board, setBoard] = useState<LeaderboardEntry[]>([]);
+  const [source, setSource] = useState<BoardSource>("local");
 
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+
+  // Every open/close bumps the run id. Async results (qualify / submit) that
+  // come back for an older run are dropped: no state, no onDone.
+  const runIdRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Refs mirror state so the window keydown listener never reads stale values
   // (rapid keystrokes can arrive before React re-renders).
@@ -64,6 +80,9 @@ export function HighScoreFlow({
   lettersRef.current = letters;
 
   const activeSlotRef = useRef(activeSlot);
+
+  // State updates are async — only a ref can stop a double Enter double-posting.
+  const submittingRef = useRef(false);
 
   const focusSlot = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(SLOT_COUNT - 1, index));
@@ -79,28 +98,43 @@ export function HighScoreFlow({
     [],
   );
 
-  // Open / close. Non-qualifying scores close the flow from an effect so the
-  // parent is never notified during render.
+  // Open / close. The qualify check can hit the network, so the flow renders
+  // nothing until it answers. Non-qualifying scores close the flow from the
+  // effect so the parent is never notified during render.
   useEffect(() => {
+    const runId = ++runIdRef.current;
+
     if (!show) {
+      submittingRef.current = false;
+      setSubmitting(false);
       setPhase("idle");
       return;
     }
-    if (!qualifies(gameId, score)) {
-      setPhase("idle");
-      onDoneRef.current();
-      return;
-    }
-    const prefill = splitInitials(getLastInitials() ?? "AAA");
-    lettersRef.current = prefill;
-    setLetters(prefill);
-    focusSlot(0);
-    setShaking(false);
-    setRank(-1);
-    setHighlightTs(undefined);
-    setWeekKey(getWeekKey());
-    setPhase("entry");
-  }, [show, gameId, score]);
+
+    setPhase("checking");
+    void (async () => {
+      const ok = await qualifies(gameId, score);
+      if (!mountedRef.current || runIdRef.current !== runId) return;
+      if (!ok) {
+        setPhase("idle");
+        onDoneRef.current();
+        return;
+      }
+      const prefill = splitInitials(getLastInitials() ?? "AAA");
+      lettersRef.current = prefill;
+      setLetters(prefill);
+      focusSlot(0);
+      setShaking(false);
+      setRank(-1);
+      setHighlightTs(undefined);
+      setBoard([]);
+      setSource("local");
+      submittingRef.current = false;
+      setSubmitting(false);
+      setWeekKey(getWeekKey());
+      setPhase("entry");
+    })();
+  }, [show, gameId, score, focusSlot]);
 
   // One celebration when the rank reveal lands.
   useEffect(() => {
@@ -134,13 +168,28 @@ export function HighScoreFlow({
       shakeTimerRef.current = setTimeout(() => setShaking(false), SHAKE_MS);
       return;
     }
-    const newRank = submitScore(gameId, { initials, score, difficulty });
-    const week = getWeekKey();
-    const board = getBoard(week, gameId);
-    setWeekKey(week);
-    setRank(newRank);
-    setHighlightTs(newRank > 0 ? board[newRank - 1]?.ts : undefined);
-    setPhase("board");
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+
+    const runId = runIdRef.current;
+    void (async () => {
+      const result = await submitScore(gameId, { initials, score, difficulty });
+      if (!mountedRef.current || runIdRef.current !== runId) {
+        submittingRef.current = false;
+        return;
+      }
+      setWeekKey(result.weekKey);
+      setRank(result.rank);
+      setBoard(result.board);
+      setSource(result.source);
+      setHighlightTs(
+        result.rank > 0 ? result.board[result.rank - 1]?.ts : undefined,
+      );
+      submittingRef.current = false;
+      setSubmitting(false);
+      setPhase("board");
+    })();
   }, [difficulty, gameId, score, focusSlot]);
 
   // Physical keyboard: A–Z types and advances, Backspace steps back, Enter = OK.
@@ -149,6 +198,8 @@ export function HighScoreFlow({
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Mirrors the disabled buttons: nothing is editable while saving.
+      if (submittingRef.current) return;
 
       const slot = activeSlotRef.current;
 
@@ -192,7 +243,7 @@ export function HighScoreFlow({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [phase, focusSlot, setLetterAt, bumpSlot, handleOk]);
 
-  if (phase === "idle") return null;
+  if (phase === "idle" || phase === "checking") return null;
 
   return (
     <div
@@ -201,7 +252,7 @@ export function HighScoreFlow({
       aria-modal="true"
       aria-label={`${gameName} high score`}
     >
-      <div className="lb-panel">
+      <div className="lb-panel" data-week-key={weekKey}>
         {phase === "entry" ? (
           <>
             <div className="lb-title">HIGH SCORE!</div>
@@ -219,6 +270,7 @@ export function HighScoreFlow({
                     type="button"
                     className="lb-arrow"
                     aria-label={`Next letter, slot ${i + 1}`}
+                    disabled={submitting}
                     onClick={() => bumpSlot(i, 1)}
                   >
                     &#9650;
@@ -227,6 +279,7 @@ export function HighScoreFlow({
                     type="button"
                     className="lb-letter"
                     aria-label={`Slot ${i + 1}, letter ${letter}`}
+                    disabled={submitting}
                     onClick={() => focusSlot(i)}
                   >
                     {letter}
@@ -235,6 +288,7 @@ export function HighScoreFlow({
                     type="button"
                     className="lb-arrow"
                     aria-label={`Previous letter, slot ${i + 1}`}
+                    disabled={submitting}
                     onClick={() => bumpSlot(i, -1)}
                   >
                     &#9660;
@@ -247,8 +301,10 @@ export function HighScoreFlow({
               type="button"
               className="btn btn-primary btn-large lb-ok"
               onClick={handleOk}
+              disabled={submitting}
+              aria-busy={submitting}
             >
-              OK &#10003;
+              {submitting ? "Saving…" : <>OK &#10003;</>}
             </button>
           </>
         ) : (
@@ -257,11 +313,12 @@ export function HighScoreFlow({
               {rank > 0 ? `RANK #${rank}` : "NICE RUN!"}
             </div>
             <div className="lb-subtitle">{gameName} — this week</div>
-            <LeaderboardTable
-              gameId={gameId}
-              weekKey={weekKey}
-              highlightTs={highlightTs}
-            />
+            <LeaderboardTable entries={board} highlightTs={highlightTs} />
+            {source === "offline" ? (
+              <p className="lb-offline" role="status">
+                Offline — score saved on this device
+              </p>
+            ) : null}
             <button
               type="button"
               className="btn btn-primary btn-large lb-ok"

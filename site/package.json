@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:live": "playwright test e2e/leaderboard-live.spec.ts --project \"Desktop Chrome\"",
     "validate": "vitest run && tsc --noEmit && vite build"
   },
   "dependencies": {

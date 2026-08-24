@@ -1,5 +1,10 @@
 # Handoff: Shared Leaderboard on Azure
 
+> **Status: implemented 2026-08-23.** This handoff document is kept for
+> historical context; for the current architecture, API contract, provisioning,
+> CI, local dev, and moderation instructions, see
+> [`docs/shared-leaderboard.md`](./shared-leaderboard.md).
+
 > **How to use this document**: start a Claude Code session in this repo and say
 > "Implement docs/shared-leaderboard-handoff.md". Section 8 lists the decisions
 > to confirm with Nicholas before writing code; everything else is settled.
