@@ -1,6 +1,9 @@
 /**
- * CORS is enforced in code — provisioning clears the platform CORS list so the
- * Functions host does not answer preflights before our handlers run.
+ * CORS headers for actual responses are added here. NOTE: in Azure the
+ * Functions host answers browser preflights (OPTIONS + Origin) from the
+ * PLATFORM allow-list before our handlers run, so infra/provision.sh keeps
+ * that list equal to DEFAULT_ALLOWED_ORIGINS; our OPTIONS handler only gets
+ * to answer preflights locally (`func start`). Keep the two lists in sync.
  *
  * No Origin header (curl) or a disallowed origin: the request is processed
  * normally, just without CORS headers. The browser is the enforcement point.

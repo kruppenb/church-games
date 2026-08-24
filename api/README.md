@@ -60,7 +60,11 @@ check), so rejected POSTs spend budget too. 30/min fits a full class finishing a
 round together plus retries. Raise it with the setting above if a room ever hits
 it; the in-memory counter is per Function instance either way.
 
-CORS is enforced in code — the platform CORS list is deliberately empty.
+CORS: this code adds the headers on actual responses, but in Azure the Functions
+host answers browser preflights from the **platform** CORS allow-list before any
+function runs — so the platform list must contain the same origins
+(`infra/provision.sh` sets it). Locally `func start` has no platform list and
+the in-code `OPTIONS` handler answers preflights itself.
 
 ## Local development
 

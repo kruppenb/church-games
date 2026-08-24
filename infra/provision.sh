@@ -42,6 +42,8 @@ TABLE="${TABLE:-leaderboard}"
 TIMEZONE="${TIMEZONE:-America/Los_Angeles}"
 GH_REPO="${GH_REPO:-kruppenb/church-games}"
 APP_REG="${APP_REG:-github-deploy-church-games}"
+# Must mirror DEFAULT_ALLOWED_ORIGINS in api/src/lib/cors.ts (space-separated).
+ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://kruppenb.github.io http://localhost:5173 http://localhost:4174 http://127.0.0.1:5173 http://127.0.0.1:4174}"
 # Optional: supply an explicit MODERATION_KEY to set/rotate it. Otherwise a
 # fresh one is generated ONLY the first time (see the moderation-key section).
 MODERATION_KEY="${MODERATION_KEY:-}"
@@ -249,24 +251,34 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# CORS — cleared in the platform config; the API enforces CORS in code
+# CORS — in Azure the Functions host answers browser preflights (OPTIONS with
+# an Origin header) from the PLATFORM allow-list before our code runs, so the
+# platform list must mirror api/src/lib/cors.ts. Actual (non-preflight)
+# responses get their CORS headers from the API code. Verified 2026-08-23:
+# with an empty platform list the host returned 204 with no
+# Access-Control-Allow-Origin and browsers blocked every request.
 # ---------------------------------------------------------------------------
-log "Clearing platform CORS allow-list (the API enforces CORS in application code)"
+log "Platform CORS allow-list"
 if az functionapp show --name "$FUNC_APP" --resource-group "$RG" >/dev/null 2>&1; then
-  CORS_ORIGINS="$(az functionapp cors show --name "$FUNC_APP" --resource-group "$RG" --query allowedOrigins -o tsv || true)"
-  if [ -n "$CORS_ORIGINS" ]; then
-    while IFS= read -r origin; do
-      [ -n "$origin" ] || continue
-      run az functionapp cors remove \
-        --name "$FUNC_APP" \
-        --resource-group "$RG" \
-        --allowed-origins "$origin"
-    done <<<"$CORS_ORIGINS"
+  EXISTING_ORIGINS="$(az functionapp cors show --name "$FUNC_APP" --resource-group "$RG" --query allowedOrigins -o tsv || true)"
+  MISSING_ORIGINS=()
+  for origin in $ALLOWED_ORIGINS; do
+    if ! grep -qxF "$origin" <<<"$EXISTING_ORIGINS"; then
+      MISSING_ORIGINS+=("$origin")
+    fi
+  done
+  if [ "${#MISSING_ORIGINS[@]}" -gt 0 ]; then
+    run az functionapp cors add \
+      --name "$FUNC_APP" \
+      --resource-group "$RG" \
+      --output none \
+      --allowed-origins "${MISSING_ORIGINS[@]}"
+    echo "  added: ${MISSING_ORIGINS[*]}"
   else
-    echo "  no platform CORS origins configured"
+    echo "  already configured: $ALLOWED_ORIGINS"
   fi
 else
-  echo "  (function app not created yet — nothing to clear)"
+  echo "  (function app not created yet — re-run to configure CORS)"
 fi
 
 # ---------------------------------------------------------------------------

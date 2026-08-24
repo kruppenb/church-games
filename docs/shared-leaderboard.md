@@ -48,11 +48,17 @@ responses are JSON with `Cache-Control: no-store`. Error bodies are
 | `OPTIONS` (every route) | `204`. CORS headers included only when `Origin` is on the allow-list. |
 | Timer `retention` | `0 0 10 * * 1` (Mon 10:00 UTC ≈ Mon 03:00 Pacific). Deletes every entity in a week outside the newest 6. Logs the count deleted. |
 
-CORS is enforced **in application code**, not the Functions platform config
-(provisioning clears the platform CORS list — see §5). Allowed origins:
-`https://kruppenb.github.io`, `http://localhost:5173`, `http://localhost:4174`,
-`http://127.0.0.1:5173`, `http://127.0.0.1:4174`, plus any comma-separated
-extras in the `LEADERBOARD_ALLOWED_ORIGINS` app setting.
+CORS lives in **two places that must agree**. In Azure the Functions host
+answers browser preflights (`OPTIONS` + `Origin`) from the **platform**
+allow-list before any function code runs (with an empty list it returns 204
+with no `Access-Control-Allow-Origin` and the browser blocks the call);
+actual responses get their CORS headers from the **API code**
+(`api/src/lib/cors.ts`). `infra/provision.sh` sets the platform list to the
+same origins. Allowed origins: `https://kruppenb.github.io`,
+`http://localhost:5173`, `http://localhost:4174`, `http://127.0.0.1:5173`,
+`http://127.0.0.1:4174`. To add one: add it to the `LEADERBOARD_ALLOWED_ORIGINS`
+app setting (comma-separated) **and** `az functionapp cors add … --allowed-origins <origin>`
+(or re-run provisioning with `ALLOWED_ORIGINS="…"`).
 
 Entry shape (wire and client):
 `{ initials: string; score: number; difficulty: "little-kids" | "big-kids"; ts: number; rowKey?: string }`
@@ -131,9 +137,9 @@ What it does, in order:
    — store it in a password manager immediately, the script will not show it
    again. Re-running the script leaves an existing key alone; pass
    `MODERATION_KEY=<value>` explicitly to rotate it on purpose.
-6. Clears the platform CORS allow-list (the API enforces CORS in code — see
-   §2 — so a platform-level allow-list would only add a second, redundant
-   place for origins to go stale).
+6. Sets the platform CORS allow-list to the same origins the API code allows
+   (see §2 — the Functions host answers preflights from this list, so it is
+   not optional). Idempotent: only missing origins are added.
 7. GitHub OIDC app registration `github-deploy-church-games`: app
    registration, service principal, a federated credential for
    `repo:kruppenb/church-games:ref:refs/heads/main` (issuer
