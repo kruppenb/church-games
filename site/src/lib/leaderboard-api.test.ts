@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   API_TIMEOUT_MS,
   LeaderboardApiError,
+  checkTeacherKey,
+  deleteEntry,
   fetchWeekBoards,
   fetchWeeks,
   getApiBaseUrl,
@@ -17,6 +19,20 @@ function jsonResponse(body: unknown, status = 200): Response {
     ok: status >= 200 && status < 300,
     status,
     json: async () => body,
+  } as unknown as Response;
+}
+
+/**
+ * A body-less response (204 / an error status the client must not decode).
+ * `json()` REJECTS on purpose: any call to it is a bug in the client.
+ */
+function noBodyResponse(status: number): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => {
+      throw new Error("json() must not be called on a body-less response");
+    },
   } as unknown as Response;
 }
 
@@ -113,6 +129,7 @@ describe("unconfigured", () => {
         score: 10,
         difficulty: "big-kids",
       }),
+      () => deleteEntry("2026-08-23", "survivors", "row-1", "secret"),
     ]) {
       await expect(call()).rejects.toBeInstanceOf(LeaderboardApiError);
       await expect(call()).rejects.toMatchObject({ kind: "unconfigured" });
@@ -333,6 +350,197 @@ describe("postScore", () => {
   });
 });
 
+describe("deleteEntry", () => {
+  it("DELETEs {base}/entry/{weekKey}/{gameId}/{rowKey} with the moderation key", async () => {
+    configure();
+    const fetchMock = mockFetch(noBodyResponse(204));
+    await deleteEntry("2026-08-23", "survivors", "9499999_0000000000010", "s3cret");
+    const [url, init] = lastCall(fetchMock);
+    expect(url).toBe(
+      `${BASE}/entry/2026-08-23/survivors/9499999_0000000000010`,
+    );
+    expect(init.method).toBe("DELETE");
+    expect(init.headers).toMatchObject({
+      Accept: "application/json",
+      "x-moderation-key": "s3cret",
+    });
+    expect(init.body).toBeUndefined();
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("percent-encodes every path segment", async () => {
+    configure();
+    const fetchMock = mockFetch(noBodyResponse(204));
+    await deleteEntry("2026-08-23", "odd/game id", "row/key?x", "k");
+    expect(lastCall(fetchMock)[0]).toBe(
+      `${BASE}/entry/2026-08-23/odd%2Fgame%20id/row%2Fkey%3Fx`,
+    );
+  });
+
+  it("resolves with undefined on 204 without reading the body", async () => {
+    configure();
+    // noBodyResponse's json() throws — reaching it would fail this test.
+    mockFetch(noBodyResponse(204));
+    await expect(
+      deleteEntry("2026-08-23", "survivors", "row-1", "k"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects with http/401 for a wrong or missing key", async () => {
+    configure();
+    mockFetch(noBodyResponse(401));
+    const err = await deleteEntry("2026-08-23", "survivors", "row-1", "nope").catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(LeaderboardApiError);
+    expect(err).toMatchObject({ kind: "http", status: 401 });
+  });
+
+  it("rejects with http/404 when the entry is already gone", async () => {
+    configure();
+    mockFetch(noBodyResponse(404));
+    await expect(
+      deleteEntry("2026-08-23", "survivors", "gone", "k"),
+    ).rejects.toMatchObject({ kind: "http", status: 404 });
+  });
+
+  it("rejects with 'unconfigured' and never fetches without a base URL", async () => {
+    vi.stubEnv("VITE_LEADERBOARD_API", undefined);
+    const fetchMock = mockFetch(noBodyResponse(204));
+    await expect(
+      deleteEntry("2026-08-23", "survivors", "row-1", "k"),
+    ).rejects.toMatchObject({ kind: "unconfigured" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("maps a rejected fetch to 'network'", async () => {
+    configure();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await expect(
+      deleteEntry("2026-08-23", "survivors", "row-1", "k"),
+    ).rejects.toMatchObject({ kind: "network" });
+  });
+
+  it("aborts after API_TIMEOUT_MS and maps it to 'timeout'", async () => {
+    configure();
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              reject(new DOMException("The operation was aborted.", "AbortError"));
+            });
+          }),
+      ),
+    );
+
+    const pending = deleteEntry("2026-08-23", "survivors", "row-1", "k");
+    const assertion = expect(pending).rejects.toMatchObject({ kind: "timeout" });
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS + 1);
+    await assertion;
+  });
+});
+
+describe("checkTeacherKey", () => {
+  it("GETs {base}/moderation/check with the passphrase header and no body", async () => {
+    configure();
+    const fetchMock = mockFetch(noBodyResponse(204));
+    await checkTeacherKey("s3cret-key");
+    const [url, init] = lastCall(fetchMock);
+    expect(url).toBe(`${BASE}/moderation/check`);
+    expect(init.method).toBe("GET");
+    expect(init.headers).toMatchObject({
+      Accept: "application/json",
+      "x-moderation-key": "s3cret-key",
+    });
+    expect(init.body).toBeUndefined();
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("resolves with undefined on 204 without reading the body", async () => {
+    configure();
+    // noBodyResponse's json() throws — reaching it would fail this test.
+    mockFetch(noBodyResponse(204));
+    await expect(checkTeacherKey("s3cret-key")).resolves.toBeUndefined();
+  });
+
+  it("rejects with http/401 for a wrong (or rotated) passphrase", async () => {
+    configure();
+    mockFetch(noBodyResponse(401));
+    const err = await checkTeacherKey("nope").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(LeaderboardApiError);
+    expect(err).toMatchObject({ kind: "http", status: 401 });
+  });
+
+  it("rejects with http/429 when the IP is throttled", async () => {
+    configure();
+    mockFetch(noBodyResponse(429));
+    await expect(checkTeacherKey("nope")).rejects.toMatchObject({
+      kind: "http",
+      status: 429,
+    });
+  });
+
+  it("rejects with http/404 against an API that predates the route", async () => {
+    configure();
+    mockFetch(noBodyResponse(404));
+    await expect(checkTeacherKey("s3cret-key")).rejects.toMatchObject({
+      kind: "http",
+      status: 404,
+    });
+  });
+
+  it("rejects with 'unconfigured' and never fetches without a base URL", async () => {
+    vi.stubEnv("VITE_LEADERBOARD_API", undefined);
+    const fetchMock = mockFetch(noBodyResponse(204));
+    await expect(checkTeacherKey("s3cret-key")).rejects.toMatchObject({
+      kind: "unconfigured",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("maps a rejected fetch to 'network'", async () => {
+    configure();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await expect(checkTeacherKey("s3cret-key")).rejects.toMatchObject({
+      kind: "network",
+    });
+  });
+
+  it("aborts after API_TIMEOUT_MS and maps it to 'timeout'", async () => {
+    configure();
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              reject(new DOMException("The operation was aborted.", "AbortError"));
+            });
+          }),
+      ),
+    );
+
+    const pending = checkTeacherKey("s3cret-key");
+    const assertion = expect(pending).rejects.toMatchObject({ kind: "timeout" });
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS + 1);
+    await assertion;
+  });
+});
+
 describe("failure mapping", () => {
   it("maps a rejected fetch to 'network'", async () => {
     configure();
@@ -393,6 +601,32 @@ describe("failure mapping", () => {
     await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS + 1);
     await assertion;
     expect(aborted).toBe(true);
+  });
+
+  it("still times out when the headers arrive but the body stalls", async () => {
+    configure();
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        // Headers arrive immediately; the body only "fails" once aborted.
+        return {
+          ok: true,
+          status: 200,
+          json: () =>
+            new Promise<unknown>((_resolve, reject) => {
+              init.signal?.addEventListener("abort", () =>
+                reject(new DOMException("The operation was aborted.", "AbortError")),
+              );
+            }),
+        } as unknown as Response;
+      }),
+    );
+
+    const pending = fetchWeeks();
+    const assertion = expect(pending).rejects.toMatchObject({ kind: "timeout" });
+    await vi.advanceTimersByTimeAsync(API_TIMEOUT_MS + 1);
+    await assertion;
   });
 
   it("does not abort a request that finishes in time", async () => {

@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { DifficultyProvider } from "./hooks/useDifficulty";
 import { Landing } from "./components/Landing";
@@ -27,7 +27,16 @@ export function App() {
         <Suspense fallback={<div className="loading">Loading...</div>}>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/teacher/:token" element={<TeacherMode />} />
+            <Route
+              path="/teacher"
+              element={
+                <ErrorBoundary>
+                  <TeacherMode />
+                </ErrorBoundary>
+              }
+            />
+            {/* Old `#/teacher/<token>` bookmarks land on the gate, not a 404. */}
+            <Route path="/teacher/*" element={<Navigate to="/teacher" replace />} />
             <Route
               path="/leaderboard"
               element={

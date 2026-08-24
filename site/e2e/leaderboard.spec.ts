@@ -16,6 +16,11 @@ import { test, expect, type Page, type Route } from "@playwright/test";
  * "church-games:leaderboard", `{ version: 1, weeks: { [weekKey]: {
  * [gameId]: entry[] } } }`, weekKey = local YYYY-MM-DD of the current week's
  * Sunday.
+ *
+ * Teacher dashboard (`#/teacher`) is gated by one server-verified passphrase
+ * (no more `#/teacher/<token>` URL gate — see
+ * docs/teacher-passphrase-handoff.md) checked via `GET /moderation/check`;
+ * the mock below fakes that route the same way it fakes DELETE.
  */
 
 const STORAGE_KEY = "church-games:leaderboard";
@@ -23,6 +28,12 @@ const MOCK_API_PATTERN = "**/__lb-api/**";
 const MOCK_API_PREFIX = "/__lb-api/";
 const MAX_ENTRIES = 10;
 const WEEKS_TO_KEEP = 6;
+
+/** The teacher passphrase the mock API accepts on GET /moderation/check and DELETE /entry/... */
+const MOCK_MODERATION_KEY = "e2e-moderation-key";
+/** Storage key for the teacher passphrase — session by default, localStorage
+ * when "Remember on this device" is ticked (see teacher-session.ts). */
+const TEACHER_STORAGE_KEY = "church-games:teacher-key";
 
 type Difficulty = "little-kids" | "big-kids";
 
@@ -149,9 +160,26 @@ interface PostRecord {
   body: unknown;
 }
 
+/** One DELETE /entry/... attempt, including the key that was presented. */
+interface DeleteRecord {
+  weekKey: string;
+  gameId: string;
+  rowKey: string;
+  key: string | null;
+}
+
+/** One GET /moderation/check attempt, including the key that was presented. */
+interface CheckRecord {
+  key: string | null;
+}
+
 interface MockLeaderboardApiHandle {
   /** Every POST /score/:gameId this mock has received, in order. */
   posts: PostRecord[];
+  /** Every DELETE /entry/... this mock has received, in order (401s included). */
+  deletes: DeleteRecord[];
+  /** Every GET /moderation/check this mock has received, in order. */
+  checks: CheckRecord[];
 }
 
 interface ScorePostBody {
@@ -201,6 +229,8 @@ async function mockLeaderboardApi(
   }
 
   const posts: PostRecord[] = [];
+  const deletes: DeleteRecord[] = [];
+  const checks: CheckRecord[] = [];
 
   /** Week keys that actually have at least one entry, newest first — mirrors
    * the real API deriving `weeks` from stored entities' PartitionKeys rather
@@ -288,12 +318,54 @@ async function mockLeaderboardApi(
       return;
     }
 
+    // GET /moderation/check — verifies the teacher passphrase. Mirrors the
+    // real API: the key travels in a header (never the URL), a match is an
+    // empty 204, anything else (wrong/missing) is 401. No body either way.
+    if (method === "GET" && segments.length === 2 && segments[0] === "moderation" && segments[1] === "check") {
+      const key = request.headers()["x-moderation-key"] ?? null;
+      checks.push({ key });
+      if (key === MOCK_MODERATION_KEY) {
+        await route.fulfill({ status: 204 });
+      } else {
+        await respondJson(401, { error: "Unauthorized" });
+      }
+      return;
+    }
+
+    // DELETE /entry/:weekKey/:gameId/:rowKey — teacher moderation. Mirrors the
+    // real API: the key travels in a header (never the URL), a wrong/missing
+    // one is 401, an unknown rowKey is 404, and success is an empty 204.
+    if (method === "DELETE" && segments.length === 4 && segments[0] === "entry") {
+      const weekKey = decodeURIComponent(segments[1]);
+      const gameId = decodeURIComponent(segments[2]);
+      const rowKey = decodeURIComponent(segments[3]);
+      const key = request.headers()["x-moderation-key"] ?? null;
+      deletes.push({ weekKey, gameId, rowKey, key });
+
+      if (key !== MOCK_MODERATION_KEY) {
+        await respondJson(401, { error: "unauthorized" });
+        return;
+      }
+
+      const board = weeks[weekKey]?.[gameId] ?? [];
+      const index = board.findIndex((e) => e.rowKey === rowKey);
+      if (index === -1) {
+        await respondJson(404, { error: "not found" });
+        return;
+      }
+
+      board.splice(index, 1);
+      if (board.length === 0) delete weeks[weekKey][gameId];
+      await route.fulfill({ status: 204 });
+      return;
+    }
+
     await respondJson(404, { error: `No mock route for ${method} ${url.pathname}` });
   }
 
   await page.route(MOCK_API_PATTERN, handleRoute);
 
-  return { posts };
+  return { posts, deletes, checks };
 }
 
 test.describe("Weekly Arcade Leaderboard", () => {
@@ -726,5 +798,226 @@ test.describe("Weekly Arcade Leaderboard", () => {
     await expect(
       jeopardyCardAfterReload.locator(".lb-row").first(),
     ).toContainText("QRS", { timeout: 5000 });
+  });
+
+  test("teacher gate unlocks with the passphrase and removes an entry", async ({
+    page,
+  }) => {
+    const thisWeek = currentWeekKey();
+    const mock = await mockLeaderboardApi(page, {
+      [thisWeek]: {
+        survivors: [
+          makeEntry("AAA", 500, "little-kids", 1_000),
+          makeEntry("BBB", 400, "big-kids", 1_001),
+        ],
+      },
+    });
+
+    await page.goto("/#/teacher");
+    await disableAnimations(page);
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.locator(".teacher-gate-input")).toBeFocused();
+    await expect(page.locator(".teacher-gate-remember-box")).not.toBeChecked();
+
+    // --- Empty submit: no request, no alert ---
+    await page.locator(".teacher-gate-submit").click();
+    expect(mock.checks).toHaveLength(0);
+    await expect(page.locator(".teacher-gate-alert")).toHaveCount(0);
+
+    // --- Wrong phrase: rejected, nothing stored ---
+    await page.locator(".teacher-gate-input").fill("wrong-phrase");
+    await page.locator(".teacher-gate-submit").click();
+    await expect(page.locator(".teacher-gate-alert")).toContainText(
+      "Wrong passphrase",
+      { timeout: 5000 },
+    );
+    let stored = await page.evaluate((key: string) => {
+      return {
+        session: window.sessionStorage.getItem(key),
+        local: window.localStorage.getItem(key),
+      };
+    }, TEACHER_STORAGE_KEY);
+    expect(stored.session).toBeNull();
+    expect(stored.local).toBeNull();
+
+    // --- Right phrase, remember unchecked: dashboard opens, no second key
+    // prompt is ever shown for moderation — the passphrase already is the
+    // moderation key ---
+    await page.locator(".teacher-gate-input").fill(MOCK_MODERATION_KEY);
+    await page.locator(".teacher-gate-submit").click();
+
+    await expect(page.locator(".teacher-dashboard")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.locator(".tm-section")).toBeVisible();
+
+    stored = await page.evaluate((key: string) => {
+      return {
+        session: window.sessionStorage.getItem(key),
+        local: window.localStorage.getItem(key),
+      };
+    }, TEACHER_STORAGE_KEY);
+    expect(stored.session).toBe(MOCK_MODERATION_KEY);
+    expect(stored.local).toBeNull();
+    expect(page.url()).not.toContain(MOCK_MODERATION_KEY);
+
+    // --- Remove -> inline confirm -> gone, no key prompt of any kind ---
+    const aaaRow = page.locator(".tm-row", { hasText: "AAA" });
+    await expect(aaaRow).toBeVisible({ timeout: 5000 });
+    await aaaRow.locator(".tm-remove").click();
+
+    const confirm = aaaRow.locator(".tm-confirm");
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toContainText("Remove AAA · 500?");
+    await confirm.locator(".tm-confirm-yes").click();
+
+    await expect(page.locator(".teacher-gate-input")).toHaveCount(0);
+    await expect(page.locator(".tm-key-input")).toHaveCount(0);
+    await expect(page.locator(".tm-row", { hasText: "AAA" })).toHaveCount(0, {
+      timeout: 5000,
+    });
+    await expect(page.locator(".tm-row", { hasText: "BBB" })).toHaveCount(1);
+
+    expect(mock.deletes).toHaveLength(1);
+    expect(mock.deletes[0]).toEqual({
+      weekKey: thisWeek,
+      gameId: "survivors",
+      rowKey: "1000",
+      key: MOCK_MODERATION_KEY,
+    });
+
+    // --- Reload: sessionStorage survives, the gate re-verifies the key ---
+    const checksBeforeReload = mock.checks.length;
+    await page.reload();
+    await disableAnimations(page);
+    await expect(page.locator(".teacher-dashboard")).toBeVisible({
+      timeout: 5000,
+    });
+    // At least one re-verification (React StrictMode double-runs the mount
+    // effect on the dev server, so it may be two) — and every one of them
+    // carried the stored key, never a guess.
+    const reloadChecks = mock.checks.slice(checksBeforeReload);
+    expect(reloadChecks.length).toBeGreaterThanOrEqual(1);
+    for (const check of reloadChecks) expect(check.key).toBe(MOCK_MODERATION_KEY);
+
+    // --- Lock: back to the gate, both storages cleared ---
+    await page.locator(".teacher-lock").click();
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
+    stored = await page.evaluate((key: string) => {
+      return {
+        session: window.sessionStorage.getItem(key),
+        local: window.localStorage.getItem(key),
+      };
+    }, TEACHER_STORAGE_KEY);
+    expect(stored.session).toBeNull();
+    expect(stored.local).toBeNull();
+
+    // --- The removal is real: the kid-facing board shows BBB on top now ---
+    await page.goto("/#/leaderboard");
+    await disableAnimations(page);
+    const survivorsCard = page.locator(".lbp-card", {
+      has: page.locator(".lbp-card-name", { hasText: "Survivors" }),
+    });
+    await expect(survivorsCard.locator(".lb-row").first()).toContainText(
+      "BBB",
+      { timeout: 5000 },
+    );
+    await expect(survivorsCard.locator(".lb-row")).toHaveCount(1);
+  });
+
+  test("teacher gate remembers the passphrase on this device when asked", async ({
+    page,
+  }) => {
+    await mockLeaderboardApi(page, {});
+
+    await page.goto("/#/teacher");
+    await disableAnimations(page);
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
+    await page.locator(".teacher-gate-input").fill(MOCK_MODERATION_KEY);
+    await page.locator(".teacher-gate-remember-box").check();
+    await page.locator(".teacher-gate-submit").click();
+
+    await expect(page.locator(".teacher-dashboard")).toBeVisible({
+      timeout: 5000,
+    });
+
+    let stored = await page.evaluate((key: string) => {
+      return {
+        session: window.sessionStorage.getItem(key),
+        local: window.localStorage.getItem(key),
+      };
+    }, TEACHER_STORAGE_KEY);
+    expect(stored.local).toBe(MOCK_MODERATION_KEY);
+    expect(stored.session).toBeNull();
+
+    // --- Reload: localStorage survives, still unlocked ---
+    await page.reload();
+    await disableAnimations(page);
+    await expect(page.locator(".teacher-dashboard")).toBeVisible({
+      timeout: 5000,
+    });
+
+    // --- Lock clears the remembered key too ---
+    await page.locator(".teacher-lock").click();
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
+    stored = await page.evaluate((key: string) => {
+      return {
+        session: window.sessionStorage.getItem(key),
+        local: window.localStorage.getItem(key),
+      };
+    }, TEACHER_STORAGE_KEY);
+    expect(stored.local).toBeNull();
+    expect(stored.session).toBeNull();
+  });
+
+  test("old teacher token URLs redirect to the gate", async ({ page }) => {
+    await mockLeaderboardApi(page, {});
+
+    await page.goto("/#/teacher/e2e-teacher-token");
+    await disableAnimations(page);
+
+    await expect(page).toHaveURL(/#\/teacher$/);
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.locator("text=Access Denied")).toHaveCount(0);
+  });
+
+  test("landing footer links to the teacher gate", async ({ page }) => {
+    await mockLeaderboardApi(page, {});
+
+    await page.goto("/");
+    await disableAnimations(page);
+
+    const teacherLink = page.locator(".landing-teacher-link");
+    await expect(teacherLink).toBeVisible({ timeout: 5000 });
+    await expect(teacherLink).toHaveText("Teacher");
+    const box = await teacherLink.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    await teacherLink.click();
+    await expect(page).toHaveURL(/#\/teacher$/);
+    await expect(page.locator(".teacher-gate-form")).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

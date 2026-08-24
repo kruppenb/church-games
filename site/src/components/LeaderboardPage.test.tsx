@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor, act } from "@testing-library/react";
 import LeaderboardPage from "@/components/LeaderboardPage";
 import {
   formatWeekLabel,
@@ -167,6 +167,66 @@ describe("LeaderboardPage — shared mode", () => {
     expect(screen.getByText("This Week").getAttribute("aria-selected")).toBe(
       "false",
     );
+  });
+
+  it("keeps the previous week's cards visible (dimmed) while a newly picked week is still loading", async () => {
+    const current = getWeekKey();
+    const state: ServerState = {
+      weeks: [current, PREV_WEEK],
+      currentWeekKey: current,
+      boards: {
+        [current]: { survivors: [entry("SRV", 900, 111)] },
+        [PREV_WEEK]: { jeopardy: [entry("OLD", 400, 222)] },
+      },
+    };
+    let resolvePrevWeek: ((res: Response) => void) | undefined;
+    vi.stubEnv("VITE_LEADERBOARD_API", BASE);
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/weeks")) {
+        return jsonResponse({
+          weeks: state.weeks,
+          currentWeekKey: state.currentWeekKey,
+        });
+      }
+      const match = /\/board\/([^/?]+)$/.exec(url);
+      if (match) {
+        const key = match[1] === "current" ? state.currentWeekKey : match[1];
+        if (key === PREV_WEEK) {
+          return new Promise<Response>((resolve) => {
+            resolvePrevWeek = resolve;
+          });
+        }
+        return jsonResponse({ weekKey: key, boards: state.boards[key] ?? {} });
+      }
+      throw new Error(`Unrouted request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<LeaderboardPage />);
+    await screen.findByText("Survivors");
+
+    fireEvent.click(screen.getByText(formatWeekLabel(PREV_WEEK)));
+
+    await waitFor(() =>
+      expect(document.querySelector(".lbp-boards-loading")).toBeTruthy(),
+    );
+    expect(screen.getByText("Survivors")).toBeTruthy();
+    expect(
+      document.querySelector(".lbp-boards")?.getAttribute("aria-busy"),
+    ).toBe("true");
+    expect(screen.queryByText("Loading scores…")).toBeNull();
+
+    await act(async () => {
+      resolvePrevWeek?.(
+        jsonResponse({ weekKey: PREV_WEEK, boards: state.boards[PREV_WEEK] }),
+      );
+    });
+
+    await screen.findByText("Jeopardy");
+    expect(document.querySelector(".lbp-boards-loading")).toBeNull();
+    expect(
+      document.querySelector(".lbp-boards")?.getAttribute("aria-busy"),
+    ).toBe("false");
   });
 
   it("adopts the server's current week when it differs from the device's guess", async () => {

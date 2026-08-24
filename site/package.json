@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:shared": "VITE_LEADERBOARD_API=http://localhost:7071/api vite",
     "build": "tsc --noEmit && vite build",
     "preview": "VITE_LESSON_SOURCE=draft vite",
     "test": "vitest run",

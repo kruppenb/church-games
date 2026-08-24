@@ -18,11 +18,14 @@ export default function LeaderboardPage() {
   const [currentWeekKey, setCurrentWeekKey] = useState(() => getWeekKey());
   const [pastWeeks, setPastWeeks] = useState<string[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(() => getWeekKey());
-  // null = still loading (first paint and every week switch).
+  // null = nothing fetched yet (first paint only) — after the first result
+  // lands it stays non-null and the previous week's boards are kept visible
+  // (dimmed via boardsLoading) while a later week switch is in flight.
   const [boards, setBoards] = useState<Record<
     string,
     LeaderboardEntry[]
   > | null>(null);
+  const [boardsLoading, setBoardsLoading] = useState(true);
   const [source, setSource] = useState<BoardSource>("local");
 
   // Once a kid picks a week, a late /weeks response must not yank them back.
@@ -51,12 +54,13 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     const requestId = ++boardsRequestRef.current;
-    setBoards(null);
+    setBoardsLoading(true);
     void (async () => {
       const result = await getWeekBoards(selectedWeek);
       if (boardsRequestRef.current !== requestId) return;
       setBoards(result.boards);
       setSource(result.source);
+      setBoardsLoading(false);
     })();
   }, [selectedWeek]);
 
@@ -110,38 +114,45 @@ export default function LeaderboardPage() {
         <div className="lbp-loading" role="status" aria-live="polite">
           Loading scores…
         </div>
-      ) : gamesWithScores.length === 0 ? (
-        <div className="lbp-empty">
-          <div className="lbp-empty-icon" aria-hidden="true">
-            🏆
-          </div>
-          <p className="lbp-empty-text">
-            No high scores this week yet. Go play something!
-          </p>
-          <a href="#/" className="btn btn-primary btn-large">
-            Play Now
-          </a>
-        </div>
       ) : (
-        <div className="lbp-grid">
-          {gamesWithScores.map((game) => (
-            <div key={game.id} className="lbp-card">
-              <div
-                className="lbp-card-bar"
-                style={{
-                  backgroundColor: game.color,
-                  boxShadow: `0 0 12px ${game.color}40`,
-                }}
-              />
-              <div className="lbp-card-header">
-                <span className="lbp-card-icon" aria-hidden="true">
-                  {game.icon}
-                </span>
-                <h2 className="lbp-card-name">{game.name}</h2>
+        <div
+          className={`lbp-boards${boardsLoading ? " lbp-boards-loading" : ""}`}
+          aria-busy={boardsLoading}
+        >
+          {gamesWithScores.length === 0 ? (
+            <div className="lbp-empty">
+              <div className="lbp-empty-icon" aria-hidden="true">
+                🏆
               </div>
-              <LeaderboardTable entries={boards[game.id] ?? []} />
+              <p className="lbp-empty-text">
+                No high scores this week yet. Go play something!
+              </p>
+              <a href="#/" className="btn btn-primary btn-large">
+                Play Now
+              </a>
             </div>
-          ))}
+          ) : (
+            <div className="lbp-grid">
+              {gamesWithScores.map((game) => (
+                <div key={game.id} className="lbp-card">
+                  <div
+                    className="lbp-card-bar"
+                    style={{
+                      backgroundColor: game.color,
+                      boxShadow: `0 0 12px ${game.color}40`,
+                    }}
+                  />
+                  <div className="lbp-card-header">
+                    <span className="lbp-card-icon" aria-hidden="true">
+                      {game.icon}
+                    </span>
+                    <h2 className="lbp-card-name">{game.name}</h2>
+                  </div>
+                  <LeaderboardTable entries={boards[game.id] ?? []} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

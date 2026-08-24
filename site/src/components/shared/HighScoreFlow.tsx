@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useDifficulty } from "@/hooks/useDifficulty";
 import { sounds } from "@/lib/sounds";
 import {
@@ -24,11 +30,14 @@ interface HighScoreFlowProps {
   onDone: () => void;
 }
 
-/** "checking" waits on the (possibly remote) qualify check and renders nothing. */
+/** "checking" waits on the (possibly remote) qualify check and renders nothing
+ * until it has taken a while (see CHECKING_DELAY_MS / checkingVisible). */
 type Phase = "idle" | "checking" | "entry" | "board";
 
 const SLOT_COUNT = 3;
 const SHAKE_MS = 500;
+/** How long "checking" stays invisible before showing a status shell. */
+export const CHECKING_DELAY_MS = 400;
 
 function cycleLetter(letter: string, delta: number): string {
   const index = letter.charCodeAt(0) - 65;
@@ -50,6 +59,10 @@ export function HighScoreFlow({
   const { difficulty } = useDifficulty();
 
   const [phase, setPhase] = useState<Phase>("idle");
+  // Only true once "checking" has been the phase for CHECKING_DELAY_MS — see
+  // the show-effect below. Keeps a fast (typically local) qualify check from
+  // ever flashing a status shell.
+  const [checkingVisible, setCheckingVisible] = useState(false);
   const [letters, setLetters] = useState<string[]>(["A", "A", "A"]);
   const [activeSlot, setActiveSlot] = useState(0);
   const [shaking, setShaking] = useState(false);
@@ -98,13 +111,27 @@ export function HighScoreFlow({
     [],
   );
 
+  // Delays the "checking" status shell so a fast (usually local) qualify
+  // check never flashes it.
+  const checkingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearCheckingTimer = useCallback(() => {
+    if (checkingTimerRef.current !== null) {
+      clearTimeout(checkingTimerRef.current);
+      checkingTimerRef.current = null;
+    }
+  }, []);
+  useEffect(() => clearCheckingTimer, [clearCheckingTimer]);
+
   // Open / close. The qualify check can hit the network, so the flow renders
-  // nothing until it answers. Non-qualifying scores close the flow from the
-  // effect so the parent is never notified during render.
+  // nothing until it answers (or, past CHECKING_DELAY_MS, a status shell).
+  // Non-qualifying scores close the flow from the effect so the parent is
+  // never notified during render.
   useEffect(() => {
     const runId = ++runIdRef.current;
 
     if (!show) {
+      clearCheckingTimer();
+      setCheckingVisible(false);
       submittingRef.current = false;
       setSubmitting(false);
       setPhase("idle");
@@ -112,9 +139,18 @@ export function HighScoreFlow({
     }
 
     setPhase("checking");
+    setCheckingVisible(false);
+    clearCheckingTimer();
+    checkingTimerRef.current = setTimeout(() => {
+      checkingTimerRef.current = null;
+      setCheckingVisible(true);
+    }, CHECKING_DELAY_MS);
+
     void (async () => {
       const ok = await qualifies(gameId, score);
       if (!mountedRef.current || runIdRef.current !== runId) return;
+      clearCheckingTimer();
+      setCheckingVisible(false);
       if (!ok) {
         setPhase("idle");
         onDoneRef.current();
@@ -134,7 +170,11 @@ export function HighScoreFlow({
       setWeekKey(getWeekKey());
       setPhase("entry");
     })();
-  }, [show, gameId, score, focusSlot]);
+
+    return () => {
+      clearCheckingTimer();
+    };
+  }, [show, gameId, score, focusSlot, clearCheckingTimer]);
 
   // One celebration when the rank reveal lands.
   useEffect(() => {
@@ -193,7 +233,10 @@ export function HighScoreFlow({
   }, [difficulty, gameId, score, focusSlot]);
 
   // Physical keyboard: A–Z types and advances, Backspace steps back, Enter = OK.
-  useEffect(() => {
+  // Layout effect (not passive): the listener must exist in the same commit
+  // that paints the entry UI, so there is no window where the slots are
+  // visible but keystrokes are dropped.
+  useLayoutEffect(() => {
     if (phase !== "entry") return;
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -243,7 +286,8 @@ export function HighScoreFlow({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [phase, focusSlot, setLetterAt, bumpSlot, handleOk]);
 
-  if (phase === "idle" || phase === "checking") return null;
+  if (phase === "idle") return null;
+  if (phase === "checking" && !checkingVisible) return null;
 
   return (
     <div
@@ -252,8 +296,21 @@ export function HighScoreFlow({
       aria-modal="true"
       aria-label={`${gameName} high score`}
     >
-      <div className="lb-panel" data-week-key={weekKey}>
-        {phase === "entry" ? (
+      <div
+        className="lb-panel"
+        data-week-key={weekKey}
+        data-phase={phase === "checking" ? "checking" : undefined}
+      >
+        {phase === "checking" ? (
+          <>
+            <div className="lb-title">YOUR SCORE</div>
+            <div className="lb-subtitle">{gameName}</div>
+            <div className="lb-score">{score.toLocaleString()}</div>
+            <p className="lb-checking" role="status" aria-live="polite">
+              Checking scores…
+            </p>
+          </>
+        ) : phase === "entry" ? (
           <>
             <div className="lb-title">HIGH SCORE!</div>
             <div className="lb-subtitle">{gameName}</div>

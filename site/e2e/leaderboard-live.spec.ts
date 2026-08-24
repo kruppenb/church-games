@@ -18,6 +18,13 @@ import { test, expect } from "@playwright/test";
  * below sends deliberately invalid data (blocklisted initials, an over-cap
  * score, a zero score) that the server is required to reject with 400
  * before it would ever persist anything.
+ *
+ * It also never guesses the teacher passphrase: the only moderation-related
+ * check here is a single unauthenticated GET /moderation/check (no
+ * x-moderation-key header at all, and never looped/retried), alongside the
+ * single unauthenticated DELETE below — together at most two hits against
+ * the live wrong-passphrase throttle (api/src/lib/auth-throttle.ts, 10 per
+ * IP per 15 min, shared across both routes), nowhere near enough to trip it.
  */
 
 const WEEK_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -89,6 +96,18 @@ test.describe("Leaderboard API @live", () => {
     const res = await request.delete(
       `${BASE_URL}/entry/2020-01-05/quiz-showdown/0000000_0000000000000`,
     );
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /moderation/check without a passphrase is rejected with 401", async ({
+    request,
+  }) => {
+    // No x-moderation-key header, and only ONE request — never a loop of
+    // guesses at the actual passphrase. This still counts as one failure
+    // against the live wrong-passphrase throttle (10 per IP per 15 min,
+    // shared with DELETE), same as the single unauthenticated DELETE above,
+    // so it stays well under budget.
+    const res = await request.get(`${BASE_URL}/moderation/check`);
     expect(res.status()).toBe(401);
   });
 });

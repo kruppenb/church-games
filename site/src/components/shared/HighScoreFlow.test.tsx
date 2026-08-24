@@ -8,7 +8,7 @@ import {
   cleanup,
   waitFor,
 } from "@testing-library/react";
-import { HighScoreFlow } from "@/components/shared/HighScoreFlow";
+import { CHECKING_DELAY_MS, HighScoreFlow } from "@/components/shared/HighScoreFlow";
 import { LeaderboardTable } from "@/components/shared/LeaderboardTable";
 import { DifficultyProvider } from "@/hooks/useDifficulty";
 import {
@@ -74,6 +74,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+  vi.useRealTimers();
 });
 
 describe("HighScoreFlow", () => {
@@ -370,6 +371,111 @@ describe("HighScoreFlow — shared mode", () => {
       initials: "AMY",
       score: 750,
     });
+  });
+
+  it("shows a checking shell after a delay, then the high-score picker once the slow server answers", async () => {
+    vi.useFakeTimers();
+    let resolveBoard: ((res: Response) => void) | undefined;
+    configureShared((url) => {
+      if (url.endsWith("/board/current")) {
+        return new Promise<Response>((resolve) => {
+          resolveBoard = resolve;
+        });
+      }
+      return undefined;
+    });
+
+    const { container } = renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={1500}
+        show
+        onDone={() => {}}
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CHECKING_DELAY_MS - 1);
+    });
+    expect(container.querySelector(".lb-overlay")).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(screen.getByText("Checking scores…")).toBeTruthy();
+    expect(screen.getByText("1,500")).toBeTruthy();
+
+    // findByText's own polling relies on real timers, so flush the resolved
+    // fetch (and any timer-scheduled React work) with the fake clock before
+    // asserting synchronously.
+    await act(async () => {
+      resolveBoard?.(jsonResponse({ weekKey: "2026-08-23", boards: {} }));
+      await vi.runAllTimersAsync();
+    });
+
+    expect(screen.getByText("HIGH SCORE!")).toBeTruthy();
+    expect(document.querySelector(".lb-checking")).toBeNull();
+  });
+
+  it("never shows the checking shell on the fast pure-local path", async () => {
+    renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={1500}
+        show
+        onDone={() => {}}
+      />,
+    );
+
+    await screen.findByText("HIGH SCORE!");
+    expect(document.querySelector(".lb-checking")).toBeNull();
+
+    vi.useFakeTimers();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(document.querySelector(".lb-checking")).toBeNull();
+  });
+
+  it("closes after a delayed checking shell when the slow server board says the score does not qualify", async () => {
+    vi.useFakeTimers();
+    const onDone = vi.fn();
+    let resolveBoard: ((res: Response) => void) | undefined;
+    configureShared((url) => {
+      if (url.endsWith("/board/current")) {
+        return new Promise<Response>((resolve) => {
+          resolveBoard = resolve;
+        });
+      }
+      return undefined;
+    });
+
+    const { container } = renderFlow(
+      <HighScoreFlow
+        gameId="survivors"
+        gameName="Survivors"
+        score={50}
+        show
+        onDone={onDone}
+      />,
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CHECKING_DELAY_MS);
+    });
+    expect(screen.getByText("Checking scores…")).toBeTruthy();
+
+    await act(async () => {
+      resolveBoard?.(
+        jsonResponse({ weekKey: "2026-08-23", boards: { survivors: fullBoard() } }),
+      );
+      await vi.runAllTimersAsync();
+    });
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".lb-overlay")).toBeNull();
   });
 });
 

@@ -105,13 +105,16 @@ function toBoards(raw: unknown): Record<string, LeaderboardEntry[]> {
 }
 
 /**
- * One request: abort after API_TIMEOUT_MS, map every failure mode onto a
- * `LeaderboardApiError`, and hand the decoded JSON to `parse`.
+ * Transport only: check the base URL, abort after API_TIMEOUT_MS, and map every
+ * failure mode onto a `LeaderboardApiError`. On a 2xx the raw `Response` is
+ * handed to `consume`, which runs INSIDE the timeout window so a body that
+ * stalls still times out (`request` decodes JSON there; `deleteEntry` expects
+ * an empty 204 and reads nothing).
  */
-async function request<T>(
+async function send<T>(
   path: string,
   init: RequestInit,
-  parse: (json: unknown) => T,
+  consume: (res: Response) => Promise<T>,
 ): Promise<T> {
   const base = getApiBaseUrl();
   if (base === null) {
@@ -145,20 +148,39 @@ async function request<T>(
       throw new LeaderboardApiError("http", `HTTP ${res.status}`, res.status);
     }
 
-    let json: unknown;
     try {
-      json = await res.json();
-    } catch {
+      return await consume(res);
+    } catch (err) {
       if (controller.signal.aborted) {
         throw new LeaderboardApiError("timeout", `Timed out after ${API_TIMEOUT_MS}ms`);
       }
-      throw new LeaderboardApiError("parse", "Response was not valid JSON");
+      throw err;
     }
-
-    return parse(json);
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * One JSON request: `send` + decode the body (`"parse"` when it is not JSON)
+ * + hand the decoded value to `parse`.
+ */
+function request<T>(
+  path: string,
+  init: RequestInit,
+  parse: (json: unknown) => T,
+): Promise<T> {
+  return send(path, init, async (res) => {
+    let json: unknown;
+    try {
+      json = await res.json();
+    } catch (err) {
+      // Let `send` turn an abort-during-decode into "timeout".
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      throw new LeaderboardApiError("parse", "Response was not valid JSON");
+    }
+    return parse(json);
+  });
 }
 
 /** `GET /weeks` — stored week keys (newest first) + the server's current week. */
@@ -219,5 +241,53 @@ export function postScore(
         board: toEntries(obj.board, "board"),
       };
     },
+  );
+}
+
+/**
+ * `DELETE /entry/{weekKey}/{gameId}/{rowKey}` — moderation only.
+ *
+ * Resolves on 204 (the body is never read); rejects with a
+ * `LeaderboardApiError` otherwise — a bad/missing moderation key comes back as
+ * kind `"http"` with status 401, an already-removed entry as status 404.
+ *
+ * Deliberately NOT re-exported through `leaderboard-store.ts`: the facade is
+ * the kid-facing, never-throws API, and moderation needs the real error.
+ */
+export async function deleteEntry(
+  weekKey: string,
+  gameId: string,
+  rowKey: string,
+  moderationKey: string,
+): Promise<void> {
+  const path =
+    `/entry/${encodeURIComponent(weekKey)}` +
+    `/${encodeURIComponent(gameId)}` +
+    `/${encodeURIComponent(rowKey)}`;
+  await send(
+    path,
+    { method: "DELETE", headers: { "x-moderation-key": moderationKey } },
+    async () => undefined,
+  );
+}
+
+/**
+ * `GET /moderation/check` — does the server accept this teacher passphrase?
+ *
+ * Resolves on 204 (the body is never read); rejects with a
+ * `LeaderboardApiError` otherwise. Kind `"http"` with status 401 means the
+ * phrase is wrong (or has been rotated) and 429 means too many wrong tries
+ * from this IP; ANY other failure (an old API without the route ⇒ 404, a 5xx,
+ * network, timeout, unconfigured) means "can't tell" — the gate must show a
+ * server problem, never "wrong passphrase".
+ *
+ * Like `deleteEntry`, deliberately NOT re-exported through
+ * `leaderboard-store.ts`: the facade is the kid-facing, never-throws API.
+ */
+export async function checkTeacherKey(key: string): Promise<void> {
+  await send(
+    "/moderation/check",
+    { method: "GET", headers: { "x-moderation-key": key } },
+    async () => undefined,
   );
 }

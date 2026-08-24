@@ -13,6 +13,9 @@ cd site && npm run preview     # Preview with draft content
 cd site && npm run validate    # Full validation (test + typecheck + build)
 cd api && npm test             # Leaderboard API unit tests (vitest)
 cd api && npm run build        # Compile the Functions app (tsc)
+cd api && npm run dev:storage  # Azurite storage emulator (terminal 1)
+cd api && npm run dev          # Build + func start on :7071 (terminal 2)
+cd site && npm run dev:shared  # Dev server pointed at the local API
 ```
 
 ## Architecture
@@ -59,7 +62,7 @@ cd api && npm run build        # Compile the Functions app (tsc)
 - `QuestionPool` class manages shuffled question consumption without repeats
 - Phaser games pass data via `game.registry.set("lesson", lesson)` etc.
 - Game logic is pure TS in `logic/` subdirs (no Phaser deps) for testability
-- **Weekly leaderboard** (arcade-style, no logins): per-game top-10 boards keyed by Sunday-start week (`YYYY-MM-DD`), newest 6 weeks kept. **Shared** across devices via the Azure Functions API in `api/` (Table Storage, one entity per entry) — see `docs/shared-leaderboard.md`. Client side: `lib/leaderboard-store.ts` is an **async facade** that calls `lib/leaderboard-api.ts` when `VITE_LEADERBOARD_API` is set and falls back to the device-local store `lib/leaderboard-local.ts` (unset env ⇒ pure-local; configured-but-unreachable ⇒ `source: "offline"` and a small offline note in the UI). Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`. The server re-validates everything (initials blocklist, per-game score caps, week key in `LEADERBOARD_TIMEZONE`).
+- **Weekly leaderboard** (arcade-style, no logins): per-game top-10 boards keyed by Sunday-start week (`YYYY-MM-DD`), newest 6 weeks kept. **Shared** across devices via the Azure Functions API in `api/` (Table Storage, one entity per entry) — see `docs/shared-leaderboard.md`. Client side: `lib/leaderboard-store.ts` is an **async facade** that calls `lib/leaderboard-api.ts` when `VITE_LEADERBOARD_API` is set and falls back to the device-local store `lib/leaderboard-local.ts` (unset env ⇒ pure-local; configured-but-unreachable ⇒ `source: "offline"` and a small offline note in the UI). Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`. The server re-validates everything (initials blocklist, per-game score caps, week key in `LEADERBOARD_TIMEZONE`). Teacher dashboard at `#/teacher`, unlocked by the teacher passphrase (= the API's `MODERATION_KEY`, verified via `GET /api/moderation/check`; stored by `lib/teacher-session.ts` in session- or localStorage, never the bundle or the URL). Moderation: `components/HighScoreModeration.tsx` → `deleteEntry` in `lib/leaderboard-api.ts` — never add `deleteEntry` or `checkTeacherKey` to the facade.
 
 ## Testing
 

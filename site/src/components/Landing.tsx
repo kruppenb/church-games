@@ -178,6 +178,12 @@ export function Landing() {
           </button>
         </div>
       )}
+
+      <footer className="landing-footer">
+        <a href="#/teacher" className="landing-teacher-link">
+          Teacher
+        </a>
+      </footer>
     </div>
   );
 }
