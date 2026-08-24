@@ -16,7 +16,8 @@ error bodies are `{ "error": "..." }`.
 | `GET` | `/api/weeks` | `{ weeks, currentWeekKey }` — the newest 6 stored week keys, newest first. |
 | `GET` | `/api/board/{weekKey}` | `weekKey` is `current` or `YYYY-MM-DD`. `{ weekKey, boards: { [gameId]: Entry[] } }`, each board best-first, max 10. Unknown or non-retained week ⇒ `boards: {}`. |
 | `POST` | `/api/score/{gameId}` | Body `{ initials, score, difficulty }` ⇒ `{ rank, weekKey, board }`. `rank` is 1-based, `-1` when the score did not make the board. Always writes to the server's current week. |
-| `DELETE` | `/api/entry/{weekKey}/{gameId}/{rowKey}` | Moderation. Requires `x-moderation-key`. `204` / `401` / `404`. |
+| `GET` | `/api/moderation/check` | Verifies the teacher passphrase in `x-moderation-key`. `204` / `401` / `429` (with `Retry-After`) — no body. |
+| `DELETE` | `/api/entry/{weekKey}/{gameId}/{rowKey}` | Moderation. Requires `x-moderation-key`. `204` / `401` / `404` / `429`. |
 | `OPTIONS` | any of the above | `204`, with CORS headers when the `Origin` is allowed. |
 | timer | `leaderboardRetention` | Mon 10:00 UTC. Deletes every entity outside the newest 6 weeks. |
 
@@ -27,6 +28,13 @@ uppercases to `/^[A-Z]{3}$/` and is not blocklisted; `score` is a positive
 integer at or below the per-game cap; `difficulty` is the enum.
 `429` with `Retry-After` after 30 POSTs/minute from one IP (see
 `LEADERBOARD_RATE_LIMIT_PER_MINUTE` below).
+
+Wrong passphrases are throttled separately: 10 failures per IP per 15 minutes,
+after which both `GET /moderation/check` and `DELETE /entry/...` answer `429`
+with `Retry-After` for the rest of the window — even for the right passphrase.
+Only failures count, so a room of teachers unlocking with the correct phrase
+never trips it. The counter is in memory, per Function instance, like the POST
+limiter (see `LEADERBOARD_AUTH_FAILURES_PER_15MIN` below).
 
 ## Data model
 
@@ -49,9 +57,10 @@ stored. No names, no device ids, no IP logging beyond the in-memory limiter.
 |---|---|---|
 | `LEADERBOARD_STORAGE_CONNECTION` | falls back to `AzureWebJobsStorage` | Table Storage connection string. |
 | `LEADERBOARD_TIMEZONE` | `America/Los_Angeles` | IANA zone for the Sunday rollover. Invalid ⇒ default + one warning. |
-| `MODERATION_KEY` | *(unset)* | `DELETE` secret. Unset means every `DELETE` is `401`. Never put this in the Vite build. |
+| `MODERATION_KEY` | *(unset)* | The teacher passphrase. Compared (timing-safe) against `x-moderation-key` on `GET /moderation/check` and `DELETE /entry/...`. Unset ⇒ both are always `401`. Never in the Vite build or a URL. In Azure this setting holds only a `@Microsoft.KeyVault(SecretUri=…)` reference to the `moderation-key` secret in the `church-games-kv` vault, resolved at runtime by the app's managed identity (`infra/provision.sh` sets the vault, roles, secret, and reference up). Locally it is still the plain value in `local.settings.json`. The code reads `process.env.MODERATION_KEY` either way. |
 | `LEADERBOARD_ALLOWED_ORIGINS` | *(unset)* | Comma-separated extras on top of the built-in list (Pages origin + localhost/127.0.0.1 on 5173/4174). |
 | `LEADERBOARD_RATE_LIMIT_PER_MINUTE` | `30` | POSTs per 60 s per IP. Positive integer; anything else (blank, `0`, `2.5`, text) falls back to 30. |
+| `LEADERBOARD_AUTH_FAILURES_PER_15MIN` | `10` | Wrong-passphrase attempts per IP per 15 min before `check`/`DELETE` return `429`. Positive integer; anything else falls back to 10. |
 | `LEADERBOARD_TABLE` | `leaderboard` | Table name override, mostly for testing. |
 
 The rate limit is **per IP, not per kid**: church wifi puts the whole classroom
@@ -73,14 +82,28 @@ npm install
 npm test          # vitest, no emulator needed
 npm run typecheck
 npm run build     # plain tsc -> dist/
-
-npx azurite --silent --location .azurite &   # or the Azurite VS Code extension
-cp local.settings.example.json local.settings.json
-npm start                                    # func start (Core Tools required)
 ```
 
-`npm start` needs `azure-functions-core-tools` v4 on your PATH; `npm test`,
-`npm run typecheck` and `npm run build` do not.
+`azurite` and `azure-functions-core-tools` are devDependencies (installed
+above), so no global installs are needed. Two terminals:
+
+```bash
+# terminal 1 — storage emulator
+npm run dev:storage      # azurite --silent --location .azurite
+
+# terminal 2 — the API itself
+cp local.settings.example.json local.settings.json
+# local.settings.json: AzureWebJobsStorage="UseDevelopmentStorage=true" for
+# Azurite, plus LEADERBOARD_TIMEZONE / MODERATION_KEY for local testing.
+npm run dev               # build + func start
+```
+
+Note: the retention timer trigger needs Azurite's full emulator (queue +
+table + blob), not the lighter `azurite-table`-only mode — `dev:storage`
+already starts the full thing.
+
+Both devDependencies are pruned by `npm prune --omit=dev` in CI before the
+deploy zip is built, so neither one ships to Azure.
 
 ## curl
 
@@ -101,6 +124,9 @@ curl -s -X POST "$BASE/score/survivors" -H 'Content-Type: application/json' \
 curl -s -X POST "$BASE/score/survivors" -H 'Content-Type: application/json' \
   -d '{"initials":"NIK","score":999999,"difficulty":"big-kids"}'
 
+# Is this the teacher passphrase? 204 yes, 401 no, 429 too many wrong tries
+curl -s -i "$BASE/moderation/check" -H "x-moderation-key: $MODERATION_KEY"
+
 # Moderation: rowKey comes from the board response
 curl -s -i -X DELETE "$BASE/entry/2026-08-23/survivors/9998799_1756000000000" \
   -H "x-moderation-key: $MODERATION_KEY"
@@ -109,10 +135,11 @@ curl -s -i -X DELETE "$BASE/entry/2026-08-23/survivors/9998799_1756000000000" \
 ## Layout
 
 ```
-src/lib/       week-key, row-key, validation, rate-limit, cors, moderation,
-               table-store (interface + Azure + in-memory fake),
+src/lib/       week-key, row-key, validation, rate-limit, auth-throttle, cors,
+               moderation, table-store (interface + Azure + in-memory fake),
                leaderboard-service (all business logic), http, handlers, config
-src/functions/ weeks, board, score, entry, retention — registration only
+src/functions/ weeks, board, score, entry, moderation-check, retention
+               — registration only
 ```
 
 Handlers are built by `createHandlers(deps)` so tests drive them with

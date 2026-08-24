@@ -3,6 +3,7 @@
  * `process.env` after module load) can set them before the first call.
  */
 
+import { resolveAuthFailureLimit } from './auth-throttle';
 import { parseAllowedOrigins } from './cors';
 import { createHandlers, type Handlers } from './handlers';
 import { resolveRateLimit } from './rate-limit';
@@ -18,6 +19,7 @@ export interface ApiConfig {
   allowedOrigins: string[];
   tableName: string;
   rateLimitPerMinute: number;
+  authFailuresPer15Min: number;
 }
 
 function envValue(name: string): string | undefined {
@@ -38,6 +40,9 @@ export function getConfig(): ApiConfig {
     tableName: envValue('LEADERBOARD_TABLE') ?? TABLE_NAME,
     rateLimitPerMinute: resolveRateLimit(
       envValue('LEADERBOARD_RATE_LIMIT_PER_MINUTE'),
+    ),
+    authFailuresPer15Min: resolveAuthFailureLimit(
+      envValue('LEADERBOARD_AUTH_FAILURES_PER_15MIN'),
     ),
   };
 }
@@ -62,6 +67,7 @@ export function getRuntimeHandlers(): Handlers {
     moderationKey: config.moderationKey,
     allowedOrigins: config.allowedOrigins,
     rateLimitPerMinute: config.rateLimitPerMinute,
+    authFailuresPer15Min: config.authFailuresPer15Min,
   });
   return cached;
 }

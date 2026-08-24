@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AUTH_FAILURE_MAX } from './auth-throttle';
 import { getConfig } from './config';
 import { DEFAULT_ALLOWED_ORIGINS } from './cors';
 import { RATE_LIMIT_MAX } from './rate-limit';
@@ -12,6 +13,7 @@ const KEYS = [
   'LEADERBOARD_ALLOWED_ORIGINS',
   'LEADERBOARD_TABLE',
   'LEADERBOARD_RATE_LIMIT_PER_MINUTE',
+  'LEADERBOARD_AUTH_FAILURES_PER_15MIN',
 ] as const;
 
 const saved: Record<string, string | undefined> = {};
@@ -41,8 +43,10 @@ describe('getConfig', () => {
       allowedOrigins: DEFAULT_ALLOWED_ORIGINS,
       tableName: 'leaderboard',
       rateLimitPerMinute: 30,
+      authFailuresPer15Min: 10,
     });
     expect(RATE_LIMIT_MAX).toBe(30);
+    expect(AUTH_FAILURE_MAX).toBe(10);
   });
 
   it('reads the environment lazily, on every call', () => {
@@ -91,6 +95,18 @@ describe('getConfig', () => {
     for (const value of ['0', '-1', '2.5', 'lots', '']) {
       process.env.LEADERBOARD_RATE_LIMIT_PER_MINUTE = value;
       expect(getConfig().rateLimitPerMinute).toBe(30);
+    }
+  });
+
+  it('honours LEADERBOARD_AUTH_FAILURES_PER_15MIN', () => {
+    process.env.LEADERBOARD_AUTH_FAILURES_PER_15MIN = '25';
+    expect(getConfig().authFailuresPer15Min).toBe(25);
+  });
+
+  it('ignores an invalid LEADERBOARD_AUTH_FAILURES_PER_15MIN', () => {
+    for (const value of ['0', '-1', '2.5', 'lots', '']) {
+      process.env.LEADERBOARD_AUTH_FAILURES_PER_15MIN = value;
+      expect(getConfig().authFailuresPer15Min).toBe(10);
     }
   });
 });

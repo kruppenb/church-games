@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  AUTH_FAILURE_MAX,
+  AUTH_THROTTLE_WINDOW_MS,
+  resetAuthThrottle,
+} from './auth-throttle';
 import { parseAllowedOrigins } from './cors';
 import {
   createHandlers,
@@ -61,6 +66,7 @@ function setup(
   seed: StoredEntity[] = [],
   moderationKey?: string,
   rateLimitPerMinute?: number,
+  authFailuresPer15Min?: number,
 ) {
   const store = new MemoryTableStore(seed);
   let now = START;
@@ -71,6 +77,7 @@ function setup(
     moderationKey,
     allowedOrigins: parseAllowedOrigins(undefined),
     rateLimitPerMinute,
+    authFailuresPer15Min,
   });
   return {
     store,
@@ -87,6 +94,7 @@ const header = (res: { headers?: unknown }, name: string) =>
 
 beforeEach(() => {
   resetRateLimit();
+  resetAuthThrottle();
 });
 
 describe('GET /weeks', () => {
@@ -344,12 +352,125 @@ describe('POST /score/{gameId}', () => {
   });
 });
 
+describe('GET /moderation/check', () => {
+  const check = (key?: string, extraHeaders: Record<string, string> = {}) =>
+    request({
+      method: 'GET',
+      headers:
+        key === undefined
+          ? extraHeaders
+          : { 'x-moderation-key': key, ...extraHeaders },
+    });
+
+  const GUESSER = { 'x-forwarded-for': '203.0.113.50' };
+
+  it('204s with the right passphrase and returns no body', async () => {
+    const { handlers } = setup([], MOD_KEY);
+    const res = await handlers.check(check(MOD_KEY));
+    expect(res.status).toBe(204);
+    expect(res.jsonBody).toBeUndefined();
+    expect(header(res, 'Cache-Control')).toBe('no-store');
+  });
+
+  it('401s on a wrong or missing passphrase', async () => {
+    const { handlers } = setup([], MOD_KEY);
+    const wrong = await handlers.check(check('nope'));
+    expect(wrong.status).toBe(401);
+    expect(body(wrong)).toEqual({ error: 'Unauthorized' });
+    const missing = await handlers.check(check());
+    expect(missing.status).toBe(401);
+    expect(body(missing)).toEqual({ error: 'Unauthorized' });
+  });
+
+  it('401s when MODERATION_KEY is unset — never leaks that it is unconfigured', async () => {
+    const { handlers } = setup([], undefined);
+    const res = await handlers.check(check('anything'));
+    expect(res.status).toBe(401);
+    expect(body(res)).toEqual({ error: 'Unauthorized' });
+  });
+
+  it('never touches storage', async () => {
+    const seeded = seedRow(WEEK, 'survivors', 'AAA', 900, START);
+    const { handlers, store } = setup([seeded], MOD_KEY);
+    expect((await handlers.check(check(MOD_KEY))).status).toBe(204);
+    expect((await handlers.check(check('nope'))).status).toBe(401);
+    expect(store.size).toBe(1);
+  });
+
+  it('429s the 11th try from one IP, even with the right passphrase', async () => {
+    const { handlers } = setup([], MOD_KEY);
+    expect(AUTH_FAILURE_MAX).toBe(10);
+    for (let i = 0; i < AUTH_FAILURE_MAX; i += 1) {
+      const wrong = await handlers.check(check('guess', GUESSER));
+      expect(wrong.status).toBe(401);
+    }
+    const limited = await handlers.check(check(MOD_KEY, GUESSER));
+    expect(limited.status).toBe(429);
+    expect(body(limited)).toEqual({
+      error: 'Too many wrong passphrases — try again later',
+    });
+    expect(Number(header(limited, 'Retry-After'))).toBe(900);
+    expect(header(limited, 'Cache-Control')).toBe('no-store');
+
+    // A teacher on a different IP is unaffected.
+    const other = await handlers.check(
+      check(MOD_KEY, { 'x-forwarded-for': '198.51.100.7' }),
+    );
+    expect(other.status).toBe(204);
+  });
+
+  it('un-throttles once the window has passed', async () => {
+    const { handlers, setNow } = setup([], MOD_KEY);
+    for (let i = 0; i < AUTH_FAILURE_MAX; i += 1) {
+      await handlers.check(check('guess', GUESSER));
+    }
+    expect((await handlers.check(check(MOD_KEY, GUESSER))).status).toBe(429);
+    setNow(START + AUTH_THROTTLE_WINDOW_MS + 1);
+    expect((await handlers.check(check(MOD_KEY, GUESSER))).status).toBe(204);
+  });
+
+  it('honours a configured LEADERBOARD_AUTH_FAILURES_PER_15MIN', async () => {
+    const { handlers } = setup([], MOD_KEY, undefined, 3);
+    for (let i = 0; i < 3; i += 1) {
+      expect((await handlers.check(check('guess', GUESSER))).status).toBe(401);
+    }
+    expect((await handlers.check(check(MOD_KEY, GUESSER))).status).toBe(429);
+  });
+
+  it('answers preflight with 204 + CORS for an allowed origin', async () => {
+    const { handlers } = setup([], MOD_KEY);
+    const res = await handlers.check(
+      request({ method: 'OPTIONS', headers: { origin: ALLOWED_ORIGIN } }),
+    );
+    expect(res.status).toBe(204);
+    expect(header(res, 'Access-Control-Allow-Origin')).toBe(ALLOWED_ORIGIN);
+    expect(header(res, 'Access-Control-Allow-Headers')).toBe(
+      'Content-Type, x-moderation-key',
+    );
+  });
+
+  it('keeps the CORS headers on a 401 so the browser can read the status', async () => {
+    const { handlers } = setup([], MOD_KEY);
+    const res = await handlers.check(check('nope', { origin: ALLOWED_ORIGIN }));
+    expect(res.status).toBe(401);
+    expect(header(res, 'Access-Control-Allow-Origin')).toBe(ALLOWED_ORIGIN);
+    expect(header(res, 'Vary')).toBe('Origin');
+  });
+});
+
 describe('DELETE /entry/{weekKey}/{gameId}/{rowKey}', () => {
-  const del = (params: Record<string, string>, key?: string) =>
+  const del = (
+    params: Record<string, string>,
+    key?: string,
+    extraHeaders: Record<string, string> = {},
+  ) =>
     request({
       method: 'DELETE',
       params,
-      headers: key === undefined ? {} : { 'x-moderation-key': key },
+      headers:
+        key === undefined
+          ? extraHeaders
+          : { 'x-moderation-key': key, ...extraHeaders },
     });
 
   const params = (rowKey: string) => ({
@@ -408,6 +529,60 @@ describe('DELETE /entry/{weekKey}/{gameId}/{rowKey}', () => {
       expect(body(res)).toEqual({ error: 'Invalid entry reference' });
     }
   });
+
+  it('429s the 11th wrong key from one IP, before touching storage', async () => {
+    const seeded = seedRow(WEEK, 'survivors', 'BAD', 900, START);
+    const { handlers, store } = setup([seeded], MOD_KEY);
+    const ip = { 'x-forwarded-for': '203.0.113.50' };
+    for (let i = 0; i < AUTH_FAILURE_MAX; i += 1) {
+      const res = await handlers.entry(del(params(seeded.rowKey), 'guess', ip));
+      expect(res.status).toBe(401);
+    }
+    const limited = await handlers.entry(
+      del(params(seeded.rowKey), MOD_KEY, ip),
+    );
+    expect(limited.status).toBe(429);
+    expect(body(limited)).toEqual({
+      error: 'Too many wrong passphrases — try again later',
+    });
+    expect(Number(header(limited, 'Retry-After'))).toBe(900);
+    expect(store.size).toBe(1);
+  });
+
+  it('shares one failure budget with GET /moderation/check', async () => {
+    const seeded = seedRow(WEEK, 'survivors', 'BAD', 900, START);
+    const { handlers } = setup([seeded], MOD_KEY);
+    const ip = { 'x-forwarded-for': '203.0.113.50' };
+    for (let i = 0; i < 9; i += 1) {
+      const res = await handlers.check(
+        request({ method: 'GET', headers: { 'x-moderation-key': 'guess', ...ip } }),
+      );
+      expect(res.status).toBe(401);
+    }
+    // The 10th failure lands on DELETE, spending the last of the budget.
+    expect(
+      (await handlers.entry(del(params(seeded.rowKey), 'guess', ip))).status,
+    ).toBe(401);
+    const limited = await handlers.entry(
+      del(params(seeded.rowKey), MOD_KEY, ip),
+    );
+    expect(limited.status).toBe(429);
+  });
+
+  it('never spends budget on a correct key', async () => {
+    const seeded = seedRow(WEEK, 'survivors', 'BAD', 900, START);
+    const { handlers } = setup([seeded], MOD_KEY);
+    const ip = { 'x-forwarded-for': '203.0.113.51' };
+    // A whole room of teachers unlocking with the right phrase.
+    for (let i = 0; i < 20; i += 1) {
+      const res = await handlers.check(
+        request({ method: 'GET', headers: { 'x-moderation-key': MOD_KEY, ...ip } }),
+      );
+      expect(res.status).toBe(204);
+    }
+    const typo = await handlers.entry(del(params(seeded.rowKey), 'typo', ip));
+    expect(typo.status).toBe(401);
+  });
 });
 
 describe('CORS', () => {
@@ -463,6 +638,7 @@ describe('CORS', () => {
       handlers.board,
       handlers.score,
       handlers.entry,
+      handlers.check,
     ]) {
       const res = await handler(preflight);
       expect(res.status).toBe(204);

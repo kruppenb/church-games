@@ -10,7 +10,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "prestart": "npm run build",
-    "start": "func start"
+    "start": "func start",
+    "dev:storage": "azurite --silent --location .azurite",
+    "dev": "npm run build && func start"
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.0",
@@ -18,6 +20,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "azure-functions-core-tools": "^4",
+    "azurite": "^3",
     "typescript": "~5.9.3",
     "vitest": "^3.0.0"
   }

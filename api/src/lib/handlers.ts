@@ -1,5 +1,5 @@
 /**
- * The five request handlers, built by a factory so tests can drive them with a
+ * The six request handlers, built by a factory so tests can drive them with a
  * `MemoryTableStore` and a pinned clock. `src/functions/*.ts` only registers
  * these with the Functions host.
  *
@@ -9,8 +9,13 @@
  */
 
 import type { HttpResponseInit } from '@azure/functions';
+import {
+  AUTH_FAILURE_MAX,
+  isAuthThrottled,
+  recordAuthFailure,
+} from './auth-throttle';
 import { parseAllowedOrigins } from './cors';
-import { createResponder } from './http';
+import { createResponder, type Responder } from './http';
 import { LeaderboardService } from './leaderboard-service';
 import { checkModerationKey } from './moderation';
 import { isRowKey } from './row-key';
@@ -41,6 +46,8 @@ export interface HandlerDeps {
   allowedOrigins?: string[];
   /** POSTs per minute per IP; defaults to `RATE_LIMIT_MAX` (30). */
   rateLimitPerMinute?: number;
+  /** Wrong-passphrase budget per IP per 15 min; defaults to AUTH_FAILURE_MAX (10). */
+  authFailuresPer15Min?: number;
 }
 
 export interface Handlers {
@@ -48,6 +55,7 @@ export interface Handlers {
   board(request: HandlerRequest, context?: HandlerLogger): Promise<HttpResponseInit>;
   score(request: HandlerRequest, context?: HandlerLogger): Promise<HttpResponseInit>;
   entry(request: HandlerRequest, context?: HandlerLogger): Promise<HttpResponseInit>;
+  check(request: HandlerRequest, context?: HandlerLogger): Promise<HttpResponseInit>;
   retention(context?: HandlerLogger): Promise<number>;
   service: LeaderboardService;
 }
@@ -63,6 +71,7 @@ const SERVER_ERROR = 'Leaderboard unavailable';
 export function createHandlers(deps: HandlerDeps): Handlers {
   const allowedOrigins = deps.allowedOrigins ?? parseAllowedOrigins(undefined);
   const rateLimitPerMinute = deps.rateLimitPerMinute ?? RATE_LIMIT_MAX;
+  const authFailuresPer15Min = deps.authFailuresPer15Min ?? AUTH_FAILURE_MAX;
   const service = new LeaderboardService({
     store: deps.store,
     now: deps.now,
@@ -71,6 +80,28 @@ export function createHandlers(deps: HandlerDeps): Handlers {
 
   const responderFor = (request: HandlerRequest) =>
     createResponder(request.headers.get('origin'), allowedOrigins);
+
+  /** The throttle clock — tests pin it through `deps.now`. */
+  const nowMs = () => (deps.now ? deps.now() : new Date()).getTime();
+
+  /**
+   * `429` when this IP has burned its wrong-passphrase budget, else `null`.
+   * Runs before any storage access — a guesser never reaches the table.
+   */
+  function authThrottleResponse(
+    request: HandlerRequest,
+    respond: Responder,
+  ): HttpResponseInit | null {
+    const throttle = isAuthThrottled(
+      clientIpFrom(request.headers),
+      nowMs(),
+      authFailuresPer15Min,
+    );
+    if (!throttle.throttled) return null;
+    return respond.error(429, 'Too many wrong passphrases — try again later', {
+      'Retry-After': String(throttle.retryAfterSeconds),
+    });
+  }
 
   return {
     service,
@@ -152,8 +183,12 @@ export function createHandlers(deps: HandlerDeps): Handlers {
       const respond = responderFor(request);
       if (request.method === 'OPTIONS') return respond.preflight();
 
+      const throttled = authThrottleResponse(request, respond);
+      if (throttled) return throttled;
+
       const provided = request.headers.get('x-moderation-key');
       if (!checkModerationKey(provided, deps.moderationKey)) {
+        recordAuthFailure(clientIpFrom(request.headers), nowMs());
         return respond.error(401, 'Unauthorized');
       }
 
@@ -169,6 +204,27 @@ export function createHandlers(deps: HandlerDeps): Handlers {
         context.error('DELETE /entry failed', error);
         return respond.error(500, SERVER_ERROR);
       }
+    },
+
+    /**
+     * `GET /moderation/check` — is this the teacher passphrase? No body, no
+     * storage. An unset `MODERATION_KEY` is a `401` exactly like a wrong one,
+     * so the answer never leaks whether the key is configured at all.
+     */
+    async check(request) {
+      const respond = responderFor(request);
+      if (request.method === 'OPTIONS') return respond.preflight();
+
+      const throttled = authThrottleResponse(request, respond);
+      if (throttled) return throttled;
+
+      const provided = request.headers.get('x-moderation-key');
+      if (checkModerationKey(provided, deps.moderationKey)) {
+        return respond.empty(204);
+      }
+
+      recordAuthFailure(clientIpFrom(request.headers), nowMs());
+      return respond.error(401, 'Unauthorized');
     },
 
     async retention(context = NOOP_LOGGER) {

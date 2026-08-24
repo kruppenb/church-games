@@ -5,6 +5,7 @@ dist/
 
 # Azure Functions local config (contains dev secrets)
 local.settings.json
+.azurite/
 
 # Drafts are reviewed locally, not committed
 drafts/*.json

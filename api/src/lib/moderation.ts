@@ -1,9 +1,10 @@
 /**
- * Moderation key check for `DELETE /api/entry/...`.
+ * Moderation key check — the teacher passphrase. It guards both
+ * `GET /api/moderation/check` (the dashboard's unlock) and
+ * `DELETE /api/entry/...` (removing a high score).
  *
- * The secret lives only in Function App settings — never in the Vite build
- * (`VITE_TEACHER_TOKEN` is baked into the public bundle and must not be reused).
- * Both sides are SHA-256'd before comparison so `timingSafeEqual` gets
+ * The secret lives only in Function App settings — never in the Vite build or
+ * the URL. Both sides are SHA-256'd before comparison so `timingSafeEqual` gets
  * equal-length buffers and the comparison leaks neither value nor length.
  */
 
