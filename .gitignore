@@ -23,3 +23,6 @@ site/e2e/screenshots/
 site/e2e/test-results/
 site/playwright-report/
 coverage/
+
+# Playwright default output dir (config has no outputDir, so it lands in site/)
+site/test-results/
