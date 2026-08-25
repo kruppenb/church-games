@@ -41,14 +41,24 @@ function stripPort(value: string): string {
   return value;
 }
 
-/** Client IP = first entry of `x-forwarded-for`, else `"unknown"`. */
+/**
+ * Client IP = LAST entry of `x-forwarded-for`, else `"unknown"`.
+ *
+ * Azure's front end APPENDS the real client `ip:port` to whatever
+ * `x-forwarded-for` the caller already sent, so every entry left of the last
+ * is attacker-controlled. Reading the first entry would let a caller pick a
+ * fresh throttle bucket per request (bypassing both the passphrase throttle
+ * and the score rate limit) or burn a victim IP's budget. Behind an appending
+ * proxy the rule is right-to-left: trust only the entry the proxy added.
+ */
 export function clientIpFrom(headers: {
   get(name: string): string | null | undefined;
 }): string {
   const forwarded = headers.get('x-forwarded-for');
   if (typeof forwarded !== 'string' || !forwarded.trim()) return 'unknown';
-  const first = forwarded.split(',')[0]?.trim() ?? '';
-  const ip = stripPort(first).trim();
+  const entries = forwarded.split(',');
+  const last = entries[entries.length - 1]?.trim() ?? '';
+  const ip = stripPort(last).trim();
   return ip || 'unknown';
 }
 

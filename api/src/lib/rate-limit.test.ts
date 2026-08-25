@@ -18,8 +18,16 @@ beforeEach(() => {
 });
 
 describe('clientIpFrom', () => {
-  it('uses the first x-forwarded-for entry', () => {
-    expect(clientIpFrom(headers('203.0.113.5, 70.41.3.18'))).toBe('203.0.113.5');
+  it('uses the LAST x-forwarded-for entry (the one Azure appended)', () => {
+    expect(clientIpFrom(headers('203.0.113.5, 70.41.3.18'))).toBe('70.41.3.18');
+  });
+
+  it('ignores spoofed entries the caller prepended', () => {
+    // Azure appends the real client ip:port to whatever the caller sent, so
+    // everything left of the last entry is attacker-controlled noise.
+    expect(
+      clientIpFrom(headers('1.2.3.4, 5.6.7.8, 203.0.113.9:41234')),
+    ).toBe('203.0.113.9');
   });
 
   it('trims whitespace and strips a trailing port', () => {
