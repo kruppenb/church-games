@@ -25,7 +25,7 @@ cd site && npm run dev:shared  # Dev server pointed at the local API
 - **Routing**: Hash-based (`/#/games/quiz`) for GitHub Pages compatibility
 - **Code splitting**: `React.lazy()` per game route, Phaser in vendor chunk
 - **Content**: JSON lesson files in `site/public/lessons/`
-- **Leaderboard API**: `api/` — Azure Functions v4 (Node 22, TypeScript) + Table Storage, deployed by `.github/workflows/deploy-api.yml` via OIDC to `church-games-api` (RG `ChurchGames`). Provisioning: `infra/provision.sh`. Runbook: `docs/shared-leaderboard.md`
+- **Leaderboard API**: `api/` â€” Azure Functions v4 (Node 22, TypeScript) + Table Storage, deployed by `.github/workflows/deploy-api.yml` via OIDC to `church-games-api` (RG `ChurchGames`). Provisioning: `infra/provision.sh`. Runbook: `docs/shared-leaderboard.md`
 
 ## Game Roster
 
@@ -44,11 +44,11 @@ cd site && npm run dev:shared  # Dev server pointed at the local API
 
 - 2 hero cards: Quiz Showdown (always) + spotlight game (from lesson JSON `spotlightGame`)
 - "More Games" row: remaining games in smaller cards
-- Only difficulty picker (Little Kids / Big Kids) — no group/individual toggle
+- Only difficulty picker (Little Kids / Big Kids) â€” no group/individual toggle
 
 ## Content Flow
 
-1. Content pipeline (separate repo) generates lesson JSON → `drafts/`
+1. Content pipeline (separate repo) generates lesson JSON â†’ `drafts/`
 2. Preview with `npm run preview`
 3. Approve by copying to both:
    - `site/public/lessons/current.json` (what the games load)
@@ -62,7 +62,7 @@ cd site && npm run dev:shared  # Dev server pointed at the local API
 - `QuestionPool` class manages shuffled question consumption without repeats
 - Phaser games pass data via `game.registry.set("lesson", lesson)` etc.
 - Game logic is pure TS in `logic/` subdirs (no Phaser deps) for testability
-- **Weekly leaderboard** (arcade-style, no logins): per-game top-10 boards keyed by Sunday-start week (`YYYY-MM-DD`), newest 6 weeks kept. **Shared** across devices via the Azure Functions API in `api/` (Table Storage, one entity per entry) — see `docs/shared-leaderboard.md`. Client side: `lib/leaderboard-store.ts` is an **async facade** that calls `lib/leaderboard-api.ts` when `VITE_LEADERBOARD_API` is set and falls back to the device-local store `lib/leaderboard-local.ts` (unset env ⇒ pure-local; configured-but-unreachable ⇒ `source: "offline"` and a small offline note in the UI). Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`. The server re-validates everything (initials blocklist, per-game score caps, week key in `LEADERBOARD_TIMEZONE`). Teacher dashboard at `#/teacher`, unlocked by the teacher passphrase (= the API's `MODERATION_KEY`, verified via `GET /api/moderation/check`; stored by `lib/teacher-session.ts` in session- or localStorage, never the bundle or the URL). Moderation: `components/HighScoreModeration.tsx` → `deleteEntry` in `lib/leaderboard-api.ts` — never add `deleteEntry` or `checkTeacherKey` to the facade.
+- **Weekly leaderboard** (arcade-style, no logins): per-game top-10 boards keyed by Sunday-start week (`YYYY-MM-DD`), newest 6 weeks kept. **Shared** across devices via the Azure Functions API in `api/` (Table Storage, one entity per entry) â€” see `docs/shared-leaderboard.md`. Client side: `lib/leaderboard-store.ts` is an **async facade** that calls `lib/leaderboard-api.ts` when `VITE_LEADERBOARD_API` is set and falls back to the device-local store `lib/leaderboard-local.ts` (unset env â‡’ pure-local; configured-but-unreachable â‡’ `source: "offline"` and a small offline note in the UI). Games show `shared/HighScoreFlow` (3-letter initials picker) at game end when the score qualifies; Phaser scenes signal it via `game.events.emit("game:finished", { score })` to their React wrapper. Boards page at `#/leaderboard`; game metadata shared via `lib/games-catalog.ts`. The server re-validates everything (initials blocklist, per-game score caps, week key in `LEADERBOARD_TIMEZONE`). Teacher dashboard at `#/teacher`, unlocked by the teacher passphrase (= the API's `MODERATION_KEY`, verified via `GET /api/moderation/check`; stored by `lib/teacher-session.ts` in session- or localStorage, never the bundle or the URL). Moderation: `components/HighScoreModeration.tsx` â†’ `deleteEntry` in `lib/leaderboard-api.ts` â€” never add `deleteEntry` or `checkTeacherKey` to the facade.
 
 ## Testing
 
@@ -85,9 +85,16 @@ After any significant game changes (new features, UI overhauls, game expansions)
 7. **Repeat from step 1** until a clean playthrough finds zero issues
 8. Run `npm run test && npm run test:e2e` to confirm no regressions
 
-This is not optional — ship no game changes without a clean visual playthrough.
+This is not optional â€” ship no game changes without a clean visual playthrough.
 
 ## Known Dev Quirks
 
 - **Phaser HMR**: Vite HMR does NOT update Phaser scene classes in the running game. Scene classes are cached at `new Phaser.Game()` construction time. To see Phaser scene changes during dev, you must do a **production build** (`npm run build`) and use the preview server, or fully reload the page. React component changes (wrappers, CSS) hot-reload fine.
-- **Phaser chunk warning**: The Phaser vendor chunk is ~1.5MB. This is expected — it's the full Phaser 3 library. Code-split via `vite.config.ts` manualChunks.
+- **Phaser chunk warning**: The Phaser vendor chunk is ~1.5MB. This is expected â€” it's the full Phaser 3 library. Code-split via `vite.config.ts` manualChunks.
+
+## Image generation
+
+Use the shared pipeline, never a direct image API call:
+`node C:\repos\art-pipeline\art.mjs --out <file> [--ref <existing art>] [--crop W:H] [--style <name>] "<prompt>"`
+â€” Codex / GPT-6 Astra on the ChatGPT subscription by default, Gemini API fallback, chosen automatically.
+Details and prompting tips: `C:\repos\art-pipeline\README.md` (summary in `C:\repos\CLAUDE.md`).
